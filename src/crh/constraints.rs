@@ -4,7 +4,7 @@ use core::fmt::Debug;
 use crate::crh::FixedLengthCRH;
 use ark_relations::r1cs::SynthesisError;
 
-use r1cs_std::prelude::*;
+use ark_r1cs_std::prelude::*;
 
 pub trait FixedLengthCRHGadget<H: FixedLengthCRH, ConstraintF: Field>: Sized {
     type OutputVar: EqGadget<ConstraintF>

@@ -177,7 +177,8 @@ mod test {
         crh::{bowe_hopwood::CRH, pedersen::Window},
         FixedLengthCRH,
     };
-    use algebra::{ed_on_bls12_381::EdwardsParameters, test_rng};
+    use ark_ed_on_bls12_381::EdwardsParameters;
+    use ark_ff::test_rng;
 
     #[test]
     fn test_simple_bh() {

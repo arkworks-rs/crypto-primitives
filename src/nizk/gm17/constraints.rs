@@ -5,7 +5,7 @@ use crate::{
 use ark_ec::{AffineCurve, PairingEngine, ToConstraintField};
 use ark_ff::ToConstraintField;
 use ark_relations::r1cs::{ConstraintSynthesizer, Namespace, SynthesisError};
-use r1cs_std::prelude::*;
+use ark_r1cs_std::prelude::*;
 
 use core::{borrow::Borrow, marker::PhantomData};
 use gm17::{PreparedVerifyingKey, Proof, VerifyingKey};
@@ -446,7 +446,7 @@ mod test {
         bls12_377::{Bls12_377, Fq, Fr},
         test_rng, BitIteratorLE, Field, PrimeField,
     };
-    use r1cs_std::{bls12_377::PairingVar as Bls12_377PairingVar, boolean::Boolean, Assignment};
+    use ark_r1cs_std::{bls12_377::PairingVar as Bls12_377PairingVar, boolean::Boolean, Assignment};
     use rand::Rng;
 
     type TestProofSystem = Gm17<Bls12_377, Bench<Fr>, Fr>;
@@ -583,7 +583,7 @@ mod test_recursive {
         mnt6_298::{Fq as MNT6Fq, FqParameters as MNT6FqParameters, Fr as MNT6Fr, MNT6_298},
         test_rng, BigInteger, Field, PrimeField,
     };
-    use r1cs_std::{
+    use ark_r1cs_std::{
         fields::fp::FpVar, mnt4_298::PairingVar as MNT4_298PairingVar,
         mnt6_298::PairingVar as MNT6_298PairingVar, uint8::UInt8, Assignment,
     };
