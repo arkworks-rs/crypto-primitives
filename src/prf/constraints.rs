@@ -4,7 +4,7 @@ use core::fmt::Debug;
 use crate::{prf::PRF, Vec};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use r1cs_std::prelude::*;
+use ark_r1cs_std::prelude::*;
 
 pub trait PRFGadget<P: PRF, F: Field> {
     type OutputVar: EqGadget<F>

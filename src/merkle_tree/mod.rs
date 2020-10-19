@@ -359,7 +359,8 @@ mod test {
         crh::{pedersen, *},
         merkle_tree::*,
     };
-    use algebra::{ed_on_bls12_381::EdwardsProjective as JubJub, Zero};
+    use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
+    use ark_ff::Zero;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
 

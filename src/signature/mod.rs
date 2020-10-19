@@ -53,10 +53,9 @@ pub trait SignatureScheme {
 #[cfg(test)]
 mod test {
     use crate::signature::{schnorr, *};
-    use algebra::{
-        ed_on_bls12_381::EdwardsProjective as JubJub, groups::Group, test_rng, to_bytes,
-        UniformRand,
-    };
+    use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
+    use ark_ec::group::Group;
+    use ark_ff::{test_rng, to_bytes, UniformRand};
     use blake2::Blake2s;
 
     fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {

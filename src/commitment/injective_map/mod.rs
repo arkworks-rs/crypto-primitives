@@ -7,7 +7,7 @@ pub use crate::crh::injective_map::InjectiveMap;
 use ark_ec::ProjectiveCurve;
 
 #[cfg(feature = "r1cs")]
-pub mod injective_map_constraints;
+pub mod constraints;
 
 pub struct PedersenCommCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,

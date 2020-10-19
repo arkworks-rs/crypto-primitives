@@ -6,14 +6,7 @@ extern crate bench_utils;
 #[macro_use]
 extern crate derivative;
 
-#[macro_use]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
-pub(crate) use alloc::{borrow::ToOwned, boxed::Box, vec::Vec};
-
-#[cfg(feature = "std")]
-pub(crate) use std::{borrow::ToOwned, boxed::Box, vec::Vec};
+pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
 
 pub mod commitment;
 pub mod crh;
@@ -31,7 +24,6 @@ pub use self::{
     signature::SignatureScheme,
 };
 
-#[cfg(feature = "r1cs")]
 #[cfg(feature = "r1cs")]
 pub use self::{
     commitment::CommitmentGadget, crh::FixedLengthCRHGadget, merkle_tree::constraints::PathVar,

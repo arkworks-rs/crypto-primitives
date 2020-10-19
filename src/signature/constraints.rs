@@ -1,6 +1,6 @@
 use ark_ff::Field;
 use ark_relations::r1cs::SynthesisError;
-use r1cs_std::prelude::*;
+use ark_r1cs_std::prelude::*;
 
 use crate::signature::SignatureScheme;
 
