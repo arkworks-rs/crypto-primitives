@@ -32,8 +32,8 @@ bench-utils = { git = "https://github.com/arkworks-rs/utils", default-features =
 blake2 = { version = "0.8", default-features = false }
 digest = "0.8"
 
-gm17 = { git = "ssh://git@github.com/arkworks-rs/gm17.git", default-features = false }
-groth16 = { git = "ssh://git@github.com/arkworks-rs/groth16.git", default-features = false }
+ark-gm17 = { git = "https://github.com/arkworks-rs/gm17" }
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
 
 ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", branch = "update-to-ark", optional = true, default-features = false }
 
@@ -45,7 +45,7 @@ tracing = { version = "0.1", default-features = false, features = [ "attributes"
 [features]
 default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std", "ark-r1cs-std/std"]
-parallel = ["std", "rayon", "gm17/parallel", "groth16/parallel", "ark-ff/parallel"]
+parallel = ["std", "rayon", "ark-gm17/parallel", "ark-groth16/parallel", "ark-ff/parallel"]
 
 [dev-dependencies]
 #algebra = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = [ "ed_on_bls12_381", "bls12_377", "mnt4_298", "mnt6_298" ] }
