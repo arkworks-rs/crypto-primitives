@@ -1,12 +1,15 @@
-use ark_ff::{PrimeField, FpParameters, BigInteger};
-use ark_r1cs_std::{alloc::AllocVar, bits::boolean::Boolean, fields::fp::FpVar, ToBytesGadget, ToBitsGadget};
-use ark_relations::{ns, r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError, Namespace}};
+use ark_ff::{BigInteger, FpParameters, PrimeField};
+use ark_r1cs_std::{
+    alloc::AllocVar, bits::boolean::Boolean, fields::fp::FpVar, ToBitsGadget, ToBytesGadget,
+};
+use ark_relations::{
+    ns,
+    r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace, SynthesisError},
+};
 use core::{borrow::Borrow, marker::PhantomData};
 
-use ark_snark::{
-    CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK,
-};
 use ark_r1cs_std::alloc::AllocationMode;
+use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 
 pub trait SNARKGadgets<F: PrimeField, ConstraintF: PrimeField, T: SNARK<F>> {
     type ProcessedVerifyingKeyVar: AllocVar<T::ProcessedVerifyingKey, ConstraintF> + Clone;
@@ -95,10 +98,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
                 let mut booleans = Vec::<Boolean<CF>>::new();
                 for bit in bits.iter() {
-                    booleans.push(Boolean::new_variable(ns!(cs, "bit"),
-                        || Ok(*bit),
-                        mode,
-                    )?);
+                    booleans.push(Boolean::new_variable(ns!(cs, "bit"), || Ok(*bit), mode)?);
                 }
 
                 res.push(booleans);
