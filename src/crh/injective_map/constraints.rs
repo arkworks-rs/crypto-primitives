@@ -6,14 +6,14 @@ use crate::crh::{
     FixedLengthCRHGadget,
 };
 
-use ark_ff::fields::{Field, PrimeField, SquareRootField};
 use ark_ec::{
     curves::{
         models::{ModelParameters, TEModelParameters},
         twisted_edwards_extended::GroupProjective as TEProjective,
     },
     ProjectiveCurve,
-}
+};
+use ark_ff::fields::{Field, PrimeField, SquareRootField};
 use ark_relations::r1cs::SynthesisError;
 use r1cs_std::{
     fields::fp::FpVar,

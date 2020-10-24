@@ -21,6 +21,7 @@ pub mod merkle_tree;
 pub mod nizk;
 pub mod prf;
 pub mod signature;
+pub mod snark;
 
 pub use self::{
     commitment::CommitmentScheme,
