@@ -1,8 +1,8 @@
-use algebra_core::PrimeField;
+use ark_ff::PrimeField;
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 
 use crate::{prf::PRFGadget, Vec};
-use r1cs_std::prelude::*;
+use ark_r1cs_std::prelude::*;
 
 use core::borrow::Borrow;
 
@@ -391,7 +391,7 @@ impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
 
 #[cfg(test)]
 mod test {
-    use algebra::ed_on_bls12_381::Fq as Fr;
+    use ark_ed_on_bls12_381::Fq as Fr;
     use rand::{Rng, SeedableRng};
     use rand_xorshift::XorShiftRng;
 
@@ -400,7 +400,7 @@ mod test {
     use blake2::VarBlake2s;
 
     use super::Blake2sGadget;
-    use r1cs_std::prelude::*;
+    use ark_r1cs_std::prelude::*;
 
     #[test]
     fn test_blake2s_constraints() {

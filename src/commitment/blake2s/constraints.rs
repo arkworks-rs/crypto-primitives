@@ -6,7 +6,7 @@ use crate::{
     Vec,
 };
 use ark_ff::{Field, PrimeField};
-use r1cs_std::prelude::*;
+use ark_r1cs_std::prelude::*;
 
 use core::borrow::Borrow;
 
@@ -78,9 +78,10 @@ mod test {
         },
         CommitmentGadget, CommitmentScheme,
     };
-    use algebra::{ed_on_bls12_381::Fq as Fr, test_rng};
+    use ark_ed_on_bls12_381::Fq as Fr;
+    use ark_ff::test_rng;
+    use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
-    use r1cs_std::prelude::*;
     use rand::Rng;
 
     #[test]

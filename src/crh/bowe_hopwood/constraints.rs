@@ -10,12 +10,12 @@ use crate::{
 };
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::Field;
-use ark_relations::r1cs::{Namespace, SynthesisError};
-use r1cs_std::{
+use ark_r1cs_std::{
     alloc::AllocVar, groups::curves::twisted_edwards::AffineVar, prelude::*, uint8::UInt8,
 };
+use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use r1cs_std::bits::boolean::Boolean;
+use ark_r1cs_std::bits::boolean::Boolean;
 
 type ConstraintF<P> = <<P as ModelParameters>::BaseField as Field>::BasePrimeField;
 
@@ -113,12 +113,11 @@ mod test {
         pedersen::Window as PedersenWindow,
         FixedLengthCRH, FixedLengthCRHGadget,
     };
-    use algebra::{
-        ed_on_bls12_381::{EdwardsParameters, Fq as Fr},
-        test_rng, ProjectiveCurve,
-    };
+    use ark_ec::ProjectiveCurve;
+    use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
+    use ark_ff::test_rng;
+    use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
-    use r1cs_std::{alloc::AllocVar, ed_on_bls12_381::FqVar, uint8::UInt8, R1CSVar};
 
     type TestCRH = CRH<EdwardsParameters, Window>;
     type TestCRHGadget = CRHGadget<EdwardsParameters, FqVar>;
