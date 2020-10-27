@@ -1,7 +1,7 @@
 use ark_ff::{BigInteger, FpParameters, PrimeField};
 use ark_r1cs_std::{alloc::AllocVar, bits::boolean::Boolean, fields::fp::FpVar, ToBitsGadget, ToBytesGadget, R1CSVar};
 use ark_relations::{
-    ns,
+    ns, lc,
     r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace, SynthesisError},
 };
 use core::{borrow::Borrow, marker::PhantomData};
@@ -11,6 +11,7 @@ use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 use ark_relations::r1cs::LinearCombination;
 use ark_r1cs_std::fields::fp::AllocatedFp;
 
+/// The SNARK verifier gadgets
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     type ProcessedVerifyingKeyVar: AllocVar<S::ProcessedVerifyingKey, ConstraintF> + Clone;
     type VerifyingKeyVar: AllocVar<S::VerifyingKey, ConstraintF>
@@ -49,6 +50,7 @@ pub trait UniversalSetupSNARKGadgets<
     type BoundCircuit: From<S::ComputationBound> + ConstraintSynthesizer<F> + Clone;
 }
 
+/// Gadgets to convert elements between different fields for recursive proofs
 pub trait FromFieldElementsGadget<F: PrimeField, ConstraintF: PrimeField>: Sized {
     fn repack_input(src: &Vec<F>) -> Vec<ConstraintF>;
     fn from_field_elements(
@@ -56,6 +58,8 @@ pub trait FromFieldElementsGadget<F: PrimeField, ConstraintF: PrimeField>: Sized
     ) -> Result<Self, SynthesisError>;
 }
 
+/// Conversion of field elements by converting them to boolean sequences
+/// Used by Groth16 and Gm17
 pub struct BooleanInputVar<F: PrimeField, CF: PrimeField> {
     val: Vec<Vec<Boolean<CF>>>,
     _snark_field_: PhantomData<F>,
@@ -94,9 +98,12 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             let t = f()?;
             let obj = t.borrow();
 
+            // convert the elements into booleans (little-endian)
             let mut res = Vec::<Vec<Boolean<CF>>>::new();
             for elem in obj.iter() {
-                let mut bits = elem.into_repr().to_bits(); // big endian
+                let mut bits = elem.into_repr().to_bits();
+                // the result of to_bits() is big-endian
+
                 bits.reverse();
                 bits.truncate(F::size_in_bits());
 
@@ -124,10 +131,12 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
         let obj = f()?;
 
-        // first obtain the bits
+        // Step 1: obtain the bits of the F field elements (little-endian)
         let mut src_bits = Vec::<bool>::new();
         for elem in obj.borrow().iter() {
-            let mut bits = elem.into_repr().to_bits(); // big endian
+            let mut bits = elem.into_repr().to_bits();
+            // to_bits()'s result is big-endian
+
             bits.reverse();
             bits.truncate(F::size_in_bits());
             for _ in bits.len()..F::size_in_bits() {
@@ -138,7 +147,10 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             src_bits.append(&mut bits);
         }
 
-        // then pack them as CF field elements
+        // Step 2: repack the bits as CF field elements
+        // Deciding how many bits can be embedded,
+        //  if CF has the same number of bits as F, but is larger,
+        //  then it is okay to put the entire field element in.
         let capacity = if CF::size_in_bits() == F::size_in_bits() {
             let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
             let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
@@ -167,8 +179,8 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             CF::size_in_bits() - 1
         };
 
+        // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean<CF>>::new();
-
         for chunk in src_bits.chunks(capacity) {
             let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits(chunk)).unwrap(); // big endian
 
@@ -181,7 +193,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             src_booleans.append(&mut booleans);
         }
 
-        // then unpack them
+        // Step 4: unpack them back to bits
         let res = src_booleans
             .chunks(F::size_in_bits())
             .map(|f| {
@@ -200,7 +212,8 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
 impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanInputVar<F, CF> {
     fn repack_input(src: &Vec<F>) -> Vec<CF> {
-        // first obtain the bits
+        // the same routine as the new_input above
+
         let mut src_bits = Vec::<bool>::new();
         for (_, elem) in src.iter().enumerate() {
             let mut bits = elem.into_repr().to_bits(); // big endian
@@ -214,7 +227,6 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             src_bits.append(&mut bits);
         }
 
-        // then pack them as CF field elements
         let capacity = if CF::size_in_bits() == F::size_in_bits() {
             let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
             let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
@@ -255,7 +267,8 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
     fn from_field_elements(
         src: &Vec<FpVar<CF>>,
     ) -> Result<Self, SynthesisError> {
-        // first obtain the bits
+        // the same routine as the new_input above
+
         let mut src_booleans = Vec::<Boolean<CF>>::new();
         for elem in src.iter() {
             let mut bits = elem.to_bits_le()?;
@@ -263,7 +276,6 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             src_booleans.extend_from_slice(&bits);
         }
 
-        // then pack them as F field elements
         let capacity = if CF::size_in_bits() == F::size_in_bits() {
             let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
             let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
@@ -307,12 +319,22 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
     }
 }
 
+/// Conversion of field elements by allocating them as nonnative field elements
+/// Used by Marlin
 pub struct NonNativeFieldInputVar<F, CF>
     where
         F: PrimeField,
         CF: PrimeField,
 {
-    pub val: Vec<NonNativeFieldVar<F, CF>>,
+    val: Vec<NonNativeFieldVar<F, CF>>,
+}
+
+impl<F, CF> NonNativeFieldInputVar<F, CF> {
+    pub fn new(val: Vec<NonNativeFieldVar<F, CF>>) -> Self {
+        Self {
+            val
+        }
+    }
 }
 
 impl<F, CF> Clone for NonNativeFieldInputVar<F, CF>
@@ -340,6 +362,8 @@ impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
         if mode == AllocationMode::Input {
             Self::new_input(cs, f)
         } else {
+            // directly allocate them as nonnative field elements
+
             let ns = cs.into();
             let cs = ns.cs();
 
@@ -349,7 +373,7 @@ impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
 
             for elem in obj.iter() {
                 let elem_allocated = NonNativeFieldVar::<F, CF>::new_variable(
-                    r1cs_core::ns!(cs, "allocating element"),
+                    ns!(cs, "allocating element"),
                     || Ok(elem),
                     mode,
                 )?;
@@ -364,6 +388,8 @@ impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
         cs: impl Into<Namespace<CF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
     ) -> Result<Self, SynthesisError> {
+        // allocate the nonnative field elements by squeezing the bits like in BooleanInputVar
+
         let ns = cs.into();
         let cs = ns.cs();
 
@@ -371,24 +397,28 @@ impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
 
         let obj = f()?;
 
-        // allocate it as bits
+        // Step 1: use BooleanInputVar to allocate the values as bits
+        // This is to make sure that we are using as few elements as possible
         let boolean_allocation =
-            BooleanInputVar::new_input(r1cs_core::ns!(cs, "boolean"), || Ok(obj.borrow()))?;
+            BooleanInputVar::new_input(ns!(cs, "boolean"), || Ok(obj.borrow()))?;
 
-        // allocate it as nonnative field gadgets
+        // Step 2: allocating the nonnative field elements as witnesses
         let mut field_allocation = Vec::<AllocatedNonNativeFieldVar<F, CF>>::new();
 
         for elem in obj.borrow().iter() {
             let mut elem_allocated = AllocatedNonNativeFieldVar::<F, CF>::new_witness(
-                r1cs_core::ns!(cs, "allocating element"),
+                ns!(cs, "allocating element"),
                 || Ok(elem),
             )?;
-            elem_allocated.is_in_the_normal_form = true; // due to the consistency check below
-            elem_allocated.num_of_additions_over_normal_form = CF::zero(); // due to the consistency check below
+
+            // due to the consistency check below
+            elem_allocated.is_in_the_normal_form = true;
+            elem_allocated.num_of_additions_over_normal_form = CF::zero();
+
             field_allocation.push(elem_allocated);
         }
 
-        // check consistency
+        // Step 3: check consistency
         for (field_bits, field_elem) in boolean_allocation.val.iter().zip(field_allocation.iter()) {
             let mut field_bits = field_bits.clone();
             field_bits.reverse();
@@ -420,8 +450,6 @@ impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
         for field_gadget in field_allocation.iter() {
             wrapped_field_allocation.push(NonNativeFieldVar::Var(field_gadget.clone()));
         }
-
-        // return the gadgets
         Ok(Self {
             val: wrapped_field_allocation,
         })
@@ -440,13 +468,14 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
     fn from_field_elements(
         src: &Vec<FpVar<CF>>,
     ) -> Result<Self, SynthesisError> {
+        // the same routine as the new_input above.
+
         let cs = src.cs();
 
         let params = get_params::<F, CF>(&cs);
 
         // allocate it as bits
         let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(
-            r1cs_core::ns!(cs, "from_field_elements").cs(),
             src,
         )?;
 
@@ -484,7 +513,7 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
                 }
 
                 let limb =
-                    AllocatedFp::<CF>::new_witness(r1cs_core::ns!(cs, "limb"), || Ok(limb_value))?;
+                    AllocatedFp::<CF>::new_witness(ns!(cs, "limb"), || Ok(limb_value))?;
                 lc = lc - limb.variable;
                 cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
 
@@ -502,7 +531,6 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
             ))
         }
 
-        // return the gadgets
         Ok(Self {
             val: field_allocation,
         })
