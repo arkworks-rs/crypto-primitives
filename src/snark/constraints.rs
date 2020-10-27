@@ -1,15 +1,13 @@
 use ark_ff::{BigInteger, FpParameters, PrimeField};
-use ark_r1cs_std::{alloc::AllocVar, bits::boolean::Boolean, fields::fp::FpVar, ToBitsGadget, ToBytesGadget, R1CSVar};
+use ark_r1cs_std::{alloc::{AllocationMode, AllocVar}, bits::boolean::Boolean, fields::fp::{FpVar, AllocatedFp}, ToBitsGadget, ToBytesGadget, R1CSVar};
 use ark_relations::{
     ns, lc,
-    r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace, SynthesisError},
+    r1cs::{ConstraintSynthesizer, LinearCombination, Namespace, SynthesisError},
 };
 use core::{borrow::Borrow, marker::PhantomData};
-
-use ark_r1cs_std::alloc::AllocationMode;
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
-use ark_relations::r1cs::LinearCombination;
-use ark_r1cs_std::fields::fp::AllocatedFp;
+use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
+use ark_nonnative_field::params::get_params;
 
 /// The SNARK verifier gadgets
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -65,10 +63,10 @@ pub struct BooleanInputVar<F: PrimeField, CF: PrimeField> {
     _snark_field_: PhantomData<F>,
 }
 
-impl<F: PrimeField, CF: PrimeField> BooleanInput<F, CF> {
-    fn new(val: Vec<Vec<Boolean<CF>>>) -> Self {
+impl<F: PrimeField, CF: PrimeField> BooleanInputVar<F, CF> {
+    pub fn new(val: Vec<Vec<Boolean<CF>>>) -> Self {
         Self {
-            val: val,
+            val,
             _snark_field_: PhantomData,
         }
     }
@@ -329,7 +327,11 @@ pub struct NonNativeFieldInputVar<F, CF>
     val: Vec<NonNativeFieldVar<F, CF>>,
 }
 
-impl<F, CF> NonNativeFieldInputVar<F, CF> {
+impl<F, CF> NonNativeFieldInputVar<F, CF>
+    where
+        F: PrimeField,
+        CF: PrimeField,
+{
     pub fn new(val: Vec<NonNativeFieldVar<F, CF>>) -> Self {
         Self {
             val
@@ -462,7 +464,7 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
         CF: PrimeField,
 {
     fn repack_input(src: &Vec<F>) -> Vec<CF> {
-        BooleanInputVar::get_converted_input(src)
+        BooleanInputVar::repack_input(src)
     }
 
     fn from_field_elements(
@@ -500,7 +502,7 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
                         .to_vec()
                 };
 
-                let mut lc = r1cs_core::LinearCombination::<CF>::zero();
+                let mut lc = LinearCombination::<CF>::zero();
                 let mut cur = CF::one();
 
                 let mut limb_value = CF::zero();
