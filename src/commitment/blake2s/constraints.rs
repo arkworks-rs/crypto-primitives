@@ -80,8 +80,8 @@ mod test {
     };
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_ff::test_rng;
-    use ark_relations::r1cs::ConstraintSystem;
     use ark_r1cs_std::prelude::*;
+    use ark_relations::r1cs::ConstraintSystem;
     use rand::Rng;
 
     #[test]

@@ -5,10 +5,10 @@ use crate::{
     },
     Vec,
 };
-use ark_ff::Field;
 use ark_ec::ProjectiveCurve;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use core::{borrow::Borrow, marker::PhantomData};
 
@@ -97,7 +97,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::crh::{pedersen, pedersen::constraints::*, FixedLengthCRH, FixedLengthCRHGadget};
-    use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq as Fr, constraints::EdwardsVar};
+    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_ff::test_rng;
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use rand::Rng;

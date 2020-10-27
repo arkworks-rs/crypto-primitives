@@ -1,7 +1,7 @@
 use ark_ff::Field;
+use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use core::borrow::Borrow;
-use ark_r1cs_std::prelude::*;
 
 use crate::nizk::NIZK;
 

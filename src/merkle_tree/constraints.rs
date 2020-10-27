@@ -1,6 +1,6 @@
 use ark_ff::Field;
-use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::{
     crh::{FixedLengthCRH, FixedLengthCRHGadget},
@@ -129,7 +129,7 @@ mod test {
         },
         merkle_tree::*,
     };
-    use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq, constraints::EdwardsVar};
+    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
     use ark_relations::r1cs::ConstraintSystem;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;

@@ -1,8 +1,8 @@
 use crate::commitment::CommitmentScheme;
 use ark_ff::Field;
+use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::SynthesisError;
 use core::fmt::Debug;
-use ark_r1cs_std::prelude::*;
 
 pub trait CommitmentGadget<C: CommitmentScheme, ConstraintF: Field> {
     type OutputVar: EqGadget<ConstraintF>

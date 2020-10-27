@@ -1,8 +1,8 @@
 use crate::Vec;
-use ark_ff::Field;
 use ark_ec::ProjectiveCurve;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::signature::SigRandomizePkGadget;
 
