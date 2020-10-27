@@ -1,13 +1,18 @@
 use ark_ff::{BigInteger, FpParameters, PrimeField};
-use ark_r1cs_std::{alloc::{AllocationMode, AllocVar}, bits::boolean::Boolean, fields::fp::{FpVar, AllocatedFp}, ToBitsGadget, ToBytesGadget, R1CSVar};
+use ark_nonnative_field::params::get_params;
+use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
+use ark_r1cs_std::{
+    alloc::{AllocVar, AllocationMode},
+    bits::boolean::Boolean,
+    fields::fp::{AllocatedFp, FpVar},
+    R1CSVar, ToBitsGadget, ToBytesGadget,
+};
 use ark_relations::{
-    ns, lc,
+    lc, ns,
     r1cs::{ConstraintSynthesizer, LinearCombination, Namespace, SynthesisError},
 };
-use core::{borrow::Borrow, marker::PhantomData};
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
-use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
-use ark_nonnative_field::params::get_params;
+use core::{borrow::Borrow, marker::PhantomData};
 
 /// The SNARK verifier gadgets
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -51,9 +56,7 @@ pub trait UniversalSetupSNARKGadgets<
 /// Gadgets to convert elements between different fields for recursive proofs
 pub trait FromFieldElementsGadget<F: PrimeField, ConstraintF: PrimeField>: Sized {
     fn repack_input(src: &Vec<F>) -> Vec<ConstraintF>;
-    fn from_field_elements(
-        src: &Vec<FpVar<ConstraintF>>,
-    ) -> Result<Self, SynthesisError>;
+    fn from_field_elements(src: &Vec<FpVar<ConstraintF>>) -> Result<Self, SynthesisError>;
 }
 
 /// Conversion of field elements by converting them to boolean sequences
@@ -115,7 +118,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
             Ok(Self {
                 val: res,
-                _snark_field_: PhantomData
+                _snark_field_: PhantomData,
             })
         }
     }
@@ -203,7 +206,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
         Ok(Self {
             val: res,
-            _snark_field_: PhantomData
+            _snark_field_: PhantomData,
         })
     }
 }
@@ -262,9 +265,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
         dest
     }
 
-    fn from_field_elements(
-        src: &Vec<FpVar<CF>>,
-    ) -> Result<Self, SynthesisError> {
+    fn from_field_elements(src: &Vec<FpVar<CF>>) -> Result<Self, SynthesisError> {
         // the same routine as the new_input above
 
         let mut src_booleans = Vec::<Boolean<CF>>::new();
@@ -312,7 +313,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             .collect::<Vec<Vec<Boolean<CF>>>>();
         Ok(Self {
             val: res,
-            _snark_field_: PhantomData
+            _snark_field_: PhantomData,
         })
     }
 }
@@ -320,29 +321,27 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
 /// Conversion of field elements by allocating them as nonnative field elements
 /// Used by Marlin
 pub struct NonNativeFieldInputVar<F, CF>
-    where
-        F: PrimeField,
-        CF: PrimeField,
+where
+    F: PrimeField,
+    CF: PrimeField,
 {
     val: Vec<NonNativeFieldVar<F, CF>>,
 }
 
 impl<F, CF> NonNativeFieldInputVar<F, CF>
-    where
-        F: PrimeField,
-        CF: PrimeField,
+where
+    F: PrimeField,
+    CF: PrimeField,
 {
     pub fn new(val: Vec<NonNativeFieldVar<F, CF>>) -> Self {
-        Self {
-            val
-        }
+        Self { val }
     }
 }
 
 impl<F, CF> Clone for NonNativeFieldInputVar<F, CF>
-    where
-        F: PrimeField,
-        CF: PrimeField,
+where
+    F: PrimeField,
+    CF: PrimeField,
 {
     fn clone(&self) -> Self {
         Self {
@@ -352,9 +351,9 @@ impl<F, CF> Clone for NonNativeFieldInputVar<F, CF>
 }
 
 impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
-    where
-        F: PrimeField,
-        CF: PrimeField,
+where
+    F: PrimeField,
+    CF: PrimeField,
 {
     fn new_variable<T: Borrow<Vec<F>>>(
         cs: impl Into<Namespace<CF>>,
@@ -459,17 +458,15 @@ impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
 }
 
 impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
-    where
-        F: PrimeField,
-        CF: PrimeField,
+where
+    F: PrimeField,
+    CF: PrimeField,
 {
     fn repack_input(src: &Vec<F>) -> Vec<CF> {
         BooleanInputVar::repack_input(src)
     }
 
-    fn from_field_elements(
-        src: &Vec<FpVar<CF>>,
-    ) -> Result<Self, SynthesisError> {
+    fn from_field_elements(src: &Vec<FpVar<CF>>) -> Result<Self, SynthesisError> {
         // the same routine as the new_input above.
 
         let cs = src.cs();
@@ -477,9 +474,7 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
         let params = get_params::<F, CF>(&cs);
 
         // allocate it as bits
-        let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(
-            src,
-        )?;
+        let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
 
         // going to allocate it as nonnative field gadgets
         let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
@@ -514,8 +509,7 @@ impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
                     cur.double_in_place();
                 }
 
-                let limb =
-                    AllocatedFp::<CF>::new_witness(ns!(cs, "limb"), || Ok(limb_value))?;
+                let limb = AllocatedFp::<CF>::new_witness(ns!(cs, "limb"), || Ok(limb_value))?;
                 lc = lc - limb.variable;
                 cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
 
