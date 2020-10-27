@@ -3,14 +3,15 @@ use crate::{
     crh::pedersen::Window,
     Vec,
 };
+use ark_ec::ProjectiveCurve;
 use ark_ff::{
     fields::{Field, PrimeField},
-    to_bytes, ProjectiveCurve, Zero,
+    to_bytes, Zero,
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
+use ark_r1cs_std::prelude::*;
 use core::{borrow::Borrow, marker::PhantomData};
-use r1cs_std::prelude::*;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
@@ -137,10 +138,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use algebra::{
-        ed_on_bls12_381::{EdwardsProjective as JubJub, Fq, Fr},
-        test_rng, UniformRand,
-    };
+    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq, Fr};
+    use ark_ff::{test_rng, UniformRand};
 
     use crate::{
         commitment::{
@@ -149,8 +148,8 @@ mod test {
         },
         crh::pedersen,
     };
+    use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
-    use r1cs_std::{ed_on_bls12_381::EdwardsVar, prelude::*};
 
     #[test]
     fn commitment_gadget_test() {

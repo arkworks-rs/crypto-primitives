@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use crate::Vec;
 use blake2::{Blake2s as B2s, VarBlake2s};
 use digest::Digest;
 

@@ -7,19 +7,17 @@ use crate::crh::{
 };
 
 use ark_ec::{
-    curves::{
-        models::{ModelParameters, TEModelParameters},
-        twisted_edwards_extended::GroupProjective as TEProjective,
-    },
+    models::{ModelParameters, TEModelParameters},
+    twisted_edwards_extended::GroupProjective as TEProjective,
     ProjectiveCurve,
 };
 use ark_ff::fields::{Field, PrimeField, SquareRootField};
-use ark_relations::r1cs::SynthesisError;
-use r1cs_std::{
+use ark_r1cs_std::{
     fields::fp::FpVar,
     groups::{curves::twisted_edwards::AffineVar as TEVar, CurveVar},
     prelude::*,
 };
+use ark_relations::r1cs::SynthesisError;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
