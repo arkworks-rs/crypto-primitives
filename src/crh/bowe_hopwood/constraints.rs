@@ -10,10 +10,10 @@ use crate::{
 };
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::Field;
-use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_r1cs_std::{
     alloc::AllocVar, groups::curves::twisted_edwards::AffineVar, prelude::*, uint8::UInt8,
 };
+use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use ark_r1cs_std::bits::boolean::Boolean;
 
@@ -113,11 +113,11 @@ mod test {
         pedersen::Window as PedersenWindow,
         FixedLengthCRH, FixedLengthCRHGadget,
     };
-    use ark_ed_on_bls12_381::{EdwardsParameters, Fq as Fr, constraints::FqVar};
-    use ark_ff::test_rng;
     use ark_ec::ProjectiveCurve;
-    use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
+    use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
+    use ark_ff::test_rng;
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
+    use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
 
     type TestCRH = CRH<EdwardsParameters, Window>;
     type TestCRHGadget = CRHGadget<EdwardsParameters, FqVar>;

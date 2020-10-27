@@ -15,6 +15,9 @@ pub mod nizk;
 pub mod prf;
 pub mod signature;
 
+#[macro_use]
+extern crate ark_std;
+
 pub use self::{
     commitment::CommitmentScheme,
     crh::FixedLengthCRH,

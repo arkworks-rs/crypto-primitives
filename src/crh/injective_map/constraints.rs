@@ -6,18 +6,18 @@ use crate::crh::{
     FixedLengthCRHGadget,
 };
 
-use ark_ff::fields::{Field, PrimeField, SquareRootField};
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::GroupProjective as TEProjective,
     ProjectiveCurve,
 };
-use ark_relations::r1cs::SynthesisError;
+use ark_ff::fields::{Field, PrimeField, SquareRootField};
 use ark_r1cs_std::{
     fields::fp::FpVar,
     groups::{curves::twisted_edwards::AffineVar as TEVar, CurveVar},
     prelude::*,
 };
+use ark_relations::r1cs::SynthesisError;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 

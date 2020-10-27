@@ -7,13 +7,13 @@ use crate::commitment::{
 };
 
 pub use crate::crh::injective_map::constraints::InjectiveMapGadget;
-use ark_ff::{Field, PrimeField};
 use ark_ec::ProjectiveCurve;
-use ark_relations::r1cs::SynthesisError;
+use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::{
     groups::{CurveVar, GroupOpsBounds},
     uint8::UInt8,
 };
+use ark_relations::r1cs::SynthesisError;
 
 use core::marker::PhantomData;
 
