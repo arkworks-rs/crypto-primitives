@@ -61,6 +61,7 @@ pub trait FromFieldElementsGadget<F: PrimeField, ConstraintF: PrimeField>: Sized
 
 /// Conversion of field elements by converting them to boolean sequences
 /// Used by Groth16 and Gm17
+#[derive(Clone)]
 pub struct BooleanInputVar<F: PrimeField, CF: PrimeField> {
     val: Vec<Vec<Boolean<CF>>>,
     _snark_field_: PhantomData<F>,
