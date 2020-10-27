@@ -76,15 +76,6 @@ impl<F: PrimeField, CF: PrimeField> BooleanInputVar<F, CF> {
     }
 }
 
-impl<F: PrimeField, CF: PrimeField> Clone for BooleanInputVar<F, CF> {
-    fn clone(&self) -> Self {
-        Self {
-            val: self.val.clone(),
-            _snark_field_: PhantomData,
-        }
-    }
-}
-
 impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, CF> {
     fn new_variable<T: Borrow<Vec<F>>>(
         cs: impl Into<Namespace<CF>>,
