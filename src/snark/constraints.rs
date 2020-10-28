@@ -13,6 +13,8 @@ use ark_relations::{
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 use core::{borrow::Borrow, marker::PhantomData};
+use ark_r1cs_std::fields::fp::FpVar::Constant;
+use ark_relations::r1cs::ConstraintSystemRef;
 
 /// The SNARK verifier gadgets
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -213,8 +215,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
 impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanInputVar<F, CF> {
     fn repack_input(src: &Vec<F>) -> Vec<CF> {
-        // the same routine as the new_input above
-
+        // Step 1: obtain the bits of the F field elements
         let mut src_bits = Vec::<bool>::new();
         for (_, elem) in src.iter().enumerate() {
             let mut bits = elem.into_repr().to_bits(); // big endian
@@ -228,6 +229,8 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             src_bits.append(&mut bits);
         }
 
+        // Step 2: repack the bits as CF field elements
+        // Deciding how many bits can be embedded.
         let capacity = if CF::size_in_bits() == F::size_in_bits() {
             let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
             let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
@@ -256,6 +259,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             CF::size_in_bits() - 1
         };
 
+        // Step 3: directly pack the bits
         let mut dest = Vec::<CF>::new();
         for chunk in src_bits.chunks(capacity) {
             let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits(chunk)).unwrap(); // big endian
@@ -266,8 +270,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
     }
 
     fn from_field_elements(src: &Vec<FpVar<CF>>) -> Result<Self, SynthesisError> {
-        // the same routine as the new_input above
-
+        // Step 1: obtain the booleans of the CF field variables
         let mut src_booleans = Vec::<Boolean<CF>>::new();
         for elem in src.iter() {
             let mut bits = elem.to_bits_le()?;
@@ -275,6 +278,8 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             src_booleans.extend_from_slice(&bits);
         }
 
+        // Step 2: repack the bits as F field elements
+        // Deciding how many bits can be embedded.
         let capacity = if CF::size_in_bits() == F::size_in_bits() {
             let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
             let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
@@ -303,6 +308,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             F::size_in_bits() - 1
         };
 
+        // Step 3: group them based on the used capacity of F
         let res = src_booleans
             .chunks(capacity)
             .map(|x| {
@@ -467,68 +473,96 @@ where
     }
 
     fn from_field_elements(src: &Vec<FpVar<CF>>) -> Result<Self, SynthesisError> {
-        // the same routine as the new_input above.
-
         let cs = src.cs();
 
-        let params = get_params::<F, CF>(&cs);
+        if cs == ConstraintSystemRef::None {
+            // Step 1: use BooleanInputVar to convert them into booleans
+            let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
 
-        // allocate it as bits
-        let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
+            // Step 2: construct the nonnative field gadgets from bits
+            let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
 
-        // going to allocate it as nonnative field gadgets
-        let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
+            // reconstruct the field elements and check consistency
+            for field_bits in boolean_allocation.val.iter() {
+                let mut field_bits = field_bits.clone();
+                field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
 
-        // reconstruct the field elements and check consistency
-        for field_bits in boolean_allocation.val.iter() {
-            let mut field_bits = field_bits.clone();
-            field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
-            field_bits.reverse();
-
-            let mut limbs = Vec::<AllocatedFp<CF>>::new();
-
-            // must use lc to save computation
-            for j in 0..params.num_limbs {
-                let bits_slice = if j == 0 {
-                    field_bits[0..params.bits_per_top_limb].to_vec()
-                } else {
-                    field_bits[(params.bits_per_top_limb + (j - 1) * params.bits_per_non_top_limb)
-                        ..(params.bits_per_top_limb + j * params.bits_per_non_top_limb)]
-                        .to_vec()
-                };
-
-                let mut lc = LinearCombination::<CF>::zero();
                 let mut cur = CF::one();
 
-                let mut limb_value = CF::zero();
-                for bit in bits_slice.iter().rev() {
-                    lc = &lc + bit.lc() * cur;
+                let mut value = CF::zero();
+                for bit in field_bits.iter().rev() {
                     if bit.value().unwrap_or_default() {
-                        limb_value += &cur;
+                        value += &cur;
                     }
                     cur.double_in_place();
                 }
 
-                let limb = AllocatedFp::<CF>::new_witness(ns!(cs, "limb"), || Ok(limb_value))?;
-                lc = lc - limb.variable;
-                cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
-
-                limbs.push(limb);
+                field_allocation.push(NonNativeFieldVar::Constant(value));
             }
 
-            field_allocation.push(NonNativeFieldVar::<F, CF>::Var(
-                AllocatedNonNativeFieldVar::<F, CF> {
-                    cs: cs.clone(),
-                    limbs: limbs,
-                    num_of_additions_over_normal_form: CF::zero(),
-                    is_in_the_normal_form: true,
-                    target_phantom: PhantomData,
-                },
-            ))
-        }
+            Ok(Self {
+                val: field_allocation,
+            })
+        }else {
+            let params = get_params::<F, CF>(&cs);
 
-        Ok(Self {
-            val: field_allocation,
-        })
+            // Step 1: use BooleanInputVar to convert them into booleans
+            let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
+
+            // Step 2: construct the nonnative field gadgets from bits
+            let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
+
+            // reconstruct the field elements and check consistency
+            for field_bits in boolean_allocation.val.iter() {
+                let mut field_bits = field_bits.clone();
+                field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
+                field_bits.reverse();
+
+                let mut limbs = Vec::<AllocatedFp<CF>>::new();
+
+                // must use lc to save computation
+                for j in 0..params.num_limbs {
+                    let bits_slice = if j == 0 {
+                        field_bits[0..params.bits_per_top_limb].to_vec()
+                    } else {
+                        field_bits[(params.bits_per_top_limb + (j - 1) * params.bits_per_non_top_limb)
+                            ..(params.bits_per_top_limb + j * params.bits_per_non_top_limb)]
+                            .to_vec()
+                    };
+
+                    let mut lc = LinearCombination::<CF>::zero();
+                    let mut cur = CF::one();
+
+                    let mut limb_value = CF::zero();
+                    for bit in bits_slice.iter().rev() {
+                        lc = &lc + bit.lc() * cur;
+                        if bit.value().unwrap_or_default() {
+                            limb_value += &cur;
+                        }
+                        cur.double_in_place();
+                    }
+
+                    let limb = AllocatedFp::<CF>::new_witness(ns!(cs, "limb"), || Ok(limb_value))?;
+                    lc = lc - limb.variable;
+                    cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
+
+                    limbs.push(limb);
+                }
+
+                field_allocation.push(NonNativeFieldVar::<F, CF>::Var(
+                    AllocatedNonNativeFieldVar::<F, CF> {
+                        cs: cs.clone(),
+                        limbs: limbs,
+                        num_of_additions_over_normal_form: CF::zero(),
+                        is_in_the_normal_form: true,
+                        target_phantom: PhantomData,
+                    },
+                ))
+            }
+
+            Ok(Self {
+                val: field_allocation,
+            })
+        }
     }
 }
