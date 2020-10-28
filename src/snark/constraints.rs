@@ -9,12 +9,10 @@ use ark_r1cs_std::{
 };
 use ark_relations::{
     lc, ns,
-    r1cs::{ConstraintSynthesizer, LinearCombination, Namespace, SynthesisError},
+    r1cs::{ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError},
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 use core::{borrow::Borrow, marker::PhantomData};
-use ark_r1cs_std::fields::fp::FpVar::Constant;
-use ark_relations::r1cs::ConstraintSystemRef;
 
 /// The SNARK verifier gadgets
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -479,9 +477,9 @@ where
                 let mut field_bits = field_bits.clone();
                 field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
 
-                let mut cur = CF::one();
+                let mut cur = F::one();
 
-                let mut value = CF::zero();
+                let mut value = F::zero();
                 for bit in field_bits.iter().rev() {
                     if bit.value().unwrap_or_default() {
                         value += &cur;
