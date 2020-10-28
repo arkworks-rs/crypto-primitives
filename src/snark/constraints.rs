@@ -9,7 +9,9 @@ use ark_r1cs_std::{
 };
 use ark_relations::{
     lc, ns,
-    r1cs::{ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError},
+    r1cs::{
+        ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
+    },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 use core::{borrow::Borrow, marker::PhantomData};
@@ -493,7 +495,7 @@ where
             Ok(Self {
                 val: field_allocation,
             })
-        }else {
+        } else {
             let params = get_params::<F, CF>(&cs);
 
             // Step 1: use BooleanInputVar to convert them into booleans
@@ -515,7 +517,8 @@ where
                     let bits_slice = if j == 0 {
                         field_bits[0..params.bits_per_top_limb].to_vec()
                     } else {
-                        field_bits[(params.bits_per_top_limb + (j - 1) * params.bits_per_non_top_limb)
+                        field_bits[(params.bits_per_top_limb
+                            + (j - 1) * params.bits_per_non_top_limb)
                             ..(params.bits_per_top_limb + j * params.bits_per_non_top_limb)]
                             .to_vec()
                     };
