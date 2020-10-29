@@ -14,6 +14,7 @@ pub mod merkle_tree;
 pub mod nizk;
 pub mod prf;
 pub mod signature;
+pub mod snark;
 
 #[macro_use]
 extern crate ark_std;
