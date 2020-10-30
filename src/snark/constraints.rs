@@ -14,7 +14,7 @@ use ark_relations::{
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
-use ark_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
+use ark_std::{borrow::Borrow, fmt, marker::PhantomData, vec::Vec};
 
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -24,6 +24,19 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
         + Clone;
     type InputVar: AllocVar<Vec<F>, ConstraintF> + FromFieldElementsGadget<F, ConstraintF> + Clone;
     type ProofVar: AllocVar<S::Proof, ConstraintF> + Clone;
+
+    /// Information about the R1CS constraints required to check proofs relative
+    /// a given verification key. In the context of a LPCP-based pairing-based SNARK
+    /// like that of [[Groth16]](https://eprint.iacr.org/2016/260),
+    /// this is independent of the R1CS matrices,
+    /// whereas for more "complex" SNARKs like [[Marlin]](https://eprint.iacr.org/2019/1047),
+    /// this can encode information about the highest degree of polynomials
+    /// required to verify proofs.
+    type VerifierSize: PartialOrd + Clone + fmt::Debug;
+
+    /// Returns information about the R1CS constraints required to check proofs relative
+    /// to the verification key `circuit_vk`.
+    fn verifier_size(circuit_vk: &S::VerifyingKey) -> Self::VerifierSize;
 
     /// Optionally allocates `S::Proof` in `cs` without performing
     /// additional checks, such as subgroup membership checks. Use this *only*
