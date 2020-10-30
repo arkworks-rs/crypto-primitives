@@ -16,7 +16,7 @@ use ark_relations::{
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 use core::{borrow::Borrow, marker::PhantomData};
 
-/// The SNARK verifier gadgets
+/// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     type ProcessedVerifyingKeyVar: AllocVar<S::ProcessedVerifyingKey, ConstraintF> + Clone;
     type VerifyingKeyVar: AllocVar<S::VerifyingKey, ConstraintF>
@@ -24,6 +24,42 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
         + Clone;
     type InputVar: AllocVar<Vec<F>, ConstraintF> + FromFieldElementsGadget<F, ConstraintF> + Clone;
     type ProofVar: AllocVar<S::Proof, ConstraintF> + Clone;
+
+    /// Optionally allocates `S::Proof` in `cs` without performing
+    /// additional checks, such as subgroup membership checks. Use this *only*
+    /// if you know it is safe to do so. Such "safe" scenarios can include
+    /// the case where `proof` is a public input (`mode == AllocationMode::Input`),
+    /// and the corresponding checks are performed by the SNARK verifier outside
+    /// the circuit.  Another example is the when `mode == AllocationMode::Constant`.
+    ///
+    /// The default implementation does not omit such checks, and just invokes
+    /// `Self::ProofVar::new_variable`.
+    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    fn new_proof_unchecked<T: Borrow<S::Proof>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self::ProofVar, SynthesisError> {
+        Self::ProofVar::new_variable(cs, f, mode)
+    }
+
+    /// Optionally allocates `S::VerifyingKey` in `cs` without performing
+    /// additional checks, such as subgroup membership checks. Use this *only*
+    /// if you know it is safe to do so. Such "safe" scenarios can include
+    /// the case where `vk` is a public input (`mode == AllocationMode::Input`),
+    /// and the corresponding checks are performed by the SNARK verifier outside
+    /// the circuit. Another example is the when `mode == AllocationMode::Constant`.
+    ///
+    /// The default implementation does not omit such checks, and just invokes
+    /// `Self::VerifyingKeyVar::new_variable`.
+    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    fn new_verification_key_unchecked<T: Borrow<S::VerifyingKey>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self::VerifyingKeyVar, SynthesisError> {
+        Self::VerifyingKeyVar::new_variable(cs, f, mode)
+    }
 
     fn verify_with_processed_vk(
         circuit_pvk: &Self::ProcessedVerifyingKeyVar,
