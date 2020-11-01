@@ -87,7 +87,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     ) -> Result<Boolean<ConstraintF>, SynthesisError>;
 }
 
-pub trait CircuitSpecificSetupSNARKGadgets<
+pub trait CircuitSpecificSetupSNARKGadget<
     F: PrimeField,
     ConstraintF: PrimeField,
     S: CircuitSpecificSetupSNARK<F>,
@@ -95,7 +95,7 @@ pub trait CircuitSpecificSetupSNARKGadgets<
 {
 }
 
-pub trait UniversalSetupSNARKGadgets<
+pub trait UniversalSetupSNARKGadget<
     F: PrimeField,
     ConstraintF: PrimeField,
     S: UniversalSetupSNARK<F>,
