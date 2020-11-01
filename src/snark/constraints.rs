@@ -14,7 +14,12 @@ use ark_relations::{
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
-use ark_std::{borrow::Borrow, fmt, marker::PhantomData, vec::Vec};
+use ark_std::{
+    borrow::Borrow,
+    fmt,
+    marker::PhantomData,
+    vec::{IntoIter, Vec},
+};
 
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -124,6 +129,15 @@ impl<F: PrimeField, CF: PrimeField> BooleanInputVar<F, CF> {
             val,
             _snark_field_: PhantomData,
         }
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> IntoIterator for BooleanInputVar<F, CF> {
+    type Item = Vec<Boolean<CF>>;
+    type IntoIter = IntoIter<Vec<Boolean<CF>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.val.into_iter()
     }
 }
 
@@ -382,6 +396,19 @@ where
 {
     pub fn new(val: Vec<NonNativeFieldVar<F, CF>>) -> Self {
         Self { val }
+    }
+}
+
+impl<F, CF> IntoIterator for NonNativeFieldInputVar<F, CF>
+where
+    F: PrimeField,
+    CF: PrimeField,
+{
+    type Item = NonNativeFieldVar<F, CF>;
+    type IntoIter = IntoIter<NonNativeFieldVar<F, CF>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.val.into_iter()
     }
 }
 
