@@ -386,7 +386,7 @@ where
     F: PrimeField,
     CF: PrimeField,
 {
-    val: Vec<NonNativeFieldVar<F, CF>>,
+    pub val: Vec<NonNativeFieldVar<F, CF>>,
 }
 
 impl<F, CF> NonNativeFieldInputVar<F, CF>
