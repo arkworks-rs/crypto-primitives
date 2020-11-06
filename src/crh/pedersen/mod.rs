@@ -83,11 +83,9 @@ impl<C: ProjectiveCurve, W: Window> FixedLengthCRH for CRH<C, W> {
         let mut input = input;
         // Pad the input if it is not the current length.
         if (input.len() * 8) < W::WINDOW_SIZE * W::NUM_WINDOWS {
-            let current_length = input.len();
             padded_input.extend_from_slice(input);
-            for _ in current_length..((W::WINDOW_SIZE * W::NUM_WINDOWS) / 8) {
-                padded_input.push(0u8);
-            }
+            let padded_length = (W::WINDOW_SIZE * W::NUM_WINDOWS) / 8;
+            padded_input.resize(padded_length, 0u8);
             input = padded_input.as_slice();
         }
 
@@ -135,11 +133,11 @@ pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
 
 impl<C: ProjectiveCurve> Debug for Parameters<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Pedersen Hash Parameters {{\n")?;
+        writeln!(f, "Pedersen Hash Parameters {{")?;
         for (i, g) in self.generators.iter().enumerate() {
-            write!(f, "\t  Generator {}: {:?}\n", i, g)?;
+            writeln!(f, "\t  Generator {}: {:?}", i, g)?;
         }
-        write!(f, "}}\n")
+        writeln!(f, "}}")
     }
 }
 

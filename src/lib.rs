@@ -1,4 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![deny(
+    warnings,
+    unused,
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms,
+    // missing_docs
+)]
+#![forbid(unsafe_code)]
 
 #[macro_use]
 extern crate bench_utils;
@@ -11,7 +20,6 @@ pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
 pub mod commitment;
 pub mod crh;
 pub mod merkle_tree;
-pub mod nizk;
 pub mod prf;
 pub mod signature;
 pub mod snark;
@@ -23,15 +31,15 @@ pub use self::{
     commitment::CommitmentScheme,
     crh::FixedLengthCRH,
     merkle_tree::{MerkleTree, Path},
-    nizk::NIZK,
     prf::PRF,
     signature::SignatureScheme,
+    snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK},
 };
 
 #[cfg(feature = "r1cs")]
 pub use self::{
     commitment::CommitmentGadget, crh::FixedLengthCRHGadget, merkle_tree::constraints::PathVar,
-    nizk::NIZKVerifierGadget, prf::PRFGadget, signature::SigRandomizePkGadget,
+    prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
 };
 
 pub type Error = Box<dyn ark_std::error::Error>;

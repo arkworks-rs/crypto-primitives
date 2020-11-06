@@ -1,4 +1,5 @@
 use crate::Vec;
+use ark_std::convert::TryFrom;
 use blake2::{Blake2s as B2s, VarBlake2s};
 use digest::Digest;
 
@@ -61,16 +62,11 @@ impl Blake2sWithParameterBlock {
             self.inner_length,
         ]);
 
-        let mut salt_bytes_1 = [0; 4];
-        let mut salt_bytes_2 = [0; 4];
-        let mut personalization_bytes_1 = [0; 4];
-        let mut personalization_bytes_2 = [0; 4];
-        for i in 0..4 {
-            salt_bytes_1[i] = self.salt[i];
-            salt_bytes_2[i] = self.salt[4 + i];
-            personalization_bytes_1[i] = self.personalization[i];
-            personalization_bytes_2[i] = self.personalization[4 + i];
-        }
+        let salt_bytes_1 = <[u8; 4]>::try_from(&self.salt[0..4]).unwrap();
+        let salt_bytes_2 = <[u8; 4]>::try_from(&self.salt[4..8]).unwrap();
+        let personalization_bytes_1 = <[u8; 4]>::try_from(&self.personalization[0..4]).unwrap();
+        let personalization_bytes_2 = <[u8; 4]>::try_from(&self.personalization[4..8]).unwrap();
+
         parameters[4] = u32::from_le_bytes(salt_bytes_1);
         parameters[5] = u32::from_le_bytes(salt_bytes_2);
         parameters[6] = u32::from_le_bytes(personalization_bytes_1);
