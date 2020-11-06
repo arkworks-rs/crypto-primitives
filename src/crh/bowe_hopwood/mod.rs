@@ -106,10 +106,8 @@ impl<P: TEModelParameters, W: pedersen::Window> FixedLengthCRH for CRH<P, W> {
         // Pad the input if it is not the current length.
         padded_input.extend_from_slice(&input);
         if input.len() % CHUNK_SIZE != 0 {
-            let current_length = input.len();
-            for _ in 0..(CHUNK_SIZE - current_length % CHUNK_SIZE) {
-                padded_input.push(false);
-            }
+            let remaining = CHUNK_SIZE - input.len() % CHUNK_SIZE;
+            padded_input.extend_from_slice(&vec![false; remaining]);
         }
 
         assert_eq!(padded_input.len() % CHUNK_SIZE, 0);
@@ -139,9 +137,9 @@ impl<P: TEModelParameters, W: pedersen::Window> FixedLengthCRH for CRH<P, W> {
                 cfg_chunks!(segment_bits, CHUNK_SIZE)
                     .zip(segment_generators)
                     .map(|(chunk_bits, generator)| {
-                        let mut encoded = generator.clone();
+                        let mut encoded = *generator;
                         if chunk_bits[0] {
-                            encoded = encoded + generator;
+                            encoded += generator;
                         }
                         if chunk_bits[1] {
                             encoded += &generator.double();
@@ -163,11 +161,11 @@ impl<P: TEModelParameters, W: pedersen::Window> FixedLengthCRH for CRH<P, W> {
 
 impl<P: TEModelParameters> Debug for Parameters<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Bowe-Hopwood-Pedersen Hash Parameters {{\n")?;
+        writeln!(f, "Bowe-Hopwood-Pedersen Hash Parameters {{")?;
         for (i, g) in self.generators.iter().enumerate() {
-            write!(f, "\t  Generator {}: {:?}\n", i, g)?;
+            writeln!(f, "\t  Generator {}: {:?}", i, g)?;
         }
-        write!(f, "}}\n")
+        writeln!(f, "}}")
     }
 }
 

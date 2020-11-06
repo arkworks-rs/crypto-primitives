@@ -81,11 +81,9 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
         let mut padded_input = Vec::with_capacity(input.len());
         let mut input = input;
         if (input.len() * 8) < W::WINDOW_SIZE * W::NUM_WINDOWS {
-            let current_length = input.len();
             padded_input.extend_from_slice(input);
-            for _ in current_length..((W::WINDOW_SIZE * W::NUM_WINDOWS) / 8) {
-                padded_input.push(0u8);
-            }
+            let padded_length = (W::WINDOW_SIZE * W::NUM_WINDOWS) / 8;
+            padded_input.resize(padded_length, 0u8);
             input = padded_input.as_slice();
         }
         assert_eq!(parameters.generators.len(), W::NUM_WINDOWS);

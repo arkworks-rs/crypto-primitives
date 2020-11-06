@@ -18,10 +18,7 @@ pub trait Config {
     Debug(bound = "P: Config, <P::H as FixedLengthCRH>::Output: fmt::Debug")
 )]
 pub struct Path<P: Config> {
-    pub(crate) path: Vec<(
-        <P::H as FixedLengthCRH>::Output,
-        <P::H as FixedLengthCRH>::Output,
-    )>,
+    pub(crate) path: Vec<(Digest<P>, Digest<P>)>,
 }
 
 pub type Parameters<P> = <<P as Config>::H as FixedLengthCRH>::Parameters;
@@ -82,19 +79,16 @@ impl<P: Config> Path<P> {
 }
 
 pub struct MerkleTree<P: Config> {
-    tree: Vec<<P::H as FixedLengthCRH>::Output>,
-    padding_tree: Vec<(
-        <P::H as FixedLengthCRH>::Output,
-        <P::H as FixedLengthCRH>::Output,
-    )>,
+    tree: Vec<Digest<P>>,
+    padding_tree: Vec<(Digest<P>, Digest<P>)>,
     parameters: <P::H as FixedLengthCRH>::Parameters,
-    root: Option<<P::H as FixedLengthCRH>::Output>,
+    root: Option<Digest<P>>,
 }
 
 impl<P: Config> MerkleTree<P> {
     pub const HEIGHT: u8 = P::HEIGHT as u8;
 
-    pub fn blank(parameters: <P::H as FixedLengthCRH>::Parameters) -> Self {
+    pub fn blank(parameters: Parameters<P>) -> Self {
         MerkleTree {
             tree: Vec::new(),
             padding_tree: Vec::new(),
@@ -103,10 +97,7 @@ impl<P: Config> MerkleTree<P> {
         }
     }
 
-    pub fn new<L: ToBytes>(
-        parameters: <P::H as FixedLengthCRH>::Parameters,
-        leaves: &[L],
-    ) -> Result<Self, crate::Error> {
+    pub fn new<L: ToBytes>(parameters: Parameters<P>, leaves: &[L]) -> Result<Self, crate::Error> {
         let new_time = start_timer!(|| "MerkleTree::New");
 
         let last_level_size = leaves.len().next_power_of_two();
@@ -183,7 +174,7 @@ impl<P: Config> MerkleTree<P> {
     }
 
     #[inline]
-    pub fn root(&self) -> <P::H as FixedLengthCRH>::Output {
+    pub fn root(&self) -> Digest<P> {
         self.root.clone().unwrap()
     }
 
@@ -233,7 +224,7 @@ impl<P: Config> MerkleTree<P> {
         }
         end_timer!(prove_time);
         if path.len() != (Self::HEIGHT - 1) as usize {
-            return Err(Error::IncorrectPathLength(path.len()).into());
+            Err(Error::IncorrectPathLength(path.len()).into())
         } else {
             Ok(Path { path })
         }
