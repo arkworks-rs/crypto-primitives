@@ -14,6 +14,7 @@ use ark_relations::{
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
+use ark_std::cmp::min;
 use ark_std::{
     borrow::Borrow,
     fmt,
@@ -500,8 +501,9 @@ where
 
             // must use lc to save computation
             for (j, limb) in field_elem.limbs.iter().enumerate() {
-                let bits_slice =
-                    field_bits[j * params.bits_per_limb..(j + 1) * params.bits_per_limb].to_vec();
+                let bits_slice = field_bits[j * params.bits_per_limb
+                    ..min((j + 1) * params.bits_per_limb, field_bits.len())]
+                    .to_vec();
 
                 let mut lc = LinearCombination::<CF>::zero();
                 let mut cur = CF::one();
@@ -585,8 +587,8 @@ where
 
                 // must use lc to save computation
                 for j in 0..params.num_limbs {
-                    let bits_slice = field_bits
-                        [(j * params.bits_per_limb)..((j + 1) * params.bits_per_limb)]
+                    let bits_slice = field_bits[(j * params.bits_per_limb)
+                        ..min((j + 1) * params.bits_per_limb, field_bits.len())]
                         .to_vec();
 
                     let mut lc = LinearCombination::<CF>::zero();
