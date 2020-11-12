@@ -38,7 +38,8 @@ tracing = { version = "0.1", default-features = false, features = [ "attributes"
 [features]
 default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
-parallel = ["std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel"]
+print-trace = [ "bench-utils/print-trace" ]
+parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
 r1cs = [ "ark-r1cs-std", "tracing", "ark-nonnative-field" ]
 
 [dev-dependencies]
