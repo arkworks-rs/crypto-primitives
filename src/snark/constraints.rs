@@ -14,7 +14,6 @@ use ark_relations::{
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
-use ark_std::cmp::min;
 use ark_std::{
     borrow::Borrow,
     fmt,
@@ -499,11 +498,19 @@ where
             let mut field_bits = field_bits.clone();
             field_bits.reverse();
 
+            let bit_per_top_limb =
+                F::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb;
+            let bit_per_non_top_limb = params.bits_per_limb;
+
             // must use lc to save computation
             for (j, limb) in field_elem.limbs.iter().enumerate() {
-                let bits_slice = field_bits[j * params.bits_per_limb
-                    ..min((j + 1) * params.bits_per_limb, field_bits.len())]
-                    .to_vec();
+                let bits_slice = if j == 0 {
+                    field_bits[0..bit_per_top_limb].to_vec()
+                } else {
+                    field_bits[bit_per_top_limb + (j - 1) * bit_per_non_top_limb
+                        ..bit_per_top_limb + j * bit_per_non_top_limb]
+                        .to_vec()
+                };
 
                 let mut lc = LinearCombination::<CF>::zero();
                 let mut cur = CF::one();
@@ -585,11 +592,19 @@ where
 
                 let mut limbs = Vec::<AllocatedFp<CF>>::new();
 
+                let bit_per_top_limb =
+                    F::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb;
+                let bit_per_non_top_limb = params.bits_per_limb;
+
                 // must use lc to save computation
                 for j in 0..params.num_limbs {
-                    let bits_slice = field_bits[(j * params.bits_per_limb)
-                        ..min((j + 1) * params.bits_per_limb, field_bits.len())]
-                        .to_vec();
+                    let bits_slice = if j == 0 {
+                        field_bits[0..bit_per_top_limb].to_vec()
+                    } else {
+                        field_bits[bit_per_top_limb + (j - 1) * bit_per_non_top_limb
+                            ..bit_per_top_limb + j * bit_per_non_top_limb]
+                            .to_vec()
+                    };
 
                     let mut lc = LinearCombination::<CF>::zero();
                     let mut cur = CF::one();
