@@ -500,13 +500,8 @@ where
 
             // must use lc to save computation
             for (j, limb) in field_elem.limbs.iter().enumerate() {
-                let bits_slice = if j == 0 {
-                    field_bits[0..params.bits_per_top_limb].to_vec()
-                } else {
-                    field_bits[params.bits_per_top_limb + (j - 1) * params.bits_per_non_top_limb
-                        ..params.bits_per_top_limb + j * params.bits_per_non_top_limb]
-                        .to_vec()
-                };
+                let bits_slice =
+                    field_bits[j * params.bits_per_limb..(j + 1) * params.bits_per_limb].to_vec();
 
                 let mut lc = LinearCombination::<CF>::zero();
                 let mut cur = CF::one();
@@ -590,14 +585,9 @@ where
 
                 // must use lc to save computation
                 for j in 0..params.num_limbs {
-                    let bits_slice = if j == 0 {
-                        field_bits[0..params.bits_per_top_limb].to_vec()
-                    } else {
-                        field_bits[(params.bits_per_top_limb
-                            + (j - 1) * params.bits_per_non_top_limb)
-                            ..(params.bits_per_top_limb + j * params.bits_per_non_top_limb)]
-                            .to_vec()
-                    };
+                    let bits_slice = field_bits
+                        [(j * params.bits_per_limb)..((j + 1) * params.bits_per_limb)]
+                        .to_vec();
 
                     let mut lc = LinearCombination::<CF>::zero();
                     let mut cur = CF::one();
@@ -624,6 +614,7 @@ where
                         limbs: limbs,
                         num_of_additions_over_normal_form: CF::zero(),
                         is_in_the_normal_form: true,
+                        is_constant: false,
                         target_phantom: PhantomData,
                     },
                 ))
