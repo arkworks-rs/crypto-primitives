@@ -69,12 +69,11 @@ impl<P: TEModelParameters, W: pedersen::Window> FixedLengthCRH for CRH<P, W> {
 
         let maximum_num_chunks_in_segment = calculate_num_chunks_in_segment::<P::ScalarField>();
         if W::WINDOW_SIZE > maximum_num_chunks_in_segment {
-            return Err(format!(
+            panic!(
                 "Bowe-Hopwood-PedersenCRH hash must have a window size resulting in scalars < (p-1)/2, \
                  maximum segment size is {}",
                 maximum_num_chunks_in_segment
-            )
-            .into());
+            );
         }
 
         let time = start_timer!(|| format!(
