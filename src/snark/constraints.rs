@@ -1,11 +1,11 @@
 use ark_ff::{BigInteger, FpParameters, PrimeField};
 use ark_nonnative_field::params::get_params;
 use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
+use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::{
-    alloc::{AllocVar, AllocationMode},
     bits::boolean::Boolean,
     fields::fp::{AllocatedFp, FpVar},
-    R1CSVar, ToBitsGadget, ToBytesGadget,
+    R1CSVar,
 };
 use ark_relations::{
     lc, ns,
@@ -468,7 +468,7 @@ where
         let ns = cs.into();
         let cs = ns.cs();
 
-        let params = get_params::<F, CF>(&cs);
+        let params = get_params(F::size_in_bits(), CF::size_in_bits());
 
         let obj = f()?;
 
@@ -512,16 +512,15 @@ where
                         .to_vec()
                 };
 
-                let mut lc = LinearCombination::<CF>::zero();
+                let mut bit_sum = FpVar::<CF>::zero();
                 let mut cur = CF::one();
 
                 for bit in bits_slice.iter().rev() {
-                    lc = lc + &bit.lc() * cur;
+                    bit_sum += <FpVar<CF> as From<Boolean<CF>>>::from((*bit).clone()) * cur;
                     cur.double_in_place();
                 }
 
-                lc = lc - limb.variable;
-                cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
+                limb.enforce_equal(&bit_sum)?;
             }
         }
 
@@ -576,7 +575,7 @@ where
                 val: field_allocation,
             })
         } else {
-            let params = get_params::<F, CF>(&cs);
+            let params = get_params(F::size_in_bits(), CF::size_in_bits());
 
             // Step 1: use BooleanInputVar to convert them into booleans
             let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
@@ -590,7 +589,7 @@ where
                 field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
                 field_bits.reverse();
 
-                let mut limbs = Vec::<AllocatedFp<CF>>::new();
+                let mut limbs = Vec::<FpVar<CF>>::new();
 
                 let bit_per_top_limb =
                     F::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb;
@@ -622,16 +621,14 @@ where
                     lc = lc - limb.variable;
                     cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
 
-                    limbs.push(limb);
+                    limbs.push(FpVar::from(limb));
                 }
 
                 field_allocation.push(NonNativeFieldVar::<F, CF>::Var(
                     AllocatedNonNativeFieldVar::<F, CF> {
-                        cs: cs.clone(),
-                        limbs: limbs,
+                        limbs,
                         num_of_additions_over_normal_form: CF::zero(),
                         is_in_the_normal_form: true,
-                        is_constant: false,
                         target_phantom: PhantomData,
                     },
                 ))
