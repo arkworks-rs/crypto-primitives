@@ -115,9 +115,9 @@ mod test {
     };
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
-    use ark_ff::test_rng;
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
+    use ark_std::test_rng;
 
     type TestCRH = CRH<EdwardsParameters, Window>;
     type TestCRHGadget = CRHGadget<EdwardsParameters, FqVar>;

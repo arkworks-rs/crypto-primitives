@@ -139,7 +139,7 @@ where
 #[cfg(test)]
 mod test {
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq, Fr};
-    use ark_ff::{test_rng, UniformRand};
+    use ark_std::{test_rng, UniformRand};
 
     use crate::{
         commitment::{

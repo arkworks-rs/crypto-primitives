@@ -175,7 +175,7 @@ mod test {
         FixedLengthCRH,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
-    use ark_ff::test_rng;
+    use ark_std::test_rng;
 
     #[test]
     fn test_simple_bh() {

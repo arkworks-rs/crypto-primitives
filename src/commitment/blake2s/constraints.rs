@@ -79,9 +79,9 @@ mod test {
         CommitmentGadget, CommitmentScheme,
     };
     use ark_ed_on_bls12_381::Fq as Fr;
-    use ark_ff::test_rng;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
+    use ark_std::test_rng;
     use rand::Rng;
 
     #[test]
