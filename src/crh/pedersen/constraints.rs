@@ -99,7 +99,7 @@ mod test {
     use crate::crh::{pedersen, pedersen::constraints::*, FixedLengthCRH, FixedLengthCRHGadget};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::test_rng;
     use rand::Rng;
 
     type TestCRH = pedersen::CRH<JubJub, Window>;
