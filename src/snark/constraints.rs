@@ -159,10 +159,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             // convert the elements into booleans (little-endian)
             let mut res = Vec::<Vec<Boolean<CF>>>::new();
             for elem in obj.iter() {
-                let mut bits = elem.into_repr().to_bits();
-                // the result of to_bits() is big-endian
-
-                bits.reverse();
+                let mut bits = elem.into_repr().to_bits_le();
                 bits.truncate(F::size_in_bits());
 
                 let mut booleans = Vec::<Boolean<CF>>::new();
@@ -192,10 +189,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
         // Step 1: obtain the bits of the F field elements (little-endian)
         let mut src_bits = Vec::<bool>::new();
         for elem in obj.borrow().iter() {
-            let mut bits = elem.into_repr().to_bits();
-            // to_bits()'s result is big-endian
-
-            bits.reverse();
+            let mut bits = elem.into_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
             for _ in bits.len()..F::size_in_bits() {
                 bits.push(false);
@@ -240,7 +234,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
         // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean<CF>>::new();
         for chunk in src_bits.chunks(capacity) {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits(chunk)).unwrap(); // big endian
+            let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits_be(chunk)).unwrap(); // big endian
 
             let elem_gadget = FpVar::<CF>::new_input(ns!(cs, "input"), || Ok(elem))?;
 
@@ -273,8 +267,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
         // Step 1: obtain the bits of the F field elements
         let mut src_bits = Vec::<bool>::new();
         for (_, elem) in src.iter().enumerate() {
-            let mut bits = elem.into_repr().to_bits(); // big endian
-            bits.reverse();
+            let mut bits = elem.into_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
             for _ in bits.len()..F::size_in_bits() {
                 bits.push(false);
@@ -317,7 +310,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
         // Step 3: directly pack the bits
         let mut dest = Vec::<CF>::new();
         for chunk in src_bits.chunks(capacity) {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits(chunk)).unwrap(); // big endian
+            let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits_be(chunk)).unwrap(); // big endian
             dest.push(elem);
         }
 
