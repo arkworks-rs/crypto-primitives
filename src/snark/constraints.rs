@@ -267,8 +267,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
         // Step 1: obtain the bits of the F field elements
         let mut src_bits = Vec::<bool>::new();
         for (_, elem) in src.iter().enumerate() {
-            let mut bits = elem.into_repr().to_bits(); // big endian
-            bits.reverse();
+            let mut bits = elem.into_repr().to_bits_le(); 
             bits.truncate(F::size_in_bits());
             for _ in bits.len()..F::size_in_bits() {
                 bits.push(false);
