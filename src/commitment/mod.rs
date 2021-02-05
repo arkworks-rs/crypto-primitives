@@ -1,6 +1,6 @@
 use ark_ff::UniformRand;
-use core::{fmt::Debug, hash::Hash};
-use rand::Rng;
+use ark_std::rand::Rng;
+use ark_std::{fmt::Debug, hash::Hash};
 
 use ark_ff::bytes::ToBytes;
 

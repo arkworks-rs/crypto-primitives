@@ -1,7 +1,7 @@
 use crate::Error;
 use ark_ff::bytes::ToBytes;
-use core::hash::Hash;
-use rand::Rng;
+use ark_std::hash::Hash;
+use ark_std::rand::Rng;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

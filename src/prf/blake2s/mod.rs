@@ -20,10 +20,10 @@ impl PRF for Blake2s {
     fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, CryptoError> {
         let eval_time = start_timer!(|| "Blake2s::Eval");
         let mut h = B2s::new();
-        h.input(seed.as_ref());
-        h.input(input.as_ref());
+        h.update(seed.as_ref());
+        h.update(input.as_ref());
         let mut result = [0u8; 32];
-        result.copy_from_slice(&h.result());
+        result.copy_from_slice(&h.finalize());
         end_timer!(eval_time);
         Ok(result)
     }
@@ -79,10 +79,10 @@ impl Blake2sWithParameterBlock {
         use digest::*;
         let eval_time = start_timer!(|| "Blake2sWithParameterBlock::Eval");
         let mut h = VarBlake2s::with_parameter_block(&self.parameters());
-        h.input(input.as_ref());
+        h.update(input.as_ref());
         end_timer!(eval_time);
-        let mut buf = Vec::with_capacity(h.output_size());
-        h.variable_result(|res| buf.extend_from_slice(res));
+        let mut buf = Vec::with_capacity(digest::VariableOutput::output_size(&h));
+        h.finalize_variable(|res| buf.extend_from_slice(res));
         buf
     }
 }

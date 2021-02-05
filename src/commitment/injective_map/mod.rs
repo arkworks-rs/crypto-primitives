@@ -1,10 +1,10 @@
 use crate::Error;
-use core::marker::PhantomData;
-use rand::Rng;
+use ark_std::marker::PhantomData;
 
 use super::{pedersen, CommitmentScheme};
 pub use crate::crh::injective_map::InjectiveMap;
 use ark_ec::ProjectiveCurve;
+use ark_std::rand::Rng;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

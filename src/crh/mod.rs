@@ -1,6 +1,6 @@
 use ark_ff::bytes::ToBytes;
-use core::hash::Hash;
-use rand::Rng;
+use ark_std::hash::Hash;
+use ark_std::rand::Rng;
 
 pub mod bowe_hopwood;
 pub mod injective_map;

@@ -1,7 +1,7 @@
 use crate::{CryptoError, Error};
 use ark_ff::bytes::ToBytes;
-use core::{fmt::Debug, hash::Hash, marker::PhantomData};
-use rand::Rng;
+use ark_std::rand::Rng;
+use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
 use super::{pedersen, FixedLengthCRH};
 use ark_ec::{

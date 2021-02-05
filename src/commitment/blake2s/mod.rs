@@ -1,8 +1,8 @@
 use super::CommitmentScheme;
 use crate::Error;
+use ark_std::rand::Rng;
 use blake2::Blake2s as b2s;
 use digest::Digest;
-use rand::Rng;
 
 pub struct Commitment;
 
@@ -24,10 +24,10 @@ impl CommitmentScheme for Commitment {
         r: &Self::Randomness,
     ) -> Result<Self::Output, Error> {
         let mut h = b2s::new();
-        h.input(input);
-        h.input(r.as_ref());
+        h.update(input);
+        h.update(r.as_ref());
         let mut result = [0u8; 32];
-        result.copy_from_slice(&h.result());
+        result.copy_from_slice(&h.finalize());
         Ok(result)
     }
 }

@@ -131,8 +131,6 @@ mod test {
     };
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
     use ark_relations::r1cs::ConstraintSystem;
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
 
     use super::*;
 
@@ -156,7 +154,7 @@ mod test {
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
     fn generate_merkle_tree(leaves: &[[u8; 30]], use_bad_root: bool) -> () {
-        let mut rng = XorShiftRng::seed_from_u64(9174123u64);
+        let mut rng = ark_std::test_rng();
 
         let crh_parameters = H::setup(&mut rng).unwrap();
         let tree = JubJubMerkleTree::new(crh_parameters.clone(), leaves).unwrap();

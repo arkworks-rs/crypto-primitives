@@ -15,7 +15,7 @@ use ark_r1cs_std::{
 };
 use ark_relations::r1cs::SynthesisError;
 
-use core::marker::PhantomData;
+use ark_std::marker::PhantomData;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 

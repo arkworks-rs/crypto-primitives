@@ -14,11 +14,9 @@ edition = "2018"
 
 [dev-dependencies]
 ark-ed-on-bls12-377 = { git = "https://github.com/arkworks-rs/curves/", default-features = false }
-blake2 = { version = "0.8", default-features = false }
+blake2 = { version = "0.9", default-features = false }
 criterion = "0.3.1"
 crypto-primitives = { path = "../crypto-primitives" }
-rand = { version = "0.7" }
-rand_xorshift = { version = "0.2" }
 
 ################################# Benchmarks ##################################
 

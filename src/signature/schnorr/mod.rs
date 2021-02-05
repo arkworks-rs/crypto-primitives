@@ -6,9 +6,9 @@ use ark_ff::{
     to_bytes, One, ToConstraintField, UniformRand, Zero,
 };
 use ark_std::io::{Result as IoResult, Write};
-use core::{hash::Hash, marker::PhantomData};
+use ark_std::rand::Rng;
+use ark_std::{hash::Hash, marker::PhantomData};
 use digest::Digest;
-use rand::Rng;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

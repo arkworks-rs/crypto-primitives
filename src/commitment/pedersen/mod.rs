@@ -1,12 +1,10 @@
 use crate::{Error, Vec};
 use ark_ec::ProjectiveCurve;
-use ark_ff::{
-    bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField, UniformRand,
-};
+use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
 use ark_std::io::{Result as IoResult, Write};
-
-use core::marker::PhantomData;
-use rand::Rng;
+use ark_std::marker::PhantomData;
+use ark_std::rand::Rng;
+use ark_std::UniformRand;
 
 use super::CommitmentScheme;
 
