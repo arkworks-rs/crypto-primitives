@@ -392,8 +392,7 @@ impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
 #[cfg(test)]
 mod test {
     use ark_ed_on_bls12_381::Fq as Fr;
-    use rand::{Rng, SeedableRng};
-    use rand_xorshift::XorShiftRng;
+    use ark_std::rand::Rng;
 
     use crate::prf::blake2s::{constraints::evaluate_blake2s, Blake2s as B2SPRF};
     use ark_relations::r1cs::ConstraintSystem;
@@ -418,9 +417,8 @@ mod test {
     #[test]
     fn test_blake2s_prf() {
         use crate::prf::{PRFGadget, PRF};
-        use rand::Rng;
 
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = ark_std::test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
 
         let mut seed = [0u8; 32];
@@ -457,7 +455,7 @@ mod test {
         // doesn't result in more constraints.
 
         let cs = ConstraintSystem::<Fr>::new_ref();
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = ark_std::test_rng();
         let input_bits: Vec<_> = (0..512)
             .map(|_| Boolean::constant(rng.gen()))
             .chain((0..512).map(|_| {
@@ -472,7 +470,7 @@ mod test {
     #[test]
     fn test_blake2s_constant_constraints() {
         let cs = ConstraintSystem::<Fr>::new_ref();
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = ark_std::test_rng();
         let input_bits: Vec<_> = (0..512)
             .map(|_| Boolean::<Fr>::constant(rng.gen()))
             .collect();
@@ -482,7 +480,7 @@ mod test {
 
     #[test]
     fn test_blake2s() {
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = ark_std::test_rng();
 
         for input_len in (0..32).chain((32..256).filter(|a| a % 8 == 0)) {
             use digest::*;
@@ -490,10 +488,10 @@ mod test {
 
             let data: Vec<u8> = (0..input_len).map(|_| rng.gen()).collect();
 
-            h.input(&data);
+            h.update(&data);
 
-            let mut hash_result = Vec::with_capacity(h.output_size());
-            h.variable_result(|res| hash_result.extend_from_slice(res));
+            let mut hash_result = Vec::with_capacity(digest::VariableOutput::output_size(&h));
+            h.finalize_variable(|res| hash_result.extend_from_slice(res));
 
             let cs = ConstraintSystem::<Fr>::new_ref();
 

@@ -82,7 +82,6 @@ mod test {
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::rand::Rng;
-    use ark_std::test_rng;
 
     #[test]
     fn commitment_gadget_test() {

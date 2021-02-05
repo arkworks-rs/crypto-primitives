@@ -106,7 +106,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use rand::Rng;
+    use ark_std::rand::Rng;
 
     use crate::crh::{
         bowe_hopwood::{constraints::CRHGadget, CRH},
