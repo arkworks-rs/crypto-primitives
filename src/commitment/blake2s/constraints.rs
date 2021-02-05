@@ -81,8 +81,8 @@ mod test {
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
+    use ark_std::rand::Rng;
     use ark_std::test_rng;
-    use rand::Rng;
 
     #[test]
     fn commitment_gadget_test() {
@@ -90,7 +90,7 @@ mod test {
 
         let input = [1u8; 32];
 
-        let rng = &mut test_rng();
+        let rng = &mut ark_std::test_rng();
 
         type TestCOMM = Commitment;
         type TestCOMMGadget = CommGadget;

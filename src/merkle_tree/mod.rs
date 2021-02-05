@@ -1,6 +1,6 @@
 use crate::{crh::FixedLengthCRH, Vec};
 use ark_ff::bytes::ToBytes;
-use core::fmt;
+use ark_std::fmt;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -352,8 +352,6 @@ mod test {
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::Zero;
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -373,7 +371,7 @@ mod test {
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
     fn generate_merkle_tree<L: ToBytes + Clone + Eq>(leaves: &[L]) -> () {
-        let mut rng = XorShiftRng::seed_from_u64(9174123u64);
+        let mut rng = ark_std::test_rng();
 
         let crh_parameters = H::setup(&mut rng).unwrap();
         let tree = JubJubMerkleTree::new(crh_parameters.clone(), &leaves).unwrap();
@@ -413,7 +411,7 @@ mod test {
     }
 
     fn bad_merkle_tree_verify<L: ToBytes + Clone + Eq>(leaves: &[L]) -> () {
-        let mut rng = XorShiftRng::seed_from_u64(13423423u64);
+        let mut rng = ark_std::test_rng();
 
         let crh_parameters = H::setup(&mut rng).unwrap();
         let tree = JubJubMerkleTree::new(crh_parameters.clone(), &leaves).unwrap();

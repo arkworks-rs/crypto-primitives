@@ -1,9 +1,9 @@
 use crate::{Error, Vec};
-use core::{
+use ark_std::rand::Rng;
+use ark_std::{
     fmt::{Debug, Formatter, Result as FmtResult},
     marker::PhantomData,
 };
-use rand::Rng;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -12,8 +12,9 @@ use crate::crh::FixedLengthCRH;
 use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
-use ark_ff::{biginteger::BigInteger, fields::PrimeField, UniformRand};
+use ark_ff::{biginteger::BigInteger, fields::PrimeField};
 use ark_std::cfg_chunks;
+use ark_std::UniformRand;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

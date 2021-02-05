@@ -5,7 +5,7 @@ use algebra::ed_on_bls12_377::EdwardsProjective as Edwards;
 use blake2::Blake2s;
 use criterion::Criterion;
 use crypto_primitives::signature::{schnorr::*, SignatureScheme};
-use rand::{self, Rng};
+use ark_std::rand::Rng;
 
 type SchnorrEdwards = Schnorr<Edwards, Blake2s>;
 fn schnorr_signature_setup(c: &mut Criterion) {
@@ -18,7 +18,7 @@ fn schnorr_signature_setup(c: &mut Criterion) {
 }
 
 fn schnorr_signature_keygen(c: &mut Criterion) {
-    let mut rng = &mut rand::thread_rng();
+    let mut rng = &mut ark_std::test_rng();
     let parameters = SchnorrEdwards::setup(&mut rng).unwrap();
 
     c.bench_function("SchnorrEdwards: KeyGen", move |b| {
@@ -30,7 +30,7 @@ fn schnorr_signature_keygen(c: &mut Criterion) {
 }
 
 fn schnorr_signature_sign(c: &mut Criterion) {
-    let mut rng = &mut rand::thread_rng();
+    let mut rng = &mut ark_std::test_rng();
     let parameters = SchnorrEdwards::setup(&mut rng).unwrap();
     let (_, sk) = SchnorrEdwards::keygen(&parameters, &mut rng).unwrap();
     let message = [100u8; 128];
@@ -44,7 +44,7 @@ fn schnorr_signature_sign(c: &mut Criterion) {
 }
 
 fn schnorr_signature_verify(c: &mut Criterion) {
-    let mut rng = &mut rand::thread_rng();
+    let mut rng = &mut ark_std::test_rng();
     let parameters = SchnorrEdwards::setup(&mut rng).unwrap();
     let (pk, sk) = SchnorrEdwards::keygen(&parameters, &mut rng).unwrap();
     let message = [100u8; 128];
@@ -56,7 +56,7 @@ fn schnorr_signature_verify(c: &mut Criterion) {
 }
 
 fn schnorr_signature_randomize_pk(c: &mut Criterion) {
-    let mut rng = &mut rand::thread_rng();
+    let mut rng = &mut ark_std::test_rng();
     let parameters = SchnorrEdwards::setup(&mut rng).unwrap();
     let (pk, _) = SchnorrEdwards::keygen(&parameters, &mut rng).unwrap();
     let randomness: [u8; 32] = rng.gen();
@@ -67,7 +67,7 @@ fn schnorr_signature_randomize_pk(c: &mut Criterion) {
 }
 
 fn schnorr_signature_randomize_signature(c: &mut Criterion) {
-    let mut rng = &mut rand::thread_rng();
+    let mut rng = &mut ark_std::test_rng();
     let parameters = SchnorrEdwards::setup(&mut rng).unwrap();
     let (_, sk) = SchnorrEdwards::keygen(&parameters, &mut rng).unwrap();
     let randomness: [u8; 32] = rng.gen();

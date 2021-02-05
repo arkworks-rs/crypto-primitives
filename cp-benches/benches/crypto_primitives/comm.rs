@@ -1,5 +1,3 @@
-use rand;
-
 #[macro_use]
 extern crate criterion;
 
@@ -18,14 +16,14 @@ impl Window for CommWindow {
 fn pedersen_comm_setup(c: &mut Criterion) {
     c.bench_function("Pedersen Commitment Setup", move |b| {
         b.iter(|| {
-            let mut rng = &mut rand::thread_rng();
+            let mut rng = &mut ark_std::test_rng();
             Commitment::<Edwards, CommWindow>::setup(&mut rng).unwrap()
         })
     });
 }
 
 fn pedersen_comm_eval(c: &mut Criterion) {
-    let mut rng = &mut rand::thread_rng();
+    let mut rng = &mut ark_std::test_rng();
     let parameters = Commitment::<Edwards, CommWindow>::setup(&mut rng).unwrap();
     let input = vec![5u8; 128];
     c.bench_function("Pedersen Commitment Eval", move |b| {

@@ -1,9 +1,9 @@
 use crate::{Error, Vec};
-use core::{
+use ark_std::rand::Rng;
+use ark_std::{
     fmt::{Debug, Formatter, Result as FmtResult},
     marker::PhantomData,
 };
-use rand::Rng;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
