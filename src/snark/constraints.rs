@@ -7,6 +7,7 @@ use ark_r1cs_std::{
     fields::fp::{AllocatedFp, FpVar},
     R1CSVar,
 };
+use ark_relations::r1cs::OptimizationGoal;
 use ark_relations::{
     lc, ns,
     r1cs::{
@@ -20,7 +21,6 @@ use ark_std::{
     marker::PhantomData,
     vec::{IntoIter, Vec},
 };
-use ark_relations::r1cs::OptimizationGoal;
 
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
@@ -465,7 +465,7 @@ where
         let optimization_type = match cs.optimization_goal() {
             OptimizationGoal::None => OptimizationType::Constraints,
             OptimizationGoal::Constraints => OptimizationType::Constraints,
-            OptimizationGoal::Weight => OptimizationType::Weight
+            OptimizationGoal::Weight => OptimizationType::Weight,
         };
 
         let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
@@ -578,7 +578,7 @@ where
             let optimization_type = match cs.optimization_goal() {
                 OptimizationGoal::None => OptimizationType::Constraints,
                 OptimizationGoal::Constraints => OptimizationType::Constraints,
-                OptimizationGoal::Weight => OptimizationType::Weight
+                OptimizationGoal::Weight => OptimizationType::Weight,
             };
 
             let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
