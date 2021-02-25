@@ -20,6 +20,7 @@ pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
 pub mod commitment;
 pub mod crh;
 pub mod merkle_tree;
+pub mod smt;
 pub mod prf;
 pub mod signature;
 pub mod snark;
