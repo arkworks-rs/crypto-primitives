@@ -1,5 +1,5 @@
 use ark_ff::{BigInteger, FpParameters, PrimeField};
-use ark_nonnative_field::params::get_params;
+use ark_nonnative_field::params::{get_params, OptimizationType};
 use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
 use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::{
@@ -7,6 +7,7 @@ use ark_r1cs_std::{
     fields::fp::{AllocatedFp, FpVar},
     R1CSVar,
 };
+use ark_relations::r1cs::OptimizationGoal;
 use ark_relations::{
     lc, ns,
     r1cs::{
@@ -461,7 +462,13 @@ where
         let ns = cs.into();
         let cs = ns.cs();
 
-        let params = get_params(F::size_in_bits(), CF::size_in_bits());
+        let optimization_type = match cs.optimization_goal() {
+            OptimizationGoal::None => OptimizationType::Constraints,
+            OptimizationGoal::Constraints => OptimizationType::Constraints,
+            OptimizationGoal::Weight => OptimizationType::Weight,
+        };
+
+        let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
 
         let obj = f()?;
 
@@ -568,7 +575,13 @@ where
                 val: field_allocation,
             })
         } else {
-            let params = get_params(F::size_in_bits(), CF::size_in_bits());
+            let optimization_type = match cs.optimization_goal() {
+                OptimizationGoal::None => OptimizationType::Constraints,
+                OptimizationGoal::Constraints => OptimizationType::Constraints,
+                OptimizationGoal::Weight => OptimizationType::Weight,
+            };
+
+            let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
 
             // Step 1: use BooleanInputVar to convert them into booleans
             let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
@@ -619,6 +632,7 @@ where
 
                 field_allocation.push(NonNativeFieldVar::<F, CF>::Var(
                     AllocatedNonNativeFieldVar::<F, CF> {
+                        cs: cs.clone(),
                         limbs,
                         num_of_additions_over_normal_form: CF::zero(),
                         is_in_the_normal_form: true,
