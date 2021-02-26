@@ -1,5 +1,6 @@
 use ark_ff::PrimeField;
 
+#[cfg(feature = "r1cs")]
 pub mod constraints;
 
 /// An S-Box that can be used with Poseidon.

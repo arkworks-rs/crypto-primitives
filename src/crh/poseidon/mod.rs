@@ -7,54 +7,48 @@ use crate::crh::FixedLengthCRH;
 use crate::crh::poseidon::sbox::PoseidonSbox;
 
 use ark_ff::{fields::PrimeField};
+use ark_ff::ToConstraintField;
 
 pub mod sbox;
+
+#[cfg(feature = "r1cs")]
 pub mod constraints;
 
 // Choice is arbitrary
 pub const PADDING_CONST: u64 = 101;
 pub const ZERO_CONST: u64 = 0;
 
-pub trait Window: Clone {
-    const WINDOW_SIZE: usize;
-    const NUM_WINDOWS: usize;
-}
-
-pub trait PoseidonRoundParams: Clone {
+pub trait PoseidonRoundParams<F: PrimeField>: Default + Clone {
+	/// The size of the permutation, in field elements.
     const WIDTH: usize;
+    /// Number of full SBox rounds in beginning
     const FULL_ROUND_BEGINNING: usize;
+    /// Number of full SBox rounds in end
     const FULL_ROUND_END: usize;
+    /// Number of partial rounds
     const PARTIAL_ROUNDS: usize;
+    /// The S-box to apply in the sub words layer.
     const SBOX: PoseidonSbox;
 }
 
 /// The Poseidon permutation.
-#[derive(Clone)]
-pub struct Poseidon<F> {
-    /// The size of the permutation, in field elements.
-    pub width: usize,
-    /// Number of full SBox rounds in beginning
-    pub full_rounds_beginning: usize,
-    /// Number of full SBox rounds in end
-    pub full_rounds_end: usize,
-    /// Number of partial rounds
-    pub partial_rounds: usize,
-    /// The S-box to apply in the sub words layer.
-    pub sbox: PoseidonSbox,
+#[derive(Default, Clone)]
+pub struct Poseidon<F, P> {
+	pub params: P,
     /// The round key constants
     pub round_keys: Vec<F>,
     /// The MDS matrix to apply in the mix layer.
     pub mds_matrix: Vec<Vec<F>>,
 }
 
-impl<F: PrimeField, W: Window> Poseidon<F> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
 	fn permute(&self, input: &[F]) -> Vec<F> {
-	    let width = self.width;
+	    let width = P::WIDTH;
 	    assert_eq!(input.len(), width);
 
-	    let full_rounds_beginning = self.full_rounds_beginning;
-	    let partial_rounds = self.partial_rounds;
-	    let full_rounds_end = self.full_rounds_end;
+	    let full_rounds_beginning = P::FULL_ROUND_BEGINNING;
+	    let partial_rounds = P::PARTIAL_ROUNDS;
+	    let full_rounds_end = P::FULL_ROUND_END;
 
 	    let mut current_state = input.to_owned();
 	    let mut current_state_temp = vec![F::zero(); width];
@@ -66,7 +60,7 @@ impl<F: PrimeField, W: Window> Poseidon<F> {
 	        // Sbox layer
 	        for i in 0..width {
 	            current_state[i] += self.round_keys[round_keys_offset];
-	            current_state[i] = self.sbox.apply_sbox(&current_state[i]);
+	            current_state[i] = P::SBOX.apply_sbox(current_state[i]);
 	            round_keys_offset += 1;
 	        }
 
@@ -95,7 +89,7 @@ impl<F: PrimeField, W: Window> Poseidon<F> {
 	        // partial Sbox layer, apply Sbox to only 1 element of the state.
 	        // Here the last one is chosen but the choice is arbitrary.
 	        current_state[width - 1] =
-	            self.sbox.apply_sbox(&current_state[width - 1]);
+	            P::SBOX.apply_sbox(current_state[width - 1]);
 
 	        // linear layer
 	        for j in 0..width {
@@ -119,7 +113,7 @@ impl<F: PrimeField, W: Window> Poseidon<F> {
 	        // Sbox layer
 	        for i in 0..width {
 	            current_state[i] += self.round_keys[round_keys_offset];
-	            current_state[i] = self.sbox.apply_sbox(&current_state[i]);
+	            current_state[i] = P::SBOX.apply_sbox(current_state[i]);
 	            round_keys_offset += 1;
 	        }
 
@@ -177,46 +171,41 @@ impl<F: PrimeField, W: Window> Poseidon<F> {
 	}
 }
 
-pub struct PoseidonCRH<F: PrimeField, W: Window, P: PoseidonRoundParams> {
+pub struct PoseidonCRH<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
-    window: PhantomData<W>,
     params: PhantomData<P>
 }
 
-impl<F: PrimeField, W: Window, P: PoseidonRoundParams> PoseidonCRH<F, W, P> {
-    pub fn create_mds<R: Rng>(rng: &mut R) -> Vec<Vec<F>> {
-        let mut mds_matrix = Vec::new();
+impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
+    pub fn create_mds<R: Rng>(_rng: &mut R) -> Vec<Vec<F>> {
+        let mds_matrix = Vec::new();
         mds_matrix
     }
 
-    pub fn create_round_consts<R: Rng>(rng: &mut R) -> Vec<F> {
-        let mut round_consts = Vec::new();
+    pub fn create_round_consts<R: Rng>(_rng: &mut R) -> Vec<F> {
+        let round_consts = Vec::new();
         round_consts
     }
 }
 
 
-impl<F: PrimeField, W: Window, P: PoseidonRoundParams> FixedLengthCRH for PoseidonCRH<F, W, P> {
-    const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F, P> {
+	const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
-    type Parameters = Poseidon<F>;
+    type Parameters = Poseidon<F, P>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
-        let time = start_timer!(|| format!(
-            "Poseidon::Setup: {} {}-bit windows; {{0,1}}^{{{}}} -> C",
-            W::NUM_WINDOWS,
-            W::WINDOW_SIZE,
-            W::NUM_WINDOWS * W::WINDOW_SIZE
-        ));
+        // let time = start_timer!(|| format!(
+        //     "Poseidon::Setup: {} {}-bit windows; {{0,1}}^{{{}}} -> C",
+        //     W::NUM_WINDOWS,
+        //     W::WINDOW_SIZE,
+        //     W::NUM_WINDOWS * W::WINDOW_SIZE
+        // ));
         
         let mds = Self::create_mds(rng);
         let rc = Self::create_round_consts(rng);
         Ok(Self::Parameters {
-		    width: P::WIDTH,
-		    full_rounds_beginning: P::FULL_ROUND_BEGINNING,
-		    full_rounds_end: P::FULL_ROUND_END,
-		    partial_rounds: P::PARTIAL_ROUNDS,
-		    sbox: P::SBOX,
+		    params: P::default(),
 		    round_keys: rc,
 		    mds_matrix: mds,
         })
@@ -224,31 +213,11 @@ impl<F: PrimeField, W: Window, P: PoseidonRoundParams> FixedLengthCRH for Poseid
 
     // https://github.com/arkworks-rs/algebra/blob/master/ff/src/to_field_vec.rs
     fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
-        let eval_time = start_timer!(|| "PedersenCRH::Eval");
-
-        if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS {
-            panic!(
-                "incorrect input length {:?} for window params {:?}✕{:?}",
-                input.len(),
-                W::WINDOW_SIZE,
-                W::NUM_WINDOWS
-            );
-        }
-
-        let mut padded_input = Vec::with_capacity(input.len());
-        let mut input = input;
-        // Pad the input if it is not the current length.
-        if (input.len() * 8) < W::WINDOW_SIZE * W::NUM_WINDOWS {
-            padded_input.extend_from_slice(input);
-            let padded_length = (W::WINDOW_SIZE * W::NUM_WINDOWS) / 8;
-            padded_input.resize(padded_length, 0u8);
-            input = padded_input.as_slice();
-        }
-
-        let chunked: Vec<F> = input.chunk(W::WINDOW_SIZE).map(|x| F::from(x));
-        let result = match W::NUM_WINDOWS {
-        	2 => parameters.hash_2(chunked[0], chunked[1]),
-        	4 => parameters.hash_4(&chunked),
+        let eval_time = start_timer!(|| "PoseidonCRH::Eval");
+        let elts: Vec<F> = input.to_field_elements().unwrap_or(Vec::new());
+        let result = match elts.len() {
+        	2 => parameters.hash_2(elts[0], elts[1]),
+        	4 => parameters.hash_4([elts[0], elts[1], elts[2], elts[3]]),
         	_ => panic!(
         		"incorrect number of windows (elements) for poseidon hash"
         	),
@@ -256,6 +225,6 @@ impl<F: PrimeField, W: Window, P: PoseidonRoundParams> FixedLengthCRH for Poseid
 
         end_timer!(eval_time);
 
-        Ok(result.into())
+        Ok(result)
     }
 }
