@@ -31,5 +31,9 @@ pub trait FixedLengthTwoToOneCRH {
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    fn evaluate(parameters: &Self::Parameters, left_input: &[u8], right_input: &[u8]) -> Result<Self::Output, Error>;
+    fn evaluate(
+        parameters: &Self::Parameters,
+        left_input: &[u8],
+        right_input: &[u8],
+    ) -> Result<Self::Output, Error>;
 }

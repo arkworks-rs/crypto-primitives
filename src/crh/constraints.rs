@@ -26,19 +26,19 @@ pub trait FixedLengthCRHGadget<H: FixedLengthCRH, ConstraintF: Field>: Sized {
 
 pub trait TwoToOneFixedLengthCRHGadget<H: FixedLengthCRH, ConstraintF: Field>: Sized {
     type OutputVar: EqGadget<ConstraintF>
-    + ToBytesGadget<ConstraintF>
-    + CondSelectGadget<ConstraintF>
-    + AllocVar<H::Output, ConstraintF>
-    + R1CSVar<ConstraintF>
-    + Debug
-    + Clone
-    + Sized;
+        + ToBytesGadget<ConstraintF>
+        + CondSelectGadget<ConstraintF>
+        + AllocVar<H::Output, ConstraintF>
+        + R1CSVar<ConstraintF>
+        + Debug
+        + Clone
+        + Sized;
 
     type ParametersVar: AllocVar<H::Parameters, ConstraintF> + Clone;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &[UInt8<ConstraintF>],
-        right_input: &[UInt8<ConstraintF>]
+        right_input: &[UInt8<ConstraintF>],
     ) -> Result<Self::OutputVar, SynthesisError>;
 }
