@@ -22,9 +22,9 @@ pub trait PoseidonRoundParams<F: PrimeField>: Default + Clone {
     /// The size of the permutation, in field elements.
     const WIDTH: usize;
     /// Number of full SBox rounds in beginning
-    const FULL_ROUND_BEGINNING: usize;
+    const FULL_ROUNDS_BEGINNING: usize;
     /// Number of full SBox rounds in end
-    const FULL_ROUND_END: usize;
+    const FULL_ROUNDS_END: usize;
     /// Number of partial rounds
     const PARTIAL_ROUNDS: usize;
     /// The S-box to apply in the sub words layer.
@@ -46,9 +46,9 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
         let width = P::WIDTH;
         assert_eq!(input.len(), width);
 
-        let full_rounds_beginning = P::FULL_ROUND_BEGINNING;
+        let full_rounds_beginning = P::FULL_ROUNDS_BEGINNING;
         let partial_rounds = P::PARTIAL_ROUNDS;
-        let full_rounds_end = P::FULL_ROUND_END;
+        let full_rounds_end = P::FULL_ROUNDS_END;
 
         let mut current_state = input.to_owned();
         let mut current_state_temp = vec![F::zero(); width];
@@ -67,8 +67,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
             // linear layer
             for j in 0..width {
                 for i in 0..width {
-                    current_state_temp[i] +=
-                        current_state[j] * self.mds_matrix[i][j];
+                    current_state_temp[i] += current_state[j] * self.mds_matrix[i][j];
                 }
             }
 
@@ -88,8 +87,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
 
             // partial Sbox layer, apply Sbox to only 1 element of the state.
             // Here the last one is chosen but the choice is arbitrary.
-            current_state[width - 1] =
-                P::SBOX.apply_sbox(current_state[width - 1]);
+            current_state[width - 1] = P::SBOX.apply_sbox(current_state[width - 1]);
 
             // linear layer
             for j in 0..width {
