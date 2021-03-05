@@ -62,8 +62,6 @@ fn synthesize_inverse_sbox<F: PrimeField>(
 ) -> Result<FpVar<F>, SynthesisError> {
     let cs = input_var.cs();
     let inp_plus_const: FpVar<F> = input_var + round_key;
-
-    inp_plus_const.is_zero()?;
     let input_inv = inp_plus_const.inverse().unwrap();
     Ok(input_inv)
 }
