@@ -15,35 +15,35 @@ impl PoseidonSbox {
         match self {
             PoseidonSbox::Exponentiation(val) => {
                 match val {
-                    2 => elem * elem,
-                    3 => elem * elem * elem,
+                    2 => elem.clone() * elem.clone(),
+                    3 => elem.clone() * elem.clone() * elem.clone(),
                     4 => {
-                        let sqr = elem * elem;
-                        sqr * sqr
+                        let sqr = elem.clone() * elem.clone();
+                        sqr.clone() * sqr.clone()
                     }
                     5 => {
-                        let sqr = elem * elem;
-                        sqr * sqr * elem
+                        let sqr = elem.clone() * elem.clone();
+                        sqr.clone() * sqr.clone() * elem.clone()
                     }
                     6 => {
-                        let sqr = elem * elem;
+                        let sqr = elem.clone() * elem.clone();
                         let quad = sqr * sqr;
-                        sqr * quad
+                        sqr.clone() * quad
                     }
                     7 => {
-                        let sqr = elem * elem;
+                        let sqr = elem.clone() * elem.clone();
                         let quad = sqr * sqr;
-                        sqr * quad * elem
+                        sqr.clone() * quad * elem.clone()
                     }
                     17 => {
-                        let sqr = elem * elem;
+                        let sqr = elem.clone() * elem.clone();
                         let quad = sqr * sqr;
                         let eighth = quad * quad;
                         let sixteenth = eighth * eighth;
-                        sixteenth * elem
+                        sixteenth * elem.clone()
                     }
                     // default to cubed
-                    _ => elem * elem * elem,
+                    _ => elem.clone() * elem.clone() * elem.clone(),
                 }
             }
             PoseidonSbox::Inverse => elem.inverse().unwrap_or(F::zero()),

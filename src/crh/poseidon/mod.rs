@@ -49,7 +49,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
         let full_rounds_end = P::FULL_ROUNDS_END;
 
         let mut current_state = input.to_vec();
-        let mut current_state_temp = vec![F::zero(); width];
+        let mut current_state_temp = vec![F::zero().clone(); width];
 
         let mut round_keys_offset = 0;
 

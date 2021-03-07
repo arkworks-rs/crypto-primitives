@@ -19,7 +19,7 @@ pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
 
 pub struct PoseidonCRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
-    params: PoseidonRoundParamsVar<F, P>,
+    params: PhantomData<PoseidonRoundParamsVar<F, P>>,
 }
 
 impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
@@ -165,19 +165,6 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
         }
     }
 
-    fn permute_gadget(&self, input: Vec<FpVar<F>>, output: &[F]) -> Result<(), SynthesisError> {
-        let width = P::WIDTH;
-        assert_eq!(output.len(), width);
-        let cs = input.cs();
-        let permutation_output = self.permute(input)?;
-
-        for i in 0..width {
-            permutation_output[i].is_eq(&FpVar::<F>::Constant(output[i]))?;
-        }
-
-        Ok(())
-    }
-
     fn hash_2(
         &self,
         xl: FpVar<F>,
@@ -200,19 +187,19 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
             inputs.push(statics[i].to_owned());
         }
         let permutation_output = self.permute(inputs)?;
-        Ok(permutation_output[1])
+        Ok(permutation_output[1].clone())
     }
 
     fn hash_4(
         &self,
-        input: [FpVar<F>; 4],
+        input: &[FpVar<F>],
         statics: Vec<FpVar<F>>,
     ) -> Result<FpVar<F>, SynthesisError> {
+        assert_eq!(input.len(), 4);
         let width = P::WIDTH;
         // Only 4 inputs to the permutation are set to the input of this hash
         // function.
         assert_eq!(statics.len(), width - 4);
-
         // Always keep the 1st input as 0
         let mut inputs = vec![statics[0].to_owned()];
         inputs.push(input[0].clone());
@@ -245,36 +232,31 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<
         let f_var_vec: Vec<FpVar<F>> = input.to_constraint_field()?;
 
         // Choice is arbitrary
-        let PADDING_CONST: F = F::from(101u32);
-        let ZERO_CONST: F = F::zero();
+        let padding_const: F = F::from(101u32);
+        let zero_const: F = F::zero();
 
         let statics = match f_var_vec.len() {
             2 => {
                 vec![
-                    FpVar::<F>::Constant(ZERO_CONST),
-                    FpVar::<F>::Constant(PADDING_CONST),
-                    FpVar::<F>::Constant(ZERO_CONST),
-                    FpVar::<F>::Constant(ZERO_CONST),
+                    FpVar::<F>::Constant(zero_const),
+                    FpVar::<F>::Constant(padding_const),
+                    FpVar::<F>::Constant(zero_const),
+                    FpVar::<F>::Constant(zero_const),
                 ]
             }
             4 => {
                 vec![
-                    FpVar::<F>::Constant(ZERO_CONST),
-                    FpVar::<F>::Constant(PADDING_CONST),
+                    FpVar::<F>::Constant(zero_const),
+                    FpVar::<F>::Constant(padding_const),
                 ]
             }
             _ => panic!("incorrect number (elements) for poseidon hash"),
         };
 
         let result = match f_var_vec.len() {
-            2 => parameters.hash_2(f_var_vec[0], f_var_vec[1], statics),
+            2 => parameters.hash_2(f_var_vec[0].clone(), f_var_vec[1].clone(), statics),
             4 => {
-                let mut arr: [FpVar<F>; 4] = [FpVar::<F>::zero(); 4];
-                for i in 0..f_var_vec.len() {
-                    arr[i] = f_var_vec[i];
-                }
-
-                parameters.hash_4(arr, statics)
+                parameters.hash_4(&f_var_vec, statics)
             }
             _ => panic!("incorrect number (elements) for poseidon hash"),
         };
