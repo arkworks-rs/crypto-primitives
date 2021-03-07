@@ -14,7 +14,6 @@ use ark_std::{
 };
 use core::{borrow::Borrow};
 
-
 #[derive(Derivative, Clone)]
 pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
     params: Poseidon<F, P>,
@@ -240,11 +239,43 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<
         input: &[UInt8<F>],
     ) -> Result<Self::OutputVar, SynthesisError> {
         let f_var_vec: Vec<FpVar<F>> = input.to_constraint_field()?;
-        let result = match f_var_vec.len() {
-            2 => parameters.hash_2(f_var_vec[0], f_var_vec[1]),
-            4 => parameters.hash_4(&f_var_vec),
+
+        // Choice is arbitrary
+        let PADDING_CONST: F = F::from(101u32);
+        let ZERO_CONST: F = F::zero();
+
+        let statics = match f_var_vec.len() {
+            2 => {
+                vec![
+                    FpVar::<F>::Constant(ZERO_CONST),
+                    FpVar::<F>::Constant(PADDING_CONST),
+                    FpVar::<F>::Constant(ZERO_CONST),
+                    FpVar::<F>::Constant(ZERO_CONST),
+                ]
+            },
+            4 => {
+                vec![
+                    FpVar::<F>::Constant(ZERO_CONST),
+                    FpVar::<F>::Constant(PADDING_CONST)
+                ]
+            },
             _ => panic!(
-                "incorrect number of windows (elements) for poseidon hash"
+                "incorrect number (elements) for poseidon hash"
+            ),
+        };
+
+        let result = match f_var_vec.len() {
+            2 => parameters.hash_2(f_var_vec[0], f_var_vec[1], statics),
+            4 => {
+                let mut arr: [FpVar<F>; 4] = [FpVar::<F>::zero(); 4];
+                for i in 0..f_var_vec.len() {
+                    arr[i] = f_var_vec[i];
+                }
+
+                parameters.hash_4(arr, statics)
+            },
+            _ => panic!(
+                "incorrect number (elements) for poseidon hash"
             ),
         };
         Ok(result.unwrap_or(Self::OutputVar::zero()))
