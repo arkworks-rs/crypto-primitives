@@ -20,30 +20,30 @@ impl PoseidonSbox {
                     4 => {
                         let sqr = elem * elem;
                         sqr * sqr
-                    },
+                    }
                     5 => {
                         let sqr = elem * elem;
                         sqr * sqr * elem
-                    },
+                    }
                     6 => {
                         let sqr = elem * elem;
                         let quad = sqr * sqr;
                         sqr * quad
-                    },
+                    }
                     7 => {
                         let sqr = elem * elem;
                         let quad = sqr * sqr;
                         sqr * quad * elem
-                    },
+                    }
                     17 => {
                         let sqr = elem * elem;
                         let quad = sqr * sqr;
                         let eighth = quad * quad;
                         let sixteenth = eighth * eighth;
                         sixteenth * elem
-                    },
+                    }
                     // default to cubed
-                    _  => elem * elem * elem,
+                    _ => elem * elem * elem,
                 }
             }
             PoseidonSbox::Inverse => elem.inverse().unwrap_or(F::zero()),

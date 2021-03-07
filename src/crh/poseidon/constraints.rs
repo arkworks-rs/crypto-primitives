@@ -1,18 +1,16 @@
-use ark_relations::r1cs::{Namespace, SynthesisError};
-use crate::FixedLengthCRHGadget;
-use ark_r1cs_std::uint8::UInt8;
-use super::{PoseidonCRH, Poseidon};
-use ark_r1cs_std::fields::fp::FpVar;
-use ark_r1cs_std::{fields::FieldVar, alloc::AllocVar, prelude::*};
-use ark_ff::PrimeField;
-use ark_r1cs_std::ToConstraintFieldGadget;
-use super::PoseidonRoundParams;
 use super::sbox::constraints::SboxConstraints;
+use super::PoseidonRoundParams;
+use super::{Poseidon, PoseidonCRH};
+use crate::FixedLengthCRHGadget;
+use ark_ff::PrimeField;
+use ark_r1cs_std::fields::fp::FpVar;
+use ark_r1cs_std::uint8::UInt8;
+use ark_r1cs_std::ToConstraintFieldGadget;
+use ark_r1cs_std::{alloc::AllocVar, fields::FieldVar, prelude::*};
+use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use ark_std::{
-    marker::PhantomData,
-};
-use core::{borrow::Borrow};
+use ark_std::marker::PhantomData;
+use core::borrow::Borrow;
 
 #[derive(Derivative, Clone)]
 pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
@@ -21,7 +19,7 @@ pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
 
 pub struct PoseidonCRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
-    params: PoseidonRoundParamsVar<F, P>
+    params: PoseidonRoundParamsVar<F, P>,
 }
 
 impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
@@ -74,7 +72,6 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
         // ------------ Middle rounds with partial SBox begin --------------------
 
         for _k in full_rounds_beginning..(full_rounds_beginning + partial_rounds) {
-
             let mut sbox_outputs: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
 
             // Substitution (S-box) layer
@@ -168,11 +165,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
         }
     }
 
-    fn permute_gadget(
-        &self,
-        input: Vec<FpVar<F>>,
-        output: &[F],
-    ) -> Result<(), SynthesisError> {
+    fn permute_gadget(&self, input: Vec<FpVar<F>>, output: &[F]) -> Result<(), SynthesisError> {
         let width = P::WIDTH;
         assert_eq!(output.len(), width);
         let cs = input.cs();
@@ -185,7 +178,12 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
         Ok(())
     }
 
-    fn hash_2(&self, xl: FpVar<F>, xr: FpVar<F>, statics: Vec<FpVar<F>>) -> Result<FpVar<F>, SynthesisError> {
+    fn hash_2(
+        &self,
+        xl: FpVar<F>,
+        xr: FpVar<F>,
+        statics: Vec<FpVar<F>>,
+    ) -> Result<FpVar<F>, SynthesisError> {
         let width = P::WIDTH;
         // Only 2 inputs to the permutation are set to the input of this hash
         // function.
@@ -205,7 +203,11 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
         Ok(permutation_output[1])
     }
 
-    fn hash_4(&self, input: [FpVar<F>; 4], statics: Vec<FpVar<F>>) -> Result<FpVar<F>, SynthesisError> {
+    fn hash_4(
+        &self,
+        input: [FpVar<F>; 4],
+        statics: Vec<FpVar<F>>,
+    ) -> Result<FpVar<F>, SynthesisError> {
         let width = P::WIDTH;
         // Only 4 inputs to the permutation are set to the input of this hash
         // function.
@@ -230,7 +232,9 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
 }
 
 // https://github.com/arkworks-rs/r1cs-std/blob/master/src/bits/uint8.rs#L343
-impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<F, P>, F> for PoseidonCRHGadget<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<F, P>, F>
+    for PoseidonCRHGadget<F, P>
+{
     type OutputVar = FpVar<F>;
     type ParametersVar = PoseidonRoundParamsVar<F, P>;
 
@@ -252,16 +256,14 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<
                     FpVar::<F>::Constant(ZERO_CONST),
                     FpVar::<F>::Constant(ZERO_CONST),
                 ]
-            },
+            }
             4 => {
                 vec![
                     FpVar::<F>::Constant(ZERO_CONST),
-                    FpVar::<F>::Constant(PADDING_CONST)
+                    FpVar::<F>::Constant(PADDING_CONST),
                 ]
-            },
-            _ => panic!(
-                "incorrect number (elements) for poseidon hash"
-            ),
+            }
+            _ => panic!("incorrect number (elements) for poseidon hash"),
         };
 
         let result = match f_var_vec.len() {
@@ -273,25 +275,23 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<
                 }
 
                 parameters.hash_4(arr, statics)
-            },
-            _ => panic!(
-                "incorrect number (elements) for poseidon hash"
-            ),
+            }
+            _ => panic!("incorrect number (elements) for poseidon hash"),
         };
         Ok(result.unwrap_or(Self::OutputVar::zero()))
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<Poseidon<F, P>, F> for PoseidonRoundParamsVar<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<Poseidon<F, P>, F>
+    for PoseidonRoundParamsVar<F, P>
+{
     #[tracing::instrument(target = "r1cs", skip(_cs, f))]
-    fn new_variable<T: Borrow<Poseidon<F,P>>>(
+    fn new_variable<T: Borrow<Poseidon<F, P>>>(
         _cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let params = f()?.borrow().clone();
-        Ok(Self {
-            params,
-        })
+        Ok(Self { params })
     }
 }

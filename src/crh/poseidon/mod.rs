@@ -1,12 +1,10 @@
-use crate::{Error, Vec};
-use ark_std::rand::Rng;
-use ark_std::{
-    marker::PhantomData,
-};
-use crate::crh::FixedLengthCRH;
 use crate::crh::poseidon::sbox::PoseidonSbox;
+use crate::crh::FixedLengthCRH;
+use crate::{Error, Vec};
+use ark_std::marker::PhantomData;
+use ark_std::rand::Rng;
 
-use ark_ff::{fields::PrimeField};
+use ark_ff::fields::PrimeField;
 use ark_ff::ToConstraintField;
 
 pub mod sbox;
@@ -92,8 +90,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
             // linear layer
             for j in 0..width {
                 for i in 0..width {
-                    current_state_temp[i] +=
-                        current_state[j] * self.mds_matrix[i][j];
+                    current_state_temp[i] += current_state[j] * self.mds_matrix[i][j];
                 }
             }
 
@@ -118,8 +115,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
             // linear layer
             for j in 0..width {
                 for i in 0..width {
-                    current_state_temp[i] +=
-                        current_state[j] * self.mds_matrix[i][j];
+                    current_state_temp[i] += current_state[j] * self.mds_matrix[i][j];
                 }
             }
 
@@ -171,7 +167,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
 
 pub struct PoseidonCRH<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
-    params: PhantomData<P>
+    params: PhantomData<P>,
 }
 
 impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
@@ -186,7 +182,6 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
     }
 }
 
-
 impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F, P> {
     const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
@@ -199,7 +194,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F,
         //     W::WINDOW_SIZE,
         //     W::NUM_WINDOWS * W::WINDOW_SIZE
         // ));
-        
+
         let mds = Self::create_mds(rng);
         let rc = Self::create_round_consts(rng);
         Ok(Self::Parameters {
@@ -216,9 +211,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F,
         let result = match elts.len() {
             2 => parameters.hash_2(elts[0], elts[1]),
             4 => parameters.hash_4([elts[0], elts[1], elts[2], elts[3]]),
-            _ => panic!(
-                "incorrect number of windows (elements) for poseidon hash"
-            ),
+            _ => panic!("incorrect number of windows (elements) for poseidon hash"),
         };
 
         end_timer!(eval_time);

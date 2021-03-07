@@ -1,11 +1,15 @@
-use ark_relations::r1cs::SynthesisError;
-use ark_r1cs_std::fields::fp::FpVar;
-use ark_ff::PrimeField;
-use ark_r1cs_std::{R1CSVar, fields::FieldVar};
 use super::PoseidonSbox;
+use ark_ff::PrimeField;
+use ark_r1cs_std::fields::fp::FpVar;
+use ark_r1cs_std::{fields::FieldVar, R1CSVar};
+use ark_relations::r1cs::SynthesisError;
 
 pub trait SboxConstraints {
-    fn synthesize_sbox<F: PrimeField>(&self, input: FpVar<F>, round_key: F) -> Result<FpVar<F>, SynthesisError>;
+    fn synthesize_sbox<F: PrimeField>(
+        &self,
+        input: FpVar<F>,
+        round_key: F,
+    ) -> Result<FpVar<F>, SynthesisError>;
 }
 
 impl SboxConstraints for PoseidonSbox {
@@ -15,16 +19,12 @@ impl SboxConstraints for PoseidonSbox {
         round_key: F,
     ) -> Result<FpVar<F>, SynthesisError> {
         match self {
-            PoseidonSbox::Exponentiation(val) => {
-                match val {
-                    3 => synthesize_exp3_sbox::<F>(input_var, round_key),
-                    5 => synthesize_exp5_sbox::<F>(input_var, round_key),
-                    _ => synthesize_exp3_sbox::<F>(input_var, round_key),
-                }
+            PoseidonSbox::Exponentiation(val) => match val {
+                3 => synthesize_exp3_sbox::<F>(input_var, round_key),
+                5 => synthesize_exp5_sbox::<F>(input_var, round_key),
+                _ => synthesize_exp3_sbox::<F>(input_var, round_key),
             },
-            PoseidonSbox::Inverse => {
-                synthesize_inverse_sbox::<F>(input_var, round_key)
-            },
+            PoseidonSbox::Inverse => synthesize_inverse_sbox::<F>(input_var, round_key),
         }
     }
 }
