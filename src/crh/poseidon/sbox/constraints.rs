@@ -1,7 +1,7 @@
 use super::PoseidonSbox;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
-use ark_r1cs_std::{fields::FieldVar};
+use ark_r1cs_std::fields::FieldVar;
 use ark_relations::r1cs::SynthesisError;
 
 pub trait SboxConstraints {

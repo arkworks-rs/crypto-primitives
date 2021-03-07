@@ -255,9 +255,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<
 
         let result = match f_var_vec.len() {
             2 => parameters.hash_2(f_var_vec[0].clone(), f_var_vec[1].clone(), statics),
-            4 => {
-                parameters.hash_4(&f_var_vec, statics)
-            }
+            4 => parameters.hash_4(&f_var_vec, statics),
             _ => panic!("incorrect number (elements) for poseidon hash"),
         };
         Ok(result.unwrap_or(Self::OutputVar::zero()))
