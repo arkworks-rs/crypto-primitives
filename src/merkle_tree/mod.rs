@@ -20,14 +20,29 @@ pub type TwoToOneDigest<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Outpu
 pub type LeafDigest<P> = <<P as Config>::LeafHash as CRH>::Output;
 pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
 pub type LeafParam<P> = <<P as Config>::LeafHash as CRH>::Parameters;
-/// Stores the hashes of a particular path (in order) from leaf to root.
-/// Our path `is_left_child()` if the boolean in `path` is true.
-///
 
+/// Stores the hashes of a particular path (in order) from leaf to root.
+///
 pub struct Path<P: Config> {
     pub(crate) leaf_and_sibling_hash: (LeafDigest<P>, LeafDigest<P>),
     /// The hash path from lower layer to higher layer.
     pub(crate) non_leaf_and_sibling_hash_path: Vec<(TwoToOneDigest<P>, TwoToOneDigest<P>)>,
+    /// stores the leaf index of the node
+    pub(crate) leaf_index: usize,
+}
+
+impl<P: Config> Path<P> {
+    /// The position of on_path node in `leaf_and_sibling_hash` and `non_leaf_and_sibling_hash_path`.
+    /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
+    ///
+    /// This function simply converts `self.leaf_index` to boolean array in big endian form.
+    fn position_list(&self) -> Vec<bool> {
+        let position: Vec<_> = (0..self.non_leaf_and_sibling_hash_path.len() + 1)
+            .map(|i| ((self.leaf_index >> i) & 1) != 0)
+            .rev()
+            .collect();
+        position
+    }
 }
 
 impl<P: Config> Path<P> {
