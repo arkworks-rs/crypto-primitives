@@ -15,7 +15,7 @@ pub trait Config {
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "P: Config"),
-    Debug(bound = "P: Config, <P::H as FixedLengthCRH>::Output: fmt::Debug")
+    Debug(bound = "P: Config, <P::H as CRH>::Output: fmt::Debug")
 )]
 pub struct Path<P: Config> {
     pub(crate) path: Vec<(Digest<P>, Digest<P>)>,
@@ -337,9 +337,7 @@ pub(crate) fn hash_leaf<H: CRH, L: ToBytes>(
     H::evaluate(parameters, &buffer[..(H::INPUT_SIZE_BITS / 8)])
 }
 
-pub(crate) fn hash_empty<H: CRH>(
-    parameters: &H::Parameters,
-) -> Result<H::Output, crate::Error> {
+pub(crate) fn hash_empty<H: CRH>(parameters: &H::Parameters) -> Result<H::Output, crate::Error> {
     let empty_buffer = vec![0u8; H::INPUT_SIZE_BITS / 8];
     H::evaluate(parameters, &empty_buffer)
 }
@@ -360,7 +358,7 @@ mod test {
         const NUM_WINDOWS: usize = 256;
     }
 
-    type H = pedersen::CRH<JubJub, Window4x256>;
+    type H = pedersen::PedersenCRH<JubJub, Window4x256>;
 
     struct JubJubMerkleTreeParams;
 

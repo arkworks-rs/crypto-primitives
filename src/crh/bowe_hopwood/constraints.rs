@@ -2,7 +2,7 @@ use core::{borrow::Borrow, marker::PhantomData};
 
 use crate::{
     crh::{
-        bowe_hopwood::{Parameters, CHUNK_SIZE, CRH},
+        bowe_hopwood::{BoweHopwoodCRH, Parameters, CHUNK_SIZE},
         pedersen::Window,
         FixedLengthCRHGadget,
     },
@@ -37,7 +37,7 @@ where
     _base_field: PhantomData<F>,
 }
 
-impl<P, F, W> FixedLengthCRHGadget<CRH<P, W>, ConstraintF<P>> for CRHGadget<P, F>
+impl<P, F, W> FixedLengthCRHGadget<BoweHopwoodCRH<P, W>, ConstraintF<P>> for CRHGadget<P, F>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
     F: FieldVar<P::BaseField, ConstraintF<P>>,
@@ -109,9 +109,9 @@ mod test {
     use ark_std::rand::Rng;
 
     use crate::crh::{
-        bowe_hopwood::{constraints::CRHGadget, CRH},
+        bowe_hopwood::{constraints::CRHGadget, BoweHopwoodCRH},
         pedersen::Window as PedersenWindow,
-        CRH, FixedLengthCRHGadget,
+        FixedLengthCRHGadget, CRH,
     };
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};

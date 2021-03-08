@@ -25,12 +25,12 @@ pub struct Parameters<C: ProjectiveCurve> {
     pub generators: Vec<Vec<C>>,
 }
 
-pub struct CRH<C: ProjectiveCurve, W: Window> {
+pub struct PedersenCRH<C: ProjectiveCurve, W: Window> {
     group: PhantomData<C>,
     window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> PedersenCRH<C, W> {
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -50,7 +50,7 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CRH for CRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRH for PedersenCRH<C, W> {
     const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     type Output = C::Affine;
     type Parameters = Parameters<C>;

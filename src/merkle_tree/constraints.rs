@@ -1,6 +1,6 @@
+use crate::crh::TwoToOneFixedLengthCRHGadget;
 use crate::merkle_tree::Config;
 use crate::FixedLengthCRHGadget;
-use crate::crh::TwoToOneFixedLengthCRHGadget;
 use ark_ff::Field;
 use ark_r1cs_std::boolean::Boolean;
 use ark_r1cs_std::ToBytesGadget;
@@ -12,21 +12,23 @@ where
     P: Config,
     LeafH: FixedLengthCRHGadget<P::LeafHash, ConstraintF>,
     NodeH: TwoToOneFixedLengthCRHGadget<P::TwoToOneHash, ConstraintF>,
-    ConstraintF: Field
+    ConstraintF: Field,
 {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
     auth_path: Vec<NodeH::OutputVar>,
     /// Leaf of sibling.
-    leaf_sibling: LeafH::OutputVar
+    leaf_sibling: LeafH::OutputVar,
 }
 
-impl<P, LeafH, NodeH, ConstraintF> PathVar<P, LeafH, NodeH, ConstraintF> where
+impl<P, LeafH, NodeH, ConstraintF> PathVar<P, LeafH, NodeH, ConstraintF>
+where
     P: Config,
     LeafH: FixedLengthCRHGadget<P::LeafHash, ConstraintF>,
     NodeH: TwoToOneFixedLengthCRHGadget<P::TwoToOneHash, ConstraintF>,
-    ConstraintF: Field {
+    ConstraintF: Field,
+{
     /// Given a leaf, calculate the hash of the merkle tree
     /// along the path and check if the given root is correct.
     ///
@@ -34,7 +36,7 @@ impl<P, LeafH, NodeH, ConstraintF> PathVar<P, LeafH, NodeH, ConstraintF> where
     pub fn check_membership(
         &self,
         root: &NodeH::OutputVar,
-        leaf: impl ToBytesGadget<ConstraintF>
+        leaf: impl ToBytesGadget<ConstraintF>,
     ) -> Result<(), SynthesisError> {
         self.conditionally_check_membership(root, leaf, &Boolean::constant(true))
     }
@@ -44,7 +46,7 @@ impl<P, LeafH, NodeH, ConstraintF> PathVar<P, LeafH, NodeH, ConstraintF> where
         &self,
         root: &NodeH::OutputVar,
         leaf: &impl ToBytesGadget<ConstraintF>,
-        should_enforce: &Boolean<ConstraintF>
+        should_enforce: &Boolean<ConstraintF>,
     ) -> Result<(), SynthesisError> {
         todo!()
     }
@@ -56,7 +58,7 @@ impl<P, LeafH, NodeH, ConstraintF> PathVar<P, LeafH, NodeH, ConstraintF> where
         &self,
         old_root: &NodeH::OutputVar, // todo: do we check the root here?
         old_leaf: &impl ToBytesGadget<ConstraintF>,
-        new_leaf: &impl ToBytesGadget<ConstraintF>
+        new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<NodeH::OutputVar, SynthesisError> {
         todo!()
     }
@@ -70,9 +72,8 @@ impl<P, LeafH, NodeH, ConstraintF> PathVar<P, LeafH, NodeH, ConstraintF> where
         old_root: &NodeH::OutputVar,
         new_root: &NodeH::OutputVar,
         old_leaf: &impl ToBytesGadget<ConstraintF>,
-        new_leaf: &impl ToBytesGadget<ConstraintF>
+        new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<(), SynthesisError> {
         todo!()
     }
-
 }

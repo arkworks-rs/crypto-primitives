@@ -27,12 +27,12 @@ pub struct Parameters<P: TEModelParameters> {
     pub generators: Vec<Vec<TEProjective<P>>>,
 }
 
-pub struct CRH<P: TEModelParameters, W: pedersen::Window> {
+pub struct BoweHopwoodCRH<P: TEModelParameters, W: pedersen::Window> {
     group: PhantomData<P>,
     window: PhantomData<W>,
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> BoweHopwoodCRH<P, W> {
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         let mut generators = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -50,8 +50,8 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRH for CRH<P, W> {
-    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
+impl<P: TEModelParameters, W: pedersen::Window> CRH for BoweHopwoodCRH<P, W> {
+    const INPUT_SIZE_BITS: usize = pedersen::PedersenCRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
     type Output = TEProjective<P>;
     type Parameters = Parameters<P>;
 
@@ -172,7 +172,7 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 #[cfg(test)]
 mod test {
     use crate::{
-        crh::{bowe_hopwood::CRH, pedersen::Window},
+        crh::{bowe_hopwood::BoweHopwoodCRH, pedersen::Window},
         CRH,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
@@ -188,9 +188,9 @@ mod test {
         }
 
         let rng = &mut test_rng();
-        let params = <CRH<EdwardsParameters, TestWindow> as CRH>::setup(rng).unwrap();
+        let params = <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::setup(rng).unwrap();
         let _ =
-            <CRH<EdwardsParameters, TestWindow> as CRH>::evaluate(&params, &[1, 2, 3])
+            <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::evaluate(&params, &[1, 2, 3])
                 .unwrap();
     }
 }

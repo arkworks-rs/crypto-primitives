@@ -59,11 +59,15 @@ pub struct MerkleTree<P: Config> {
     /// Store the leaf hash parameters
     leaf_hash_param: LeafParam<P>,
     /// Stores the height of the MerkleTree
-    height: usize
+    height: usize,
 }
 
 impl<P: Config> MerkleTree<P> {
-    pub fn blank(leaf_hash_param: &LeafParam<P>, two_to_one_hash_param: &TwoToOneParam<P>, height: usize) -> Self {
+    pub fn blank(
+        leaf_hash_param: &LeafParam<P>,
+        two_to_one_hash_param: &TwoToOneParam<P>,
+        height: usize,
+    ) -> Self {
         todo!()
     }
 
@@ -74,17 +78,24 @@ impl<P: Config> MerkleTree<P> {
         leaves: &[L],
     ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaves.len(); // size of the leaf layer
-        assert!(leaf_nodes_size.is_power_of_two(), "`leaves.len() should be power of two");
+        assert!(
+            leaf_nodes_size.is_power_of_two(),
+            "`leaves.len() should be power of two"
+        );
         let non_leaf_nodes_size = leaf_nodes_size - 1;
 
         let tree_height = tree_height(non_leaf_nodes_size + leaf_nodes_size);
 
-        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate(two_to_one_hash_param,
-                                                      &vec![0u8, P::TwoToOneHash::INPUT_SIZE_BITS],
-                                                      &vec![0u8, P::TwoToOneHash::INPUT_SIZE_BITS])?;
+        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate(
+            two_to_one_hash_param,
+            &vec![0u8; P::TwoToOneHash::INPUT_SIZE_BITS],
+            &vec![0u8; P::TwoToOneHash::INPUT_SIZE_BITS],
+        )?;
 
         // initialize the merkle tree as array of nodes in level order
-        let mut non_leaf_nodes: Vec<TwoToOneDigest<P>> = (0..non_leaf_nodes_size).map(|_|hash_of_empty.clone()).collect();
+        let mut non_leaf_nodes: Vec<TwoToOneDigest<P>> = (0..non_leaf_nodes_size)
+            .map(|_| hash_of_empty.clone())
+            .collect();
         let mut leaf_nodes: Vec<LeafDigest<P>> = Vec::with_capacity(leaf_nodes_size);
 
         // Compute the starting indices for each non-leaf level of the tree
@@ -112,16 +123,12 @@ impl<P: Config> MerkleTree<P> {
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
-                read_to_buffer(&leaf_nodes[left_leaf_index], &mut buffer_left);
-                read_to_buffer(&leaf_nodes[right_leaf_index], &mut buffer_right);
-                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate(
-                    &two_to_one_hash_param,
-                    &buffer_left,
-                    &buffer_right
-                )
+                read_to_buffer(&leaf_nodes[left_leaf_index], &mut buffer_left)?;
+                read_to_buffer(&leaf_nodes[right_leaf_index], &mut buffer_right)?;
+                non_leaf_nodes[current_index] =
+                    P::TwoToOneHash::evaluate(&two_to_one_hash_param, &buffer_left, &buffer_right)?
             }
         }
-
 
         // compute the hash values for nodes in every other layer in the tree
         let mut buffer_left = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
@@ -132,20 +139,17 @@ impl<P: Config> MerkleTree<P> {
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
-                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate(
-                    &two_to_one_hash_param,
-                    &buffer_left,
-                    &buffer_right
-                )
+                non_leaf_nodes[current_index] =
+                    P::TwoToOneHash::evaluate(&two_to_one_hash_param, &buffer_left, &buffer_right)?
             }
         }
 
-        Ok(MerkleTree{
+        Ok(MerkleTree {
             leaf_nodes,
             non_leaf_nodes,
             height: tree_height,
-            two_to_one_hash_param,
-            leaf_hash_param
+            two_to_one_hash_param: two_to_one_hash_param.clone(),
+            leaf_hash_param: leaf_hash_param.clone(),
         })
     }
 
@@ -182,11 +186,11 @@ impl<P: Config> MerkleTree<P> {
 }
 
 /// read `data` to `buf`
-fn read_to_buffer(data: &impl ToBytes, buf: &mut [u8]) {
-    buffer
-        .iter_mut()
-        .zip(&ark_ff::to_bytes![leaf]?)
+fn read_to_buffer(data: &impl ToBytes, buf: &mut [u8]) -> Result<(), crate::Error> {
+    buf.iter_mut()
+        .zip(&ark_ff::to_bytes![&data]?)
         .for_each(|(b, l_b)| *b = *l_b);
+    Ok(())
 }
 
 /// Returns the height of the tree, given the size of the tree.

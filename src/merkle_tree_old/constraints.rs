@@ -3,7 +3,7 @@ use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::{
-    crh::{CRH, FixedLengthCRHGadget},
+    crh::{FixedLengthCRHGadget, CRH},
     merkle_tree::*,
 };
 
@@ -125,7 +125,7 @@ mod test {
     use crate::{
         crh::{
             pedersen::{self, constraints::CRHGadget},
-            CRH, FixedLengthCRHGadget,
+            FixedLengthCRHGadget, CRH,
         },
         merkle_tree::*,
     };
@@ -141,7 +141,7 @@ mod test {
         const NUM_WINDOWS: usize = 256;
     }
 
-    type H = pedersen::CRH<JubJub, Window4x256>;
+    type H = pedersen::PedersenCRH<JubJub, Window4x256>;
     type HG = CRHGadget<JubJub, EdwardsVar, Window4x256>;
 
     struct JubJubMerkleTreeParams;
