@@ -35,7 +35,7 @@ derivative = { version = "2.0", features = ["use_core"] }
 tracing = { version = "0.1", default-features = false, features = [ "attributes" ], optional = true }
 
 [features]
-default = ["std", "r1cs"]
+default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
 print-trace = [ "bench-utils/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
