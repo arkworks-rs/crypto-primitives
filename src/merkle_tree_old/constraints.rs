@@ -3,7 +3,7 @@ use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::{
-    crh::{FixedLengthCRH, FixedLengthCRHGadget},
+    crh::{CRH, FixedLengthCRHGadget},
     merkle_tree::*,
 };
 
@@ -76,7 +76,7 @@ pub(crate) fn hash_inner_node<H, HG, ConstraintF>(
 ) -> Result<HG::OutputVar, SynthesisError>
 where
     ConstraintF: Field,
-    H: FixedLengthCRH,
+    H: CRH,
     HG: FixedLengthCRHGadget<H, ConstraintF>,
 {
     let left_bytes = left_child.to_bytes()?;
@@ -125,7 +125,7 @@ mod test {
     use crate::{
         crh::{
             pedersen::{self, constraints::CRHGadget},
-            FixedLengthCRH, FixedLengthCRHGadget,
+            CRH, FixedLengthCRHGadget,
         },
         merkle_tree::*,
     };
@@ -169,7 +169,7 @@ mod test {
                 ark_relations::ns!(cs, "new_digest"),
                 || {
                     if use_bad_root {
-                        Ok(<H as FixedLengthCRH>::Output::default())
+                        Ok(<H as CRH>::Output::default())
                     } else {
                         Ok(root)
                     }

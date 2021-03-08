@@ -111,7 +111,7 @@ mod test {
     use crate::crh::{
         bowe_hopwood::{constraints::CRHGadget, CRH},
         pedersen::Window as PedersenWindow,
-        FixedLengthCRH, FixedLengthCRHGadget,
+        CRH, FixedLengthCRHGadget,
     };
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};

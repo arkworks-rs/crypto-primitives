@@ -96,7 +96,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::crh::{pedersen, pedersen::constraints::*, FixedLengthCRH, FixedLengthCRHGadget};
+    use crate::crh::{pedersen, pedersen::constraints::*, CRH, FixedLengthCRHGadget};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::rand::Rng;

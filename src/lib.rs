@@ -30,7 +30,7 @@ extern crate ark_std;
 
 pub use self::{
     commitment::CommitmentScheme,
-    crh::FixedLengthCRH,
+    crh::CRH,
     merkle_tree::{MerkleTree, Path},
     prf::PRF,
     signature::SignatureScheme,

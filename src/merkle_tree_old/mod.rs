@@ -1,4 +1,4 @@
-use crate::{crh::FixedLengthCRH, Vec};
+use crate::{crh::CRH, Vec};
 use ark_ff::bytes::ToBytes;
 use ark_std::fmt;
 
@@ -7,7 +7,7 @@ pub mod constraints;
 
 pub trait Config {
     const HEIGHT: usize;
-    type H: FixedLengthCRH;
+    type H: CRH;
 }
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
@@ -21,16 +21,16 @@ pub struct Path<P: Config> {
     pub(crate) path: Vec<(Digest<P>, Digest<P>)>,
 }
 
-pub type Parameters<P> = <<P as Config>::H as FixedLengthCRH>::Parameters;
-pub type Digest<P> = <<P as Config>::H as FixedLengthCRH>::Output;
+pub type Parameters<P> = <<P as Config>::H as CRH>::Parameters;
+pub type Digest<P> = <<P as Config>::H as CRH>::Output;
 
 impl<P: Config> Default for Path<P> {
     fn default() -> Self {
         let mut path = Vec::with_capacity(P::HEIGHT as usize);
         for _i in 1..P::HEIGHT as usize {
             path.push((
-                <P::H as FixedLengthCRH>::Output::default(),
-                <P::H as FixedLengthCRH>::Output::default(),
+                <P::H as CRH>::Output::default(),
+                <P::H as CRH>::Output::default(),
             ));
         }
         Self { path }
@@ -40,8 +40,8 @@ impl<P: Config> Default for Path<P> {
 impl<P: Config> Path<P> {
     pub fn verify<L: ToBytes>(
         &self,
-        parameters: &<P::H as FixedLengthCRH>::Parameters,
-        root_hash: &<P::H as FixedLengthCRH>::Output,
+        parameters: &<P::H as CRH>::Parameters,
+        root_hash: &<P::H as CRH>::Output,
         leaf: &L,
     ) -> Result<bool, crate::Error> {
         if self.path.len() != (P::HEIGHT - 1) as usize {
@@ -81,7 +81,7 @@ impl<P: Config> Path<P> {
 pub struct MerkleTree<P: Config> {
     tree: Vec<Digest<P>>,
     padding_tree: Vec<(Digest<P>, Digest<P>)>,
-    parameters: <P::H as FixedLengthCRH>::Parameters,
+    parameters: <P::H as CRH>::Parameters,
     root: Option<Digest<P>>,
 }
 
@@ -311,7 +311,7 @@ fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
 }
 
 /// Returns the output hash, given a left and right hash value.
-pub(crate) fn hash_inner_node<H: FixedLengthCRH>(
+pub(crate) fn hash_inner_node<H: CRH>(
     parameters: &H::Parameters,
     left: &H::Output,
     right: &H::Output,
@@ -325,7 +325,7 @@ pub(crate) fn hash_inner_node<H: FixedLengthCRH>(
 }
 
 /// Returns the hash of a leaf.
-pub(crate) fn hash_leaf<H: FixedLengthCRH, L: ToBytes>(
+pub(crate) fn hash_leaf<H: CRH, L: ToBytes>(
     parameters: &H::Parameters,
     leaf: &L,
     buffer: &mut [u8],
@@ -337,7 +337,7 @@ pub(crate) fn hash_leaf<H: FixedLengthCRH, L: ToBytes>(
     H::evaluate(parameters, &buffer[..(H::INPUT_SIZE_BITS / 8)])
 }
 
-pub(crate) fn hash_empty<H: FixedLengthCRH>(
+pub(crate) fn hash_empty<H: CRH>(
     parameters: &H::Parameters,
 ) -> Result<H::Output, crate::Error> {
     let empty_buffer = vec![0u8; H::INPUT_SIZE_BITS / 8];

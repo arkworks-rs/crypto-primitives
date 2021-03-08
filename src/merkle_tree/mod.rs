@@ -1,22 +1,25 @@
 #![allow(unused)] // temporary
 
-use crate::crh::FixedLengthTwoToOneCRH;
-use crate::FixedLengthCRH;
+use crate::crh::TwoToOneCRH;
+use crate::CRH;
 use ark_ff::ToBytes;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
 pub trait Config {
-    const HEIGHT: usize;
-    type LeafHash: FixedLengthCRH;
-    type TwoToOneHash: FixedLengthTwoToOneCRH;
+    type LeafHash: CRH;
+    type TwoToOneHash: TwoToOneCRH;
+    /// Determine the upper bound of output size of leaf hash.
+    fn leaf_hash_output_size_upper_bound() -> usize;
+    /// Determine the upper bound of output size of two-to-one hash.
+    fn two_to_one_hash_output_size_upper_bound() -> usize;
 }
 
-pub type TwoToOneDigest<P> = <<P as Config>::TwoToOneHash as FixedLengthTwoToOneCRH>::Output;
-pub type LeafDigest<P> = <<P as Config>::LeafHash as FixedLengthCRH>::Output;
-pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as FixedLengthTwoToOneCRH>::Parameters;
-pub type LeafParam<P> = <<P as Config>::LeafHash as FixedLengthCRH>::Parameters;
+pub type TwoToOneDigest<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Output;
+pub type LeafDigest<P> = <<P as Config>::LeafHash as CRH>::Output;
+pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
+pub type LeafParam<P> = <<P as Config>::LeafHash as CRH>::Parameters;
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
 ///
@@ -40,51 +43,82 @@ impl<P: Config> Path<P> {
 }
 
 /// Defines a merkle tree data structure.
-/// This merkle tree has fixed height, and uses padding trees.
-///
-/// For example, if HEIGHT is 4, and number of non-empty leaves is 2,
-/// then the tree represented by `non_leaf_nodes` and `leaf_nodes` is
-///  H(H(A), H(B)) -> using 2-to-1 hash
-///     /  \
-///   /     \
-/// H(A)   H(B) -> using leaf hash
-///
-/// The actual tree should be
-///          H(H(H(H(A), H(B)), H(pad1)),H(pad2))  -> using 2-to-1 hash
-///               /                 \
-///       H(H(H(A), H(B)), H(pad1))    H(pad2)  -> using 2-to-1 hash
-///         /         \
-/// H(H(A), H(B))    H(pad1)   -> using 2-to-1 hash
-///     /  \
-///   /     \
-/// H(A)   H(B)   -> using leaf hash
+/// This merkle tree has runtime fixed height, and assumes number of leaves is 2^height.
+/// TODO: add RFC-6962 compatible merkle tree in the future.
 pub struct MerkleTree<P: Config> {
     /// stores the non-leaf nodes in level order.
     non_leaf_nodes: Vec<TwoToOneDigest<P>>,
     /// store the hash of leaf nodes from left to right
     leaf_nodes: Vec<LeafDigest<P>>,
-    /// Stores path of the padding tree from lower layer to upper layer.
-    /// In this example, `padding_tree_path` stores [(H(H(A), H(B)), H(pad1)),((H(H(A), H(B)), H(pad1)), H(pad2))]
-    padding_trees_path: Vec<(TwoToOneDigest<P>, TwoToOneDigest<P>)>,
     /// Store the two-to-one hash parameters
     two_to_one_param: TwoToOneParam<P>,
     /// Store the leaf hash parameters
     leaf_hash_param: LeafParam<P>,
     /// Stores the hash of root node
     root: TwoToOneDigest<P>,
+    /// Stores the height of the MerkleTree
+    height: usize
 }
 
 impl<P: Config> MerkleTree<P> {
-    pub fn blank(leaf_hash_param: &LeafParam<P>, two_to_one_hash_param: &TwoToOneParam<P>) -> Self {
+    pub fn blank(leaf_hash_param: &LeafParam<P>, two_to_one_hash_param: &TwoToOneParam<P>, height: usize) -> Self {
         todo!()
     }
 
+    /// Returns a new merkle tree. `leaves.len()` should be power of two.
     pub fn new<L: ToBytes>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves: &[L],
     ) -> Result<Self, crate::Error> {
-        todo!()
+        let leaf_nodes_size = leaves.len(); // size of the leaf layer
+        assert!(leaf_nodes_size.is_power_of_two(), "`leaves.len() should be power of two");
+        let non_leaf_nodes_size = leaf_nodes_size - 1;
+
+        let tree_height = tree_height(non_leaf_nodes_size + leaf_nodes_size);
+
+        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate(two_to_one_hash_param,
+                                                      &vec![0u8, P::TwoToOneHash::INPUT_SIZE_BITS],
+                                                      &vec![0u8, P::TwoToOneHash::INPUT_SIZE_BITS])?;
+
+        // initialize the merkle tree as array of nodes in level order
+        let mut non_leaf_nodes: Vec<TwoToOneDigest<P>> = (0..non_leaf_nodes_size).map(|_|hash_of_empty.clone()).collect();
+        let mut leaf_nodes: Vec<LeafDigest<P>> = Vec::with_capacity(leaf_nodes_size);
+
+        // Compute the starting indices for each non-leaf level of the tree
+        let mut index = 0;
+        let mut level_indices = Vec::with_capacity(tree_height - 1);
+        for _ in 0..tree_height {
+            level_indices.push(index);
+            index = left_child(index);
+        }
+
+        // compute and store hash values for each leaf
+        let mut buffer = vec![0u8; P::leaf_hash_output_size_upper_bound()]; // assume output length <= 128
+        for leaf in leaves.iter() {
+            to_buffer(leaf, &mut buffer);
+            leaf_nodes.push(P::LeafHash::evaluate(leaf_hash_param, &buffer)?)
+        }
+
+        // compute the hash values for the bottom layer
+
+
+        // compute the hash values for every node in the tree
+        let mut buffer = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+        level_indices.reverse();
+        for &start_index in &level_indices {
+            let upper_bound = left_child(start_index); // The exclusive index upper bound for this layer
+            for current_index in start_index..upper_bound {
+                let left_index = left_child(current_index);
+                let right_index = right_child(current_index);
+
+            }
+        }
+
+
+
+
+        ;todo!()
     }
 
     /// returns the root fo the merkle tree
@@ -116,5 +150,68 @@ impl<P: Config> MerkleTree<P> {
         asserted_new_root: &TwoToOneDigest<P>,
     ) -> Result<(), crate::Error> {
         todo!()
+    }
+}
+
+/// read `data` to `buf`
+fn to_buffer(data: &impl ToBytes, buf: &mut [u8]) {
+    buffer
+        .iter_mut()
+        .zip(&ark_ff::to_bytes![leaf]?)
+        .for_each(|(b, l_b)| *b = *l_b);
+}
+
+/// Returns the height of the tree, given the size of the tree.
+#[inline]
+fn tree_height(tree_size: usize) -> usize {
+    if tree_size == 1 {
+        return 1;
+    }
+
+    ark_std::log2(tree_size) as usize
+}
+/// Returns true iff the index represents the root.
+#[inline]
+fn is_root(index: usize) -> bool {
+    index == 0
+}
+
+/// Returns the index of the left child, given an index.
+#[inline]
+fn left_child(index: usize) -> usize {
+    2 * index + 1
+}
+
+/// Returns the index of the right child, given an index.
+#[inline]
+fn right_child(index: usize) -> usize {
+    2 * index + 2
+}
+
+/// Returns the index of the sibling, given an index.
+#[inline]
+fn sibling(index: usize) -> Option<usize> {
+    if index == 0 {
+        None
+    } else if is_left_child(index) {
+        Some(index + 1)
+    } else {
+        Some(index - 1)
+    }
+}
+
+/// Returns true iff the given index represents a left child.
+#[inline]
+fn is_left_child(index: usize) -> bool {
+    index % 2 == 1
+}
+
+/// Returns the index of the parent, given an index.
+#[inline]
+fn parent(index: usize) -> Option<usize> {
+    if index > 0 {
+        Some((index - 1) >> 1)
+    } else {
+        None
     }
 }

@@ -7,7 +7,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::FixedLengthCRH;
+use crate::crh::CRH;
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
@@ -50,7 +50,7 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> FixedLengthCRH for CRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRH for CRH<C, W> {
     const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     type Output = C::Affine;
     type Parameters = Parameters<C>;
