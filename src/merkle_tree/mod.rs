@@ -44,18 +44,20 @@ impl<P: Config> Path<P> {
 
 /// Defines a merkle tree data structure.
 /// This merkle tree has runtime fixed height, and assumes number of leaves is 2^height.
+///
 /// TODO: add RFC-6962 compatible merkle tree in the future.
+/// For this release, padding will not be supported because of security concerns: if the leaf hash and two to one hash uses same underlying
+/// CRH, a malicious prover can prove a leaf while the actual node is an inner node. In the future, we can prefix leaf hashes in different layers to
+/// solve the problem.
 pub struct MerkleTree<P: Config> {
-    /// stores the non-leaf nodes in level order.
+    /// stores the non-leaf nodes in level order. The first element is the root node.
     non_leaf_nodes: Vec<TwoToOneDigest<P>>,
     /// store the hash of leaf nodes from left to right
     leaf_nodes: Vec<LeafDigest<P>>,
     /// Store the two-to-one hash parameters
-    two_to_one_param: TwoToOneParam<P>,
+    two_to_one_hash_param: TwoToOneParam<P>,
     /// Store the leaf hash parameters
     leaf_hash_param: LeafParam<P>,
-    /// Stores the hash of root node
-    root: TwoToOneDigest<P>,
     /// Stores the height of the MerkleTree
     height: usize
 }
@@ -96,34 +98,60 @@ impl<P: Config> MerkleTree<P> {
         // compute and store hash values for each leaf
         let mut buffer = vec![0u8; P::leaf_hash_output_size_upper_bound()]; // assume output length <= 128
         for leaf in leaves.iter() {
-            to_buffer(leaf, &mut buffer);
+            read_to_buffer(leaf, &mut buffer);
             leaf_nodes.push(P::LeafHash::evaluate(leaf_hash_param, &buffer)?)
         }
 
-        // compute the hash values for the bottom layer
+        // compute the hash values for the non-leaf bottom layer
+        {
+            let mut buffer_left = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+            let mut buffer_right = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+            let start_index = level_indices.pop().unwrap();
+            let upper_bound = left_child(start_index);
+            for current_index in start_index..upper_bound {
+                let left_leaf_index = left_child(current_index) - upper_bound;
+                let right_leaf_index = right_child(current_index) - upper_bound;
+                // compute hash
+                read_to_buffer(&leaf_nodes[left_leaf_index], &mut buffer_left);
+                read_to_buffer(&leaf_nodes[right_leaf_index], &mut buffer_right);
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate(
+                    &two_to_one_hash_param,
+                    &buffer_left,
+                    &buffer_right
+                )
+            }
+        }
 
 
-        // compute the hash values for every node in the tree
-        let mut buffer = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+        // compute the hash values for nodes in every other layer in the tree
+        let mut buffer_left = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+        let mut buffer_right = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
         level_indices.reverse();
         for &start_index in &level_indices {
             let upper_bound = left_child(start_index); // The exclusive index upper bound for this layer
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
-
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate(
+                    &two_to_one_hash_param,
+                    &buffer_left,
+                    &buffer_right
+                )
             }
         }
 
-
-
-
-        ;todo!()
+        Ok(MerkleTree{
+            leaf_nodes,
+            non_leaf_nodes,
+            height: tree_height,
+            two_to_one_hash_param,
+            leaf_hash_param
+        })
     }
 
     /// returns the root fo the merkle tree
     pub fn root(&self) -> TwoToOneDigest<P> {
-        todo!()
+        self.non_leaf_nodes[0].clone()
     }
 
     /// Returns the authentication path from leaf to root
@@ -154,7 +182,7 @@ impl<P: Config> MerkleTree<P> {
 }
 
 /// read `data` to `buf`
-fn to_buffer(data: &impl ToBytes, buf: &mut [u8]) {
+fn read_to_buffer(data: &impl ToBytes, buf: &mut [u8]) {
     buffer
         .iter_mut()
         .zip(&ark_ff::to_bytes![leaf]?)
