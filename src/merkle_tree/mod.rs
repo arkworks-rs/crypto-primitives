@@ -21,11 +21,22 @@ pub type LeafDigest<P> = <<P as Config>::LeafHash as CRH>::Output;
 pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
 pub type LeafParam<P> = <<P as Config>::LeafHash as CRH>::Parameters;
 
-/// Stores the hashes of a particular path (in order) from leaf to root.
-///
+/// Stores the hashes of a particular path (in order) from root to leaf.
+/// For example:
+/// ```tree_diagram
+///          A
+///        /  \
+///       B   C
+///     / \  / \
+///    D  E F  H
+///   .. / \ ....
+///     I  J
+/// ```
+///  Suppose we want to prove I, then `leaf_and_sibling_hash` is (I, J), `non_leaf_and_sibling_hash` is
+///  [(B,C),(D,E)]
 pub struct Path<P: Config> {
     pub(crate) leaf_and_sibling_hash: (LeafDigest<P>, LeafDigest<P>),
-    /// The hash path from lower layer to higher layer.
+    /// The hash path from higher layer to lower layer.
     pub(crate) non_leaf_and_sibling_hash_path: Vec<(TwoToOneDigest<P>, TwoToOneDigest<P>)>,
     /// stores the leaf index of the node
     pub(crate) leaf_index: usize,
@@ -173,13 +184,54 @@ impl<P: Config> MerkleTree<P> {
         self.non_leaf_nodes[0].clone()
     }
 
-    /// Returns the authentication path from leaf to root
-    pub fn generate_proof<L: ToBytes>(
-        &self,
-        index: usize,
-        leaf: &L,
-    ) -> Result<Path<P>, crate::Error> {
-        todo!()
+    /// Returns the authentication path from leaf at `index` to root
+    pub fn generate_proof<L: ToBytes>(&self, index: usize) -> Result<Path<P>, crate::Error> {
+        // gather basic tree information
+        let tree_height = tree_height(self.non_leaf_nodes.len() + self.leaf_nodes.len());
+
+        // Get Leaf hash, and leaf sibling hash,
+        let leaf_index_in_tree = convert_index_to_last_level(index, tree_height);
+        let (leaf_left_hash, leaf_right_hash) = if index & 1 == 0 {
+            // leaf is left child
+            (
+                self.leaf_nodes[index].clone(),
+                self.leaf_nodes[index + 1].clone(),
+            )
+        } else {
+            // leaf is right child
+            (
+                self.leaf_nodes[index - 1].clone(),
+                self.leaf_nodes[index].clone(),
+            )
+        };
+
+        let mut path = Vec::with_capacity(tree_height - 1);
+        // Iterate from the bottom inner node to top, storing all intermediate hash values
+        let mut current_node = parent(leaf_index_in_tree).unwrap();
+        while !is_root(current_node) {
+            let sibling_node = sibling(current_node).unwrap();
+            let (curr_hash, sibling_hash) = (
+                self.non_leaf_nodes[current_node].clone(),
+                self.non_leaf_nodes[sibling_node].clone(),
+            );
+            if is_left_child(current_node) {
+                path.push((curr_hash, sibling_hash));
+            } else {
+                path.push((sibling_hash, curr_hash));
+            }
+            current_node = parent(current_node).unwrap();
+        }
+
+        debug_assert_eq!(path.len(), tree_height - 1);
+
+        // we want to make path from root to bottom
+        path.reverse();
+
+        Ok(Path {
+            leaf_index: index,
+            non_leaf_and_sibling_hash_path: path,
+            leaf_and_sibling_hash: (leaf_left_hash, leaf_right_hash),
+        })
     }
 
     /// Update the leaf at `index` to updated leaf.
@@ -261,4 +313,9 @@ fn parent(index: usize) -> Option<usize> {
     } else {
         None
     }
+}
+
+#[inline]
+fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
+    index + (1 << (tree_height - 1)) - 1
 }
