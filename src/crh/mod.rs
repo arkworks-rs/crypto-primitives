@@ -25,7 +25,8 @@ pub trait CRH {
 
 pub trait TwoToOneCRH {
     /// The size for left input and right input
-    const INPUT_SIZE_BITS: usize;
+    const LEFT_INPUT_SIZE_BITS: usize;
+    const RIGHT_INPUT_SIZE_BITS: usize;
 
     type Output: ToBytes + Clone + Eq + core::fmt::Debug + Hash + Default;
     type Parameters: Clone + Default;

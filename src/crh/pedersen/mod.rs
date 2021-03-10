@@ -7,7 +7,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::CRH;
+use crate::crh::{TwoToOneCRH, CRH};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
@@ -117,6 +117,40 @@ impl<C: ProjectiveCurve, W: Window> CRH for PedersenCRH<C, W> {
         end_timer!(eval_time);
 
         Ok(result.into())
+    }
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
+    const LEFT_INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS / 2;
+    const RIGHT_INPUT_SIZE_BITS: usize = Self::LEFT_INPUT_SIZE_BITS;
+    type Output = C::Affine;
+    type Parameters = Parameters<C>;
+
+    fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
+        <Self as CRH>::setup(r)
+    }
+
+    /// A very simple evaluate method: just concat the left input and right input together
+    fn evaluate(
+        parameters: &Self::Parameters,
+        left_input: &[u8],
+        right_input: &[u8],
+    ) -> Result<Self::Output, Error> {
+        assert!(left_input.len() * 8 < Self::LEFT_INPUT_SIZE_BITS);
+        assert!(right_input.len() * 8 < Self::RIGHT_INPUT_SIZE_BITS);
+
+        let mut buffer = vec![0u8; Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS];
+
+        left_input
+            .iter()
+            .zip(buffer.iter_mut())
+            .for_each(|(input, buffer)| *buffer = *input);
+        right_input
+            .iter()
+            .zip((&mut buffer[Self::RIGHT_INPUT_SIZE_BITS..]).iter_mut())
+            .for_each(|(input, buffer)| *buffer = *input);
+
+        <Self as CRH>::evaluate(parameters, &buffer)
     }
 }
 

@@ -114,8 +114,8 @@ impl<P: Config> MerkleTree<P> {
 
         let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate(
             two_to_one_hash_param,
-            &vec![0u8; P::TwoToOneHash::INPUT_SIZE_BITS],
-            &vec![0u8; P::TwoToOneHash::INPUT_SIZE_BITS],
+            &vec![0u8; P::TwoToOneHash::LEFT_INPUT_SIZE_BITS],
+            &vec![0u8; P::TwoToOneHash::RIGHT_INPUT_SIZE_BITS],
         )?;
 
         // initialize the merkle tree as array of nodes in level order
