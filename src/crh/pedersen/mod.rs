@@ -130,25 +130,34 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
         <Self as CRH>::setup(r)
     }
 
-    /// A very simple evaluate method: just concat the left input and right input together
+    /// A naive implementation method: just concat the left input and right input together
+    ///
+    /// Warning: This evaluation method is not secure if left and right input have different sizes.
+    /// For example, if `[L = {0,1,1}, R = {1}]` and `[L = {0,1}, R = {1,1}]` evaluates to the same hash.
+    ///
+    /// TODO: use a more rigid evaluation method.
     fn evaluate(
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],
     ) -> Result<Self::Output, Error> {
-        assert!(left_input.len() * 8 < Self::LEFT_INPUT_SIZE_BITS);
-        assert!(right_input.len() * 8 < Self::RIGHT_INPUT_SIZE_BITS);
+        #[cfg(feature = "std")]
+        debug_assert!(
+            left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS,
+            format!(
+                "left_input.len() * 8: {}, Self::LEFT_INPUT_SIZE_BITS: {}",
+                left_input.len() * 8,
+                Self::LEFT_INPUT_SIZE_BITS
+            )
+        );
+        assert!(right_input.len() * 8 <= Self::RIGHT_INPUT_SIZE_BITS);
 
-        let mut buffer = vec![0u8; Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS];
+        let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
 
-        left_input
-            .iter()
-            .zip(buffer.iter_mut())
-            .for_each(|(input, buffer)| *buffer = *input);
-        right_input
-            .iter()
-            .zip((&mut buffer[Self::RIGHT_INPUT_SIZE_BITS..]).iter_mut())
-            .for_each(|(input, buffer)| *buffer = *input);
+        buffer
+            .iter_mut()
+            .zip(left_input.iter().chain(right_input.iter()))
+            .for_each(|(b, l_b)| *b = *l_b);
 
         <Self as CRH>::evaluate(parameters, &buffer)
     }
