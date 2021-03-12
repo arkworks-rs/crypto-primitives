@@ -24,20 +24,19 @@ pub type LeafParam<P> = <<P as Config>::LeafHash as CRH>::Parameters;
 /// Stores the hashes of a particular path (in order) from root to leaf.
 /// For example:
 /// ```tree_diagram
-///          A
-///        /  \
-///       B   C
-///     / \  / \
-///    D  E F  H
+///         [A]
+///        /   \
+///      [B]    C
+///     / \   /  \
+///    D [E] F    H
 ///   .. / \ ....
-///     I  J
+///    [I] J
 /// ```
-///  Suppose we want to prove I, then `leaf_and_sibling_hash` is (I, J), `non_leaf_and_sibling_hash` is
-///  [(B,C),(D,E)]
+///  Suppose we want to prove I, then `leaf_sibling_hash` is J, `auth_path` is `[C,D]`
 pub struct Path<P: Config> {
-    pub(crate) leaf_and_sibling_hash: (LeafDigest<P>, LeafDigest<P>),
-    /// The hash path from higher layer to lower layer.
-    pub(crate) non_leaf_and_sibling_hash_path: Vec<(TwoToOneDigest<P>, TwoToOneDigest<P>)>,
+    pub(crate) leaf_sibling_hash: LeafDigest<P>,
+    /// The sibling of path node ordered from higher layer to lower layer (does not include root node).
+    pub(crate) auth_path: Vec<TwoToOneDigest<P>>,
     /// stores the leaf index of the node
     pub(crate) leaf_index: usize,
 }
@@ -48,7 +47,7 @@ impl<P: Config> Path<P> {
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
     fn position_list(&self) -> Vec<bool> {
-        let position: Vec<_> = (0..self.non_leaf_and_sibling_hash_path.len() + 1)
+        let position: Vec<_> = (0..self.auth_path.len() + 1)
             .map(|i| ((self.leaf_index >> i) & 1) != 0)
             .rev()
             .collect();
@@ -59,71 +58,69 @@ impl<P: Config> Path<P> {
 impl<P: Config> Path<P> {
     /// Verify that a leaf is at `self.index` of the merkle tree.
     /// * `leaf_size`: leaf size in number of bytes
+    ///
+    /// `verify` infers the tree height by setting `tree_height = self.auth_path.len() + 2`
     pub fn verify<L: ToBytes>(
         &self,
         leaf_hash_parameters: &LeafParam<P>,
         two_to_one_hash_parameters: &TwoToOneParam<P>,
         root_hash: &TwoToOneDigest<P>,
-        tree_height: usize,
         leaf: &L,
         leaf_size: usize,
     ) -> Result<bool, crate::Error> {
         // verify path length
-        if self.non_leaf_and_sibling_hash_path.len() != tree_height - 2 {
-            return Ok(false); // invalid length path
-        }
+        let tree_height = self.auth_path.len() + 2;
 
         // calculate leaf hash
         let mut buffer = vec![0u8; leaf_size];
         read_to_buffer(leaf, &mut buffer)?;
         let claimed_leaf_hash = P::LeafHash::evaluate(&leaf_hash_parameters, &buffer)?;
 
-        // check if leaf corresponds to leaf hash `path`
-        if self.leaf_index & 1 == 0 && claimed_leaf_hash != self.leaf_and_sibling_hash.0 {
-            // left
-            return Ok(false);
-        } else if self.leaf_index & 1 == 1 && claimed_leaf_hash != self.leaf_and_sibling_hash.1 {
-            // right
-            return Ok(false);
-        }
+        // // check if leaf corresponds to leaf hash `path`
+        // if self.leaf_index & 1 == 0 && claimed_leaf_hash != self.leaf_sibling_hash.0 {
+        //     // left
+        //     return Ok(false);
+        // } else if self.leaf_index & 1 == 1 && claimed_leaf_hash != self.leaf_sibling_hash.1 {
+        //     // right
+        //     return Ok(false);
+        // }
 
         // check hash along the path from bottom to root
         let mut left_buffer = vec![0u8; P::leaf_hash_output_size_upper_bound()];
         let mut right_buffer = vec![0u8; P::leaf_hash_output_size_upper_bound()];
-        read_to_buffer(&self.leaf_and_sibling_hash.0, &mut left_buffer);
-        read_to_buffer(&self.leaf_and_sibling_hash.1, &mut right_buffer);
+        if self.leaf_index & 1 == 0 {
+            // leaf is on left
+            read_to_buffer(&claimed_leaf_hash, &mut left_buffer);
+            read_to_buffer(&self.leaf_sibling_hash, &mut right_buffer)
+        } else {
+            // leaf is on right
+            read_to_buffer(&self.leaf_sibling_hash, &mut left_buffer);
+            read_to_buffer(&claimed_leaf_hash, &mut right_buffer)
+        };
 
-        let mut curr_hash =
+        let mut curr_path_node =
             P::TwoToOneHash::evaluate(&two_to_one_hash_parameters, &left_buffer, &right_buffer)?;
 
+        let mut left_buffer = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+        let mut right_buffer = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
         index >>= 1;
 
         // Check levels between leaf level and root
-        for level in (0..self.non_leaf_and_sibling_hash_path.len()).rev() {
+        for level in (0..self.auth_path.len()).rev() {
             // check if path node at this level is left or right
-            let path_node = if index & 1 == 0 {
-                &self.non_leaf_and_sibling_hash_path[level].0
+            if index & 1 == 0 {
+                // curr_path_node is on the left
+                read_to_buffer(&curr_path_node, &mut left_buffer)?;
+                read_to_buffer(&self.auth_path[level], &mut right_buffer)?;
             } else {
-                &self.non_leaf_and_sibling_hash_path[level].1
-            };
-            // if the hash calculated from last level is different from path_node, then reject
-            if &curr_hash != path_node {
-                return Ok(false);
+                // curr_path_node is on the right
+                read_to_buffer(&self.auth_path[level], &mut left_buffer)?;
+                read_to_buffer(&curr_path_node, &mut right_buffer)?;
             }
-            // update `currHash`
-            set_zero(&mut left_buffer);
-            set_zero(&mut right_buffer);
-            read_to_buffer(
-                &self.non_leaf_and_sibling_hash_path[level].0,
-                &mut left_buffer,
-            );
-            read_to_buffer(
-                &self.non_leaf_and_sibling_hash_path[level].1,
-                &mut right_buffer,
-            );
-            curr_hash = P::TwoToOneHash::evaluate(
+            // update curr_path_node
+            curr_path_node = P::TwoToOneHash::evaluate(
                 &two_to_one_hash_parameters,
                 &left_buffer,
                 &right_buffer,
@@ -132,7 +129,7 @@ impl<P: Config> Path<P> {
         }
 
         // check if final hash is root
-        if &curr_hash != root_hash {
+        if &curr_path_node != root_hash {
             return Ok(false);
         }
 
@@ -207,7 +204,6 @@ impl<P: Config> MerkleTree<P> {
         // compute and store hash values for each leaf
         let mut buffer = vec![0u8; P::leaf_hash_output_size_upper_bound()]; // assume output length <= 128
         for leaf in leaves.iter() {
-            set_zero(&mut buffer);
             read_to_buffer(leaf, &mut buffer);
             leaf_nodes.push(P::LeafHash::evaluate(leaf_hash_param, &buffer)?)
         }
@@ -222,8 +218,6 @@ impl<P: Config> MerkleTree<P> {
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
-                set_zero(&mut buffer_left);
-                set_zero(&mut buffer_right);
                 read_to_buffer(&leaf_nodes[left_leaf_index], &mut buffer_left)?;
                 read_to_buffer(&leaf_nodes[right_leaf_index], &mut buffer_right)?;
                 non_leaf_nodes[current_index] =
@@ -240,8 +234,6 @@ impl<P: Config> MerkleTree<P> {
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
-                set_zero(&mut buffer_left);
-                set_zero(&mut buffer_right);
                 read_to_buffer(&non_leaf_nodes[left_index], &mut buffer_left)?;
                 read_to_buffer(&non_leaf_nodes[right_index], &mut buffer_right)?;
                 non_leaf_nodes[current_index] =
@@ -275,18 +267,12 @@ impl<P: Config> MerkleTree<P> {
 
         // Get Leaf hash, and leaf sibling hash,
         let leaf_index_in_tree = convert_index_to_last_level(index, tree_height);
-        let (leaf_left_hash, leaf_right_hash) = if index & 1 == 0 {
+        let leaf_sibling_hash = if index & 1 == 0 {
             // leaf is left child
-            (
-                self.leaf_nodes[index].clone(),
-                self.leaf_nodes[index + 1].clone(),
-            )
+            self.leaf_nodes[index + 1].clone()
         } else {
             // leaf is right child
-            (
-                self.leaf_nodes[index - 1].clone(),
-                self.leaf_nodes[index].clone(),
-            )
+            self.leaf_nodes[index - 1].clone()
         };
 
         let mut path = Vec::with_capacity(tree_height - 2); // tree height - one for leaf node - one for root
@@ -294,15 +280,7 @@ impl<P: Config> MerkleTree<P> {
         let mut current_node = parent(leaf_index_in_tree).unwrap();
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
-            let (curr_hash, sibling_hash) = (
-                self.non_leaf_nodes[current_node].clone(),
-                self.non_leaf_nodes[sibling_node].clone(),
-            );
-            if is_left_child(current_node) {
-                path.push((curr_hash, sibling_hash));
-            } else {
-                path.push((sibling_hash, curr_hash));
-            }
+            path.push(self.non_leaf_nodes[sibling_node].clone());
             current_node = parent(current_node).unwrap();
         }
 
@@ -313,8 +291,8 @@ impl<P: Config> MerkleTree<P> {
 
         Ok(Path {
             leaf_index: index,
-            non_leaf_and_sibling_hash_path: path,
-            leaf_and_sibling_hash: (leaf_left_hash, leaf_right_hash),
+            auth_path: path,
+            leaf_sibling_hash,
         })
     }
 
@@ -399,11 +377,6 @@ fn parent(index: usize) -> Option<usize> {
     }
 }
 
-// set a byte sequence to zero
-fn set_zero(buf: &mut [u8]) {
-    buf.iter_mut().for_each(|v| *v = 0)
-}
-
 #[inline]
 fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
@@ -462,7 +435,6 @@ mod tests {
                     &leaf_crh_parameters,
                     &two_to_one_crh_parameters,
                     &root,
-                    tree.height,
                     &leaf,
                     leaf_size
                 )

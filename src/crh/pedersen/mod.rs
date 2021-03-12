@@ -130,28 +130,31 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
         <Self as CRH>::setup(r)
     }
 
-    /// A naive implementation method: just concat the left input and right input together
+    /// A simple implementation method: just concat the left input and right input together
     ///
-    /// Warning: This evaluation method is not secure if left and right input have different sizes.
-    /// For example, if `[L = {0,1,1}, R = {1}]` and `[L = {0,1}, R = {1,1}]` evaluates to the same hash.
-    ///
-    /// TODO: use a more rigid evaluation method.
+    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
     fn evaluate(
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],
     ) -> Result<Self::Output, Error> {
-        #[cfg(feature = "std")]
-        debug_assert!(
-            left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS,
-            format!(
-                "left_input.len() * 8: {}, Self::LEFT_INPUT_SIZE_BITS: {}",
-                left_input.len() * 8,
-                Self::LEFT_INPUT_SIZE_BITS
-            )
+        #[cfg(feature = "std")] // check overflow
+        {
+            debug_assert!(
+                left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS,
+                format!(
+                    "left_input.len() * 8: {}, Self::LEFT_INPUT_SIZE_BITS: {}",
+                    left_input.len() * 8,
+                    Self::LEFT_INPUT_SIZE_BITS
+                )
+            );
+            debug_assert!(right_input.len() * 8 <= Self::RIGHT_INPUT_SIZE_BITS);
+        }
+        assert_eq!(
+            left_input.len(),
+            right_input.len(),
+            "left and right input should be of equal length"
         );
-        assert!(right_input.len() * 8 <= Self::RIGHT_INPUT_SIZE_BITS);
-
         let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
 
         buffer
