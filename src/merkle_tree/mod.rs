@@ -389,7 +389,8 @@ mod tests {
         merkle_tree::*,
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_ff::{ToBytes, Zero};
+    use ark_ff::{BigInteger256, ToBytes, Zero};
+    use ark_std::{test_rng, UniformRand};
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -444,15 +445,24 @@ mod tests {
 
     #[test]
     fn good_root_test() {
-        // let mut leaves = Vec::new();
-        // for i in 0..4u8 {
-        //     leaves.push([i, i, i, i, i, i, i, i]);
-        // }
-        // generate_merkle_tree_test(&leaves, 8);
+        let mut rng = test_rng();
+
+        let mut leaves = Vec::new();
+        for i in 0..2u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
+        }
+        generate_merkle_tree_test(&leaves, 32);
+
+        let mut leaves = Vec::new();
+        for i in 0..4u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
+        }
+        generate_merkle_tree_test(&leaves, 32);
+
         let mut leaves = Vec::new();
         for i in 0..128u8 {
-            leaves.push([i, i, i, i, i, i, i, i]);
+            leaves.push(BigInteger256::rand(&mut rng));
         }
-        generate_merkle_tree_test(&leaves, 8);
+        generate_merkle_tree_test(&leaves, 32);
     }
 }
