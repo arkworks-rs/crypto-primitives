@@ -1,7 +1,7 @@
 #![allow(unused)] // temporary
 
 use crate::crh::TwoToOneCRH;
-use crate::CRH;
+use crate::{CryptoError, CRH};
 use ark_ff::ToBytes;
 use ark_std::vec::Vec;
 #[cfg(feature = "r1cs")]
@@ -296,9 +296,98 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
+    /// Given the index and new leaf, return an updated path in order from root to bottom non-leaf level
+    fn updated_path<L: ToBytes>(
+        &self,
+        index: usize,
+        new_leaf: &L,
+        leaf_size: usize,
+    ) -> Result<(LeafDigest<P>, Vec<TwoToOneDigest<P>>), crate::Error> {
+        // calculate the hash of leaf
+        let mut buffer = vec![0u8; leaf_size];
+        read_to_buffer(&new_leaf, &mut buffer);
+        let new_leaf_hash = P::LeafHash::evaluate(&self.leaf_hash_param, &buffer)?;
+
+        // calculate leaf sibling hash and locate its position (left or right)
+        let (leaf_left, leaf_right) = if index & 1 == 0 {
+            // leaf on left
+            (&new_leaf_hash, &self.leaf_nodes[index + 1])
+        } else {
+            (&self.leaf_nodes[index - 1], &new_leaf_hash)
+        };
+
+        // calculate the updated hash at bottom non-leaf-level
+        let mut path_bottom_to_top = Vec::with_capacity(self.height - 1);
+        {
+            let mut buffer_left = vec![0u8; P::leaf_hash_output_size_upper_bound()];
+            let mut buffer_right = vec![0u8; P::leaf_hash_output_size_upper_bound()];
+            read_to_buffer(leaf_left, &mut buffer_left);
+            read_to_buffer(leaf_right, &mut buffer_right);
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
+                &self.two_to_one_hash_param,
+                &buffer_left,
+                &buffer_right,
+            )?);
+        }
+
+        // then calculate the updated hash from bottom to root
+        let leaf_index_in_tree = convert_index_to_last_level(index, self.height);
+        let mut prev_index = parent(leaf_index_in_tree).unwrap();
+        let mut buffer_left = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+        let mut buffer_right = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
+        while !is_root(prev_index) {
+            let (left_hash, right_hash) = if is_left_child(prev_index) {
+                (
+                    path_bottom_to_top.last().unwrap(),
+                    &self.non_leaf_nodes[sibling(prev_index).unwrap()],
+                )
+            } else {
+                (
+                    &self.non_leaf_nodes[sibling(prev_index).unwrap()],
+                    path_bottom_to_top.last().unwrap(),
+                )
+            };
+            read_to_buffer(left_hash, &mut buffer_left);
+            read_to_buffer(right_hash, &mut buffer_right);
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
+                &self.two_to_one_hash_param,
+                &buffer_left,
+                &buffer_right,
+            )?);
+            prev_index = parent(prev_index).unwrap();
+        }
+
+        debug_assert_eq!(path_bottom_to_top.len(), self.height - 1);
+        let path_top_to_bottom: Vec<_> = path_bottom_to_top.into_iter().rev().collect();
+        return Ok((new_leaf_hash, path_top_to_bottom));
+    }
+
     /// Update the leaf at `index` to updated leaf.
-    pub fn update<L: ToBytes>(&mut self, index: usize, new_leaf: &L) -> Result<(), crate::Error> {
-        todo!()
+    /// ```tree_diagram
+    ///         [A]
+    ///        /   \
+    ///      [B]    C
+    ///     / \   /  \
+    ///    D [E] F    H
+    ///   .. / \ ....
+    ///    [I] J
+    /// ```
+    pub fn update<L: ToBytes>(
+        &mut self,
+        index: usize,
+        new_leaf: &L,
+        leaf_size: usize,
+    ) -> Result<(), crate::Error> {
+        assert!(index < self.leaf_nodes.len(), "index out of range");
+        let (updated_leaf_hash, mut updated_path) =
+            self.updated_path(index, new_leaf, leaf_size)?;
+        self.leaf_nodes[index] = updated_leaf_hash;
+        let mut curr_index = convert_index_to_last_level(index, self.height);
+        for _ in 0..self.height - 1 {
+            curr_index = parent(curr_index).unwrap();
+            self.non_leaf_nodes[curr_index] = updated_path.pop().unwrap();
+        }
+        Ok(())
     }
 
     /// Update the leaf and check if the updated root is equal to `asserted_new_root`.
@@ -308,9 +397,22 @@ impl<P: Config> MerkleTree<P> {
         &mut self,
         index: usize,
         new_leaf: &L,
+        leaf_size: usize,
         asserted_new_root: &TwoToOneDigest<P>,
-    ) -> Result<(), crate::Error> {
-        todo!()
+    ) -> Result<bool, crate::Error> {
+        assert!(index < self.leaf_nodes.len(), "index out of range");
+        let (updated_leaf_hash, mut updated_path) =
+            self.updated_path(index, new_leaf, leaf_size)?;
+        if updated_path[0] != self.root() {
+            return Ok(false);
+        }
+        self.leaf_nodes[index] = updated_leaf_hash;
+        let mut curr_index = convert_index_to_last_level(index, self.height);
+        for _ in 0..self.height - 1 {
+            curr_index = parent(curr_index).unwrap();
+            self.non_leaf_nodes[curr_index] = updated_path.pop().unwrap();
+        }
+        Ok(true)
     }
 }
 
@@ -417,18 +519,44 @@ mod tests {
     }
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
-    fn generate_merkle_tree_test<L: ToBytes + Clone + Eq>(leaves: &[L], leaf_size: usize) -> () {
+    fn merkle_tree_test<L: ToBytes + Clone + Eq>(
+        leaves: &[L],
+        update_query: &[(usize, L)],
+        leaf_size: usize,
+    ) -> () {
         let mut rng = ark_std::test_rng();
-
+        let mut leaves = leaves.to_vec();
         let leaf_crh_parameters = <H as CRH>::setup(&mut rng).unwrap();
         let two_to_one_crh_parameters = <H as TwoToOneCRH>::setup(&mut rng).unwrap();
-        let tree = JubJubMerkleTree::new(
+        let mut tree = JubJubMerkleTree::new(
             &leaf_crh_parameters.clone(),
             &two_to_one_crh_parameters.clone(),
             &leaves,
         )
         .unwrap();
-        let root = tree.root();
+        let mut root = tree.root();
+        // test merkle tree functionality without update
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(
+                    &leaf_crh_parameters,
+                    &two_to_one_crh_parameters,
+                    &root,
+                    &leaf,
+                    leaf_size
+                )
+                .unwrap());
+        }
+
+        // test merkle tree update functionality
+        for (i, v) in update_query {
+            tree.update(*i, v, leaf_size);
+            leaves[*i] = v.clone();
+        }
+        // update the root
+        root = tree.root();
+        // verify again
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.generate_proof(i).unwrap();
             assert!(proof
@@ -451,18 +579,35 @@ mod tests {
         for i in 0..2u8 {
             leaves.push(BigInteger256::rand(&mut rng));
         }
-        generate_merkle_tree_test(&leaves, 32);
+        merkle_tree_test(
+            &leaves,
+            &vec![
+                (0, BigInteger256::rand(&mut rng)),
+                (1, BigInteger256::rand(&mut rng)),
+            ],
+            32,
+        );
 
         let mut leaves = Vec::new();
         for i in 0..4u8 {
             leaves.push(BigInteger256::rand(&mut rng));
         }
-        generate_merkle_tree_test(&leaves, 32);
+        merkle_tree_test(&leaves, &vec![(3, BigInteger256::rand(&mut rng))], 32);
 
         let mut leaves = Vec::new();
         for i in 0..128u8 {
             leaves.push(BigInteger256::rand(&mut rng));
         }
-        generate_merkle_tree_test(&leaves, 32);
+        merkle_tree_test(
+            &leaves,
+            &vec![
+                (2, BigInteger256::rand(&mut rng)),
+                (3, BigInteger256::rand(&mut rng)),
+                (5, BigInteger256::rand(&mut rng)),
+                (111, BigInteger256::rand(&mut rng)),
+                (127, BigInteger256::rand(&mut rng)),
+            ],
+            32,
+        );
     }
 }
