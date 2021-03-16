@@ -138,7 +138,15 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
         left_input: &[u8],
         right_input: &[u8],
     ) -> Result<Self::Output, Error> {
-        #[cfg(feature = "std")] // check overflow
+        assert_eq!(
+            left_input.len(),
+            right_input.len(),
+            "left and right input should be of equal length"
+        );
+        // check overflow
+        #[cfg(feature = "std")]
+        // The reason to feature gate this `debug_assert` is that debug assert
+        // does not allow formatted string in no-std
         {
             debug_assert!(
                 left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS,
@@ -148,13 +156,11 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
                     Self::LEFT_INPUT_SIZE_BITS
                 )
             );
-            debug_assert!(right_input.len() * 8 <= Self::RIGHT_INPUT_SIZE_BITS);
         }
-        assert_eq!(
-            left_input.len(),
-            right_input.len(),
-            "left and right input should be of equal length"
-        );
+        #[cfg(not(feature = "std"))]
+        {
+            debug_assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        }
         let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
 
         buffer
