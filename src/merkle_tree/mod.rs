@@ -68,22 +68,13 @@ impl<P: Config> Path<P> {
         leaf: &L,
         leaf_size: usize,
     ) -> Result<bool, crate::Error> {
-        // verify path length
+        // get tree height from path length
         let tree_height = self.auth_path.len() + 2;
 
         // calculate leaf hash
         let mut buffer = vec![0u8; leaf_size];
         read_to_buffer(leaf, &mut buffer)?;
         let claimed_leaf_hash = P::LeafHash::evaluate(&leaf_hash_parameters, &buffer)?;
-
-        // // check if leaf corresponds to leaf hash `path`
-        // if self.leaf_index & 1 == 0 && claimed_leaf_hash != self.leaf_sibling_hash.0 {
-        //     // left
-        //     return Ok(false);
-        // } else if self.leaf_index & 1 == 1 && claimed_leaf_hash != self.leaf_sibling_hash.1 {
-        //     // right
-        //     return Ok(false);
-        // }
 
         // check hash along the path from bottom to root
         let mut left_buffer = vec![0u8; P::leaf_hash_output_size_upper_bound()];
