@@ -1,18 +1,18 @@
-use crate::crh::TwoToOneFixedLengthCRHGadget;
+use crate::crh::TwoToOneCRHGadget;
 use crate::merkle_tree::Config;
-use crate::FixedLengthCRHGadget;
+use crate::CRHGadget;
 use ark_ff::Field;
 use ark_r1cs_std::boolean::Boolean;
+use ark_r1cs_std::eq::EqGadget;
 use ark_r1cs_std::ToBytesGadget;
 use ark_relations::r1cs::SynthesisError;
-use ark_r1cs_std::eq::EqGadget;
 
 /// Represents a merkle tree path gadget.
 pub struct PathVar<P, LeafH, NodeH, ConstraintF>
 where
     P: Config,
-    LeafH: FixedLengthCRHGadget<P::LeafHash, ConstraintF>,
-    NodeH: TwoToOneFixedLengthCRHGadget<P::TwoToOneHash, ConstraintF>,
+    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
+    NodeH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
@@ -22,14 +22,14 @@ where
     /// THe sibling of leaf.
     leaf_sibling: LeafH::OutputVar,
     /// position of leaf. Should be 0 (false) iff leaf is on the left.
-    leaf_position_bit: Boolean<ConstraintF>
+    leaf_position_bit: Boolean<ConstraintF>,
 }
 
 impl<P, LeafH, TwoToOneH, ConstraintF> PathVar<P, LeafH, TwoToOneH, ConstraintF>
 where
     P: Config,
-    LeafH: FixedLengthCRHGadget<P::LeafHash, ConstraintF>,
-    TwoToOneH: TwoToOneFixedLengthCRHGadget<P::TwoToOneHash, ConstraintF>,
+    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
+    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     /// Given a leaf, calculate the hash of the merkle tree
@@ -41,9 +41,15 @@ where
         leaf_hash_parameter: &LeafH::ParametersVar,
         two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
         root: &TwoToOneH::OutputVar,
-        leaf: impl ToBytesGadget<ConstraintF>,
+        leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<(), SynthesisError> {
-        self.conditionally_check_membership(leaf_hash_parameter, two_to_one_hash_parameter, root, leaf, &Boolean::constant(true))
+        self.conditionally_check_membership(
+            leaf_hash_parameter,
+            two_to_one_hash_parameter,
+            root,
+            leaf,
+            &Boolean::constant(true),
+        )
     }
 
     /// Check membership if `should_enforce` is True.
@@ -55,7 +61,6 @@ where
         leaf: &impl ToBytesGadget<ConstraintF>,
         should_enforce: &Boolean<ConstraintF>,
     ) -> Result<(), SynthesisError> {
-
         // calculate leaf hash
         let leaf_bytes = leaf.to_bytes()?;
         let claimed_leaf_hash = LeafH::evaluate(leaf_hash_parameter, &leaf_bytes)?;
@@ -67,11 +72,17 @@ where
         // and the bit being 1 indicates our currently hashed value is on the right.
         // Thus `left_hash` is sibling if leaf_position_bit is 1, and leaf if bit is 0
 
-        let left_hash = self.leaf_position_bit.select(leaf_sibling_hash, &claimed_leaf_hash)?.to_bytes()?;
-        let right_hash = self.leaf_position_bit.select(&claimed_leaf_hash, leaf_sibling_hash)?.to_bytes()?;
+        let left_hash = self
+            .leaf_position_bit
+            .select(leaf_sibling_hash, &claimed_leaf_hash)?
+            .to_bytes()?;
+        let right_hash = self
+            .leaf_position_bit
+            .select(&claimed_leaf_hash, leaf_sibling_hash)?
+            .to_bytes()?;
 
-        let mut curr_hash = TwoToOneH
-        ::evaluate(two_to_one_hash_parameter, &left_hash, &right_hash)?;
+        let mut curr_hash =
+            TwoToOneH::evaluate_both(two_to_one_hash_parameter, &left_hash, &right_hash)?;
 
         // To traverse up a MT, we iterate over the path from bottom to top (in reverse)
         let path_rev = {
@@ -91,14 +102,16 @@ where
             // Thus `left_hash` is sibling if bit is 1, and leaf if bit is 0
             let bit = &path_rev[level];
 
+            let sibling = &auth_path_rev[level];
 
-            let sibling = &auth_path_rev[level].to_bytes()?;
-            let curr_hash_to_bytes = curr_hash.to_bytes()?;
+            let left_hash = bit.select(sibling, &curr_hash)?;
+            let right_hash = bit.select(&curr_hash, sibling)?;
 
-            let left_hash = bit.select(sibling, &curr_hash_to_bytes)?;
-            let right_hash = bit.select(&curr_hash_to_bytes, sibling)?;
-
-            curr_hash = TwoToOneH::evaluate(two_to_one_hash_parameter, &left_hash, &right_hash)
+            curr_hash = TwoToOneH::evaluate_both(
+                two_to_one_hash_parameter,
+                &left_hash.to_bytes()?,
+                &right_hash.to_bytes()?,
+            )?
         }
 
         // enforce `curr_hash` is root

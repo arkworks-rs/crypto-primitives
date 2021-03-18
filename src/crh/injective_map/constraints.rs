@@ -3,7 +3,7 @@ use core::{fmt::Debug, marker::PhantomData};
 use crate::crh::{
     injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
     pedersen::{constraints as ped_constraints, Window},
-    FixedLengthCRHGadget,
+    CRHGadget,
 };
 
 use ark_ec::{
@@ -69,10 +69,10 @@ where
     #[doc(hidden)]
     _compressor_gadget: PhantomData<IG>,
     #[doc(hidden)]
-    _crh: ped_constraints::CRHGadget<C, GG, W>,
+    _crh: ped_constraints::PedersenGadget<C, GG, W>,
 }
 
-impl<C, I, GG, IG, W> FixedLengthCRHGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
+impl<C, I, GG, IG, W> CRHGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
     for PedersenCRHCompressorGadget<C, I, W, GG, IG>
 where
     C: ProjectiveCurve,
@@ -90,7 +90,7 @@ where
         parameters: &Self::ParametersVar,
         input: &[UInt8<ConstraintF<C>>],
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let result = ped_constraints::CRHGadget::<C, GG, W>::evaluate(parameters, input)?;
+        let result = ped_constraints::PedersenGadget::<C, GG, W>::evaluate(parameters, input)?;
         IG::evaluate(&result)
     }
 }

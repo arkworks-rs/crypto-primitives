@@ -1,12 +1,12 @@
 use ark_ff::Field;
 use core::fmt::Debug;
 
-use crate::crh::CRH;
+use crate::crh::{TwoToOneCRH, CRH};
 use ark_relations::r1cs::SynthesisError;
 
 use ark_r1cs_std::prelude::*;
 
-pub trait FixedLengthCRHGadget<H: CRH, ConstraintF: Field>: Sized {
+pub trait CRHGadget<H: CRH, ConstraintF: Field>: Sized {
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
@@ -24,7 +24,7 @@ pub trait FixedLengthCRHGadget<H: CRH, ConstraintF: Field>: Sized {
     ) -> Result<Self::OutputVar, SynthesisError>;
 }
 
-pub trait TwoToOneFixedLengthCRHGadget<H: CRH, ConstraintF: Field>: Sized {
+pub trait TwoToOneCRHGadget<H: TwoToOneCRH, ConstraintF: Field>: Sized {
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
@@ -36,7 +36,7 @@ pub trait TwoToOneFixedLengthCRHGadget<H: CRH, ConstraintF: Field>: Sized {
 
     type ParametersVar: AllocVar<H::Parameters, ConstraintF> + Clone;
 
-    fn evaluate(
+    fn evaluate_both(
         parameters: &Self::ParametersVar,
         left_input: &[UInt8<ConstraintF>],
         right_input: &[UInt8<ConstraintF>],

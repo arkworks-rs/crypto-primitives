@@ -39,7 +39,7 @@ pub use self::{
 
 #[cfg(feature = "r1cs")]
 pub use self::{
-    commitment::CommitmentGadget, crh::FixedLengthCRHGadget, merkle_tree::constraints::PathVar,
+    commitment::CommitmentGadget, crh::CRHGadget, merkle_tree::constraints::PathVar,
     prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
 };
 

@@ -55,7 +55,7 @@ impl<C: ProjectiveCurve, W: Window> CRH for PedersenCRH<C, W> {
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         let time = start_timer!(|| format!(
             "PedersenCRH::Setup: {} {}-bit windows; {{0,1}}^{{{}}} -> C",
             W::NUM_WINDOWS,
@@ -126,14 +126,14 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
-    fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
-        <Self as CRH>::setup(r)
+    fn setup_two_to_one_crh<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
+        <Self as CRH>::setup_crh(r)
     }
 
     /// A simple implementation method: just concat the left input and right input together
     ///
     /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate(
+    fn evaluate_both(
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],
@@ -168,7 +168,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
             .zip(left_input.iter().chain(right_input.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
-        <Self as CRH>::evaluate(parameters, &buffer)
+        Self::evaluate(parameters, &buffer)
     }
 }
 

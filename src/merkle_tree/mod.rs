@@ -89,8 +89,11 @@ impl<P: Config> Path<P> {
             read_to_buffer(&claimed_leaf_hash, &mut right_buffer)
         };
 
-        let mut curr_path_node =
-            P::TwoToOneHash::evaluate(&two_to_one_hash_parameters, &left_buffer, &right_buffer)?;
+        let mut curr_path_node = P::TwoToOneHash::evaluate_both(
+            &two_to_one_hash_parameters,
+            &left_buffer,
+            &right_buffer,
+        )?;
 
         let mut left_buffer = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
         let mut right_buffer = vec![0u8; P::two_to_one_hash_output_size_upper_bound()];
@@ -111,7 +114,7 @@ impl<P: Config> Path<P> {
                 read_to_buffer(&curr_path_node, &mut right_buffer)?;
             }
             // update curr_path_node
-            curr_path_node = P::TwoToOneHash::evaluate(
+            curr_path_node = P::TwoToOneHash::evaluate_both(
                 &two_to_one_hash_parameters,
                 &left_buffer,
                 &right_buffer,
@@ -172,7 +175,7 @@ impl<P: Config> MerkleTree<P> {
 
         let tree_height = tree_height(non_leaf_nodes_size + leaf_nodes_size);
 
-        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate(
+        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate_both(
             two_to_one_hash_param,
             &vec![0u8; P::TwoToOneHash::LEFT_INPUT_SIZE_BITS / 8],
             &vec![0u8; P::TwoToOneHash::RIGHT_INPUT_SIZE_BITS / 8],
@@ -211,8 +214,11 @@ impl<P: Config> MerkleTree<P> {
                 // compute hash
                 read_to_buffer(&leaf_nodes[left_leaf_index], &mut buffer_left)?;
                 read_to_buffer(&leaf_nodes[right_leaf_index], &mut buffer_right)?;
-                non_leaf_nodes[current_index] =
-                    P::TwoToOneHash::evaluate(&two_to_one_hash_param, &buffer_left, &buffer_right)?
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_both(
+                    &two_to_one_hash_param,
+                    &buffer_left,
+                    &buffer_right,
+                )?
             }
         }
 
@@ -227,8 +233,11 @@ impl<P: Config> MerkleTree<P> {
                 let right_index = right_child(current_index);
                 read_to_buffer(&non_leaf_nodes[left_index], &mut buffer_left)?;
                 read_to_buffer(&non_leaf_nodes[right_index], &mut buffer_right)?;
-                non_leaf_nodes[current_index] =
-                    P::TwoToOneHash::evaluate(&two_to_one_hash_param, &buffer_left, &buffer_right)?
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_both(
+                    &two_to_one_hash_param,
+                    &buffer_left,
+                    &buffer_right,
+                )?
             }
         }
 
@@ -314,7 +323,7 @@ impl<P: Config> MerkleTree<P> {
             let mut buffer_right = vec![0u8; P::leaf_hash_output_size_upper_bound()];
             read_to_buffer(leaf_left, &mut buffer_left);
             read_to_buffer(leaf_right, &mut buffer_right);
-            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate_both(
                 &self.two_to_one_hash_param,
                 &buffer_left,
                 &buffer_right,
@@ -340,7 +349,7 @@ impl<P: Config> MerkleTree<P> {
             };
             read_to_buffer(left_hash, &mut buffer_left);
             read_to_buffer(right_hash, &mut buffer_right);
-            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate_both(
                 &self.two_to_one_hash_param,
                 &buffer_left,
                 &buffer_right,
@@ -517,8 +526,8 @@ mod tests {
     ) -> () {
         let mut rng = ark_std::test_rng();
         let mut leaves = leaves.to_vec();
-        let leaf_crh_parameters = <H as CRH>::setup(&mut rng).unwrap();
-        let two_to_one_crh_parameters = <H as TwoToOneCRH>::setup(&mut rng).unwrap();
+        let leaf_crh_parameters = <H as CRH>::setup_crh(&mut rng).unwrap();
+        let two_to_one_crh_parameters = H::setup_two_to_one_crh(&mut rng).unwrap();
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_parameters.clone(),
             &two_to_one_crh_parameters.clone(),

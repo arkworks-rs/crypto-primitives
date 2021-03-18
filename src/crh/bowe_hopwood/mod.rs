@@ -55,7 +55,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH for BoweHopwoodCRH<P, W> {
     type Output = TEProjective<P>;
     type Parameters = Parameters<P>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
             let upper_limit = F::modulus_minus_one_div_two();
             let mut c = 0;
@@ -188,7 +188,8 @@ mod test {
         }
 
         let rng = &mut test_rng();
-        let params = <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::setup(rng).unwrap();
+        let params =
+            <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::setup_crh(rng).unwrap();
         let _ =
             <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::evaluate(&params, &[1, 2, 3])
                 .unwrap();

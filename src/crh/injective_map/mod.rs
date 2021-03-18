@@ -43,9 +43,9 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         let time = start_timer!(|| format!("PedersenCRHCompressor::Setup"));
-        let params = pedersen::PedersenCRH::<C, W>::setup(rng);
+        let params = pedersen::PedersenCRH::<C, W>::setup_crh(rng);
         end_timer!(time);
         params
     }

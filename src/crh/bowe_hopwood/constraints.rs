@@ -4,7 +4,7 @@ use crate::{
     crh::{
         bowe_hopwood::{BoweHopwoodCRH, Parameters, CHUNK_SIZE},
         pedersen::Window,
-        FixedLengthCRHGadget,
+        CRHGadget,
     },
     Vec,
 };
@@ -27,7 +27,7 @@ pub struct ParametersVar<P: TEModelParameters, W: Window> {
     _window: PhantomData<W>,
 }
 
-pub struct CRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+pub struct BoweHopwoodGadGet<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
 {
@@ -37,7 +37,7 @@ where
     _base_field: PhantomData<F>,
 }
 
-impl<P, F, W> FixedLengthCRHGadget<BoweHopwoodCRH<P, W>, ConstraintF<P>> for CRHGadget<P, F>
+impl<P, F, W> CRHGadget<BoweHopwoodCRH<P, W>, ConstraintF<P>> for BoweHopwoodGadGet<P, F>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
     F: FieldVar<P::BaseField, ConstraintF<P>>,
@@ -108,19 +108,17 @@ where
 mod test {
     use ark_std::rand::Rng;
 
-    use crate::crh::{
-        bowe_hopwood::{constraints::CRHGadget, BoweHopwoodCRH},
-        pedersen::Window as PedersenWindow,
-        FixedLengthCRHGadget, CRH,
-    };
+    use crate::crh::bowe_hopwood::constraints::BoweHopwoodGadGet;
+    use crate::crh::bowe_hopwood::BoweHopwoodCRH;
+    use crate::crh::{pedersen::Window as PedersenWindow, CRHGadget, CRH};
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::test_rng;
 
-    type TestCRH = CRH<EdwardsParameters, Window>;
-    type TestCRHGadget = CRHGadget<EdwardsParameters, FqVar>;
+    type TestCRH = BoweHopwoodCRH<EdwardsParameters, Window>;
+    type TestCRHGadget = BoweHopwoodGadGet<EdwardsParameters, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
@@ -152,15 +150,14 @@ mod test {
         let (input, input_var) = generate_input(cs.clone(), rng);
         println!("number of constraints for input: {}", cs.num_constraints());
 
-        let parameters = TestCRH::setup(rng).unwrap();
+        let parameters = TestCRH::setup_crh(rng).unwrap();
         let primitive_result = TestCRH::evaluate(&parameters, &input).unwrap();
 
-        let parameters_var =
-            <TestCRHGadget as FixedLengthCRHGadget<TestCRH, Fr>>::ParametersVar::new_witness(
-                ark_relations::ns!(cs, "parameters_var"),
-                || Ok(&parameters),
-            )
-            .unwrap();
+        let parameters_var = <TestCRHGadget as CRHGadget<TestCRH, Fr>>::ParametersVar::new_witness(
+            ark_relations::ns!(cs, "parameters_var"),
+            || Ok(&parameters),
+        )
+        .unwrap();
         println!(
             "number of constraints for input + params: {}",
             cs.num_constraints()

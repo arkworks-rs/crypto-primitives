@@ -19,7 +19,7 @@ pub trait CRH {
     type Output: ToBytes + Clone + Eq + core::fmt::Debug + Hash + Default;
     type Parameters: Clone + Default;
 
-    fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
+    fn setup_crh<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
     fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error>;
 }
 
@@ -31,8 +31,9 @@ pub trait TwoToOneCRH {
     type Output: ToBytes + Clone + Eq + core::fmt::Debug + Hash + Default;
     type Parameters: Clone + Default;
 
-    fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    fn evaluate(
+    fn setup_two_to_one_crh<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
+    fn evaluate_both(
+        // we do not use `evaluate` because some implementations may use both `CRH` and `TwoToOneCRH` trait, which causes ambiguity
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],
