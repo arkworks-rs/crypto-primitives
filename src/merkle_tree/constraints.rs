@@ -1,28 +1,85 @@
 use crate::crh::TwoToOneCRHGadget;
 use crate::merkle_tree::Config;
-use crate::CRHGadget;
+use crate::{CRHGadget, Path};
 use ark_ff::Field;
+use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::boolean::Boolean;
 use ark_r1cs_std::eq::EqGadget;
+#[allow(unused)]
+use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::ToBytesGadget;
-use ark_relations::r1cs::SynthesisError;
+use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_std::borrow::Borrow;
 
 /// Represents a merkle tree path gadget.
-pub struct PathVar<P, LeafH, NodeH, ConstraintF>
+pub struct PathVar<P, LeafHG, TwoToOneHG, ConstraintF>
 where
     P: Config,
-    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
-    NodeH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
+    LeafHG: CRHGadget<P::LeafHash, ConstraintF>,
+    TwoToOneHG: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
-    auth_path: Vec<NodeH::OutputVar>,
+    auth_path: Vec<TwoToOneHG::OutputVar>,
     /// THe sibling of leaf.
-    leaf_sibling: LeafH::OutputVar,
+    leaf_sibling: LeafHG::OutputVar,
     /// position of leaf. Should be 0 (false) iff leaf is on the left.
     leaf_position_bit: Boolean<ConstraintF>,
+}
+
+impl<P, LeafHG, TwoToOneHG, ConstraintF> AllocVar<Path<P>, ConstraintF>
+    for PathVar<P, LeafHG, TwoToOneHG, ConstraintF>
+where
+    P: Config,
+    LeafHG: CRHGadget<P::LeafHash, ConstraintF>,
+    TwoToOneHG: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
+    ConstraintF: Field,
+{
+    fn new_variable<T: Borrow<Path<P>>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self, SynthesisError> {
+        let ns = cs.into();
+        let cs = ns.cs();
+        f().and_then(|val| {
+            let leaf_sibling = LeafHG::OutputVar::new_variable(
+                ark_relations::ns!(cs, "leaf_sibling"),
+                || Ok(val.borrow().leaf_sibling_hash.clone()),
+                mode,
+            )?;
+            let leaf_position_bit = Boolean::new_variable(
+                ark_relations::ns!(cs, "leaf_position_bit"),
+                || Ok(val.borrow().leaf_index & 1 == 1),
+                mode,
+            )?;
+            let mut path = Vec::with_capacity(val.borrow().position_list().len());
+            for bit in val.borrow().position_list().into_iter() {
+                path.push(Boolean::new_variable(
+                    ark_relations::ns!(cs, "path_bit"),
+                    || Ok(bit),
+                    mode,
+                )?)
+            }
+
+            let mut auth_path = Vec::with_capacity(val.borrow().auth_path.len());
+            for v in val.borrow().auth_path.iter() {
+                auth_path.push(TwoToOneHG::OutputVar::new_variable(
+                    ark_relations::ns!(cs, "auth_path_node"),
+                    || Ok(v.clone()),
+                    mode,
+                )?)
+            }
+            Ok(PathVar {
+                path,
+                auth_path,
+                leaf_sibling,
+                leaf_position_bit,
+            })
+        })
+    }
 }
 
 impl<P, LeafH, TwoToOneH, ConstraintF> PathVar<P, LeafH, TwoToOneH, ConstraintF>
@@ -143,5 +200,153 @@ where
         new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<(), SynthesisError> {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::crh::pedersen::constraints::PedersenGadget;
+    use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget};
+
+    use crate::merkle_tree::Config;
+    use crate::{CRHGadget, MerkleTree, PathVar, CRH};
+    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
+    #[allow(unused)]
+    use ark_r1cs_std::prelude::*;
+    #[allow(unused)]
+    use ark_relations::r1cs::ConstraintSystem;
+
+    #[derive(Clone)]
+    pub(super) struct Window4x256;
+    impl pedersen::Window for Window4x256 {
+        const WINDOW_SIZE: usize = 4;
+        const NUM_WINDOWS: usize = 256;
+    }
+
+    type H = pedersen::PedersenCRH<JubJub, Window4x256>;
+    type HG = PedersenGadget<JubJub, EdwardsVar, Window4x256>;
+
+    struct JubJubMerkleTreeParams;
+
+    impl Config for JubJubMerkleTreeParams {
+        type LeafHash = H;
+        type TwoToOneHash = H;
+
+        fn leaf_hash_output_size_upper_bound() -> usize {
+            32
+        }
+
+        fn two_to_one_hash_output_size_upper_bound() -> usize {
+            32
+        }
+    }
+
+    type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
+
+    /// Generate a merkle tree, its constraints, and test its constraints
+    fn merkle_tree_test(leaves: &[[u8; 30]], use_bad_root: bool) -> () {
+        let mut rng = ark_std::test_rng();
+
+        let leaf_crh_parameters = H::setup_crh(&mut rng).unwrap();
+        let two_to_one_crh_parameters = H::setup_two_to_one_crh(&mut rng).unwrap();
+        let tree = JubJubMerkleTree::new(&leaf_crh_parameters, &two_to_one_crh_parameters, leaves)
+            .unwrap();
+        let root = tree.root();
+        let cs = ConstraintSystem::<Fq>::new_ref();
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(
+                    &leaf_crh_parameters,
+                    &two_to_one_crh_parameters,
+                    &root,
+                    &leaf,
+                    30
+                )
+                .unwrap());
+
+            // Allocate Merkle Tree Root
+            let root = <HG as CRHGadget<H, _>>::OutputVar::new_witness(
+                ark_relations::ns!(cs, "new_digest"),
+                || {
+                    if use_bad_root {
+                        Ok(<H as CRH>::Output::default())
+                    } else {
+                        Ok(root)
+                    }
+                },
+            )
+            .unwrap();
+
+            let constraints_from_digest = cs.num_constraints();
+            println!("constraints from digest: {}", constraints_from_digest);
+
+            // Allocate Parameters for CRH
+            let leaf_crh_parameters_var = <HG as CRHGadget<H, _>>::ParametersVar::new_constant(
+                ark_relations::ns!(cs, "leaf_crh_parameter"),
+                &leaf_crh_parameters,
+            )
+            .unwrap();
+            let two_to_one_crh_parameters_var =
+                <HG as TwoToOneCRHGadget<H, _>>::ParametersVar::new_constant(
+                    ark_relations::ns!(cs, "two_to_one_crh_parameter"),
+                    &two_to_one_crh_parameters,
+                )
+                .unwrap();
+
+            let constraints_from_parameters = cs.num_constraints() - constraints_from_digest;
+            println!(
+                "constraints from parameters: {}",
+                constraints_from_parameters
+            );
+
+            // Allocate Leaf
+            let leaf_g = UInt8::constant_vec(leaf);
+
+            let constraints_from_leaf =
+                cs.num_constraints() - constraints_from_parameters - constraints_from_digest;
+            println!("constraints from leaf: {}", constraints_from_leaf);
+
+            // Allocate Merkle Tree Path
+            let cw: PathVar<_, HG, HG, Fq> =
+                PathVar::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(&proof)).unwrap();
+            // check pathvar correctness
+            assert_eq!(cw.leaf_sibling.value().unwrap(), proof.leaf_sibling_hash);
+            assert_eq!(
+                cw.leaf_position_bit.value().unwrap(),
+                proof.leaf_index & 1 == 1
+            );
+            let position_list = proof.position_list();
+            for (i, path_node) in cw.path.iter().enumerate() {
+                assert_eq!(path_node.value().unwrap(), position_list[i]);
+            }
+            for (i, auth_path_node) in cw.auth_path.iter().enumerate() {
+                assert_eq!(auth_path_node.value().unwrap(), proof.auth_path[i])
+            }
+
+            let constraints_from_path = cs.num_constraints()
+                - constraints_from_parameters
+                - constraints_from_digest
+                - constraints_from_leaf;
+            println!("constraints from path: {}", constraints_from_path);
+            let leaf_g: &[_] = leaf_g.as_slice();
+            cw.check_membership(
+                &leaf_crh_parameters_var,
+                &two_to_one_crh_parameters_var,
+                &root,
+                &leaf_g,
+            )
+            .unwrap();
+            let setup_constraints = constraints_from_leaf
+                + constraints_from_digest
+                + constraints_from_parameters
+                + constraints_from_path;
+            println!(
+                "number of constraints: {}",
+                cs.num_constraints() - setup_constraints
+            );
+        }
+
+        assert!(cs.is_satisfied().unwrap());
     }
 }
