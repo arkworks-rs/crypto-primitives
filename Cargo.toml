@@ -20,8 +20,6 @@ ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = fa
 ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
 ark-relations = { git = "https://github.com/arkworks-rs/snark", default-features = false }
 
-bench-utils = { git = "https://github.com/arkworks-rs/utils", default-features = false }
-
 blake2 = { version = "0.9", default-features = false }
 digest = "0.9"
 
@@ -37,7 +35,7 @@ tracing = { version = "0.1", default-features = false, features = [ "attributes"
 [features]
 default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
-print-trace = [ "bench-utils/print-trace" ]
+print-trace = [ "ark-std/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
 r1cs = [ "ark-r1cs-std", "tracing", "ark-nonnative-field" ]
 
