@@ -24,9 +24,6 @@ pub mod prf;
 pub mod signature;
 pub mod snark;
 
-#[macro_use]
-extern crate ark_std;
-
 pub use self::{
     commitment::CommitmentScheme,
     crh::FixedLengthCRH,
