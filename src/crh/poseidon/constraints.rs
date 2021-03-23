@@ -8,7 +8,9 @@ use ark_r1cs_std::uint8::UInt8;
 use ark_r1cs_std::ToConstraintFieldGadget;
 use ark_r1cs_std::{alloc::AllocVar, fields::FieldVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_std::vec::Vec;
 
+use ark_std::borrow::ToOwned;
 use ark_std::marker::PhantomData;
 use core::borrow::Borrow;
 
