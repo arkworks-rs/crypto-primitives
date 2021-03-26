@@ -296,8 +296,8 @@ impl<P: Config> MerkleTree<P> {
         new_leaf: &L,
     ) -> Result<(LeafDigest<P>, Vec<TwoToOneDigest<P>>), crate::Error> {
         // calculate the hash of leaf
-        let mut buffer = ark_ff::to_bytes!(&new_leaf)?;
-        let new_leaf_hash = P::LeafHash::evaluate(&self.leaf_hash_param, &buffer)?;
+        let new_leaf_hash =
+            P::LeafHash::evaluate(&self.leaf_hash_param, &ark_ff::to_bytes!(&new_leaf)?)?;
 
         // calculate leaf sibling hash and locate its position (left or right)
         let (leaf_left, leaf_right) = if index & 1 == 0 {
