@@ -1,12 +1,12 @@
 [package]
 name = "ark-crypto-primitives"
-version = "0.1.0"
+version = "0.2.0"
 authors = [ "arkworks contributors" ]
-description = "A library of useful cryptographic primitives that are used"
+description = "A library of useful cryptographic primitives"
 homepage = "https://arkworks.rs"
 repository = "https://github.com/arkworks-rs/crypto-primitives"
 documentation = "https://docs.rs/ark-crypto-primitives/"
-keywords = [ "r1cs", "pedersen", "blake2s", "snark" ]
+keywords = [ "r1cs", "pedersen", "blake2s", "snark", "schnorr" ]
 categories = ["cryptography"]
 include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 license = "MIT/Apache-2.0"
@@ -15,20 +15,18 @@ edition = "2018"
 ################################# Dependencies ################################
 
 [dependencies]
-ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
-ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
-ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
-ark-relations = { git = "https://github.com/arkworks-rs/snark", default-features = false }
-
-bench-utils = { git = "https://github.com/arkworks-rs/utils", default-features = false }
+ark-ff = { version = "^0.2.0", default-features = false }
+ark-ec = { version = "^0.2.0", default-features = false }
+ark-std = { version = "^0.2.0", default-features = false }
+ark-relations = { version = "^0.2.0", default-features = false }
 
 blake2 = { version = "0.9", default-features = false }
 digest = "0.9"
 
-ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", optional = true, default-features = false }
-ark-snark = { git = "https://github.com/arkworks-rs/snark", default-features = false }
+ark-r1cs-std = { version = "^0.2.0", optional = true, default-features = false }
+ark-snark = { version = "^0.2.0", default-features = false }
 
-ark-nonnative-field = { git = "https://github.com/arkworks-rs/nonnative", optional = true, default-features = false }
+ark-nonnative-field = { version = "^0.2.0", optional = true, default-features = false }
 
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
@@ -37,12 +35,12 @@ tracing = { version = "0.1", default-features = false, features = [ "attributes"
 [features]
 default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
-print-trace = [ "bench-utils/print-trace" ]
+print-trace = [ "ark-std/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
 r1cs = [ "ark-r1cs-std", "tracing", "ark-nonnative-field" ]
 
 [dev-dependencies]
-ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = [ "r1cs" ] }
-ark-bls12-377 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt4-298 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt6-298 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-381 = { version = "^0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-bls12-377 = { version = "^0.2.0", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt4-298 = { version = "^0.2.0", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt6-298 = { version = "^0.2.0", default-features = false, features = [ "r1cs" ] }

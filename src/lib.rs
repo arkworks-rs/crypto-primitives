@@ -10,7 +10,7 @@
 #![forbid(unsafe_code)]
 
 #[macro_use]
-extern crate bench_utils;
+extern crate ark_std;
 
 #[macro_use]
 extern crate derivative;
@@ -24,9 +24,6 @@ pub mod merkle_tree;
 pub mod prf;
 pub mod signature;
 pub mod snark;
-
-#[macro_use]
-extern crate ark_std;
 
 pub use self::{
     commitment::CommitmentScheme,
