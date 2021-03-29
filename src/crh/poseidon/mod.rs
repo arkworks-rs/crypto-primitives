@@ -3,6 +3,7 @@ use crate::{Error, Vec, CRH};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 
+use crate::crh::TwoToOneCRH;
 use ark_ff::fields::PrimeField;
 use ark_ff::ToConstraintField;
 
@@ -216,5 +217,33 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH for PoseidonCRH<F, P> {
         end_timer!(eval_time);
 
         Ok(result)
+    }
+}
+
+impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for PoseidonCRH<F, P> {
+    const LEFT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    const RIGHT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    type Output = F;
+    type Parameters = Poseidon<F, P>;
+
+    fn setup_two_to_one_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+        Self::setup_crh(rng)
+    }
+
+    /// A simple implementation of TwoToOneCRH by asserting left and right input has same length and chain them together.
+    fn evaluate_both(
+        parameters: &Self::Parameters,
+        left_input: &[u8],
+        right_input: &[u8],
+    ) -> Result<Self::Output, Error> {
+        assert_eq!(left_input.len(), right_input.len());
+        assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        let chained: Vec<_> = left_input
+            .iter()
+            .chain(right_input.iter())
+            .map(|x| *x)
+            .collect();
+
+        Self::evaluate(parameters, &chained)
     }
 }

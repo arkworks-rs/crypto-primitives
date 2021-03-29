@@ -10,6 +10,7 @@ use ark_r1cs_std::{alloc::AllocVar, fields::FieldVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::vec::Vec;
 
+use crate::crh::TwoToOneCRHGadget;
 use ark_std::borrow::ToOwned;
 use ark_std::marker::PhantomData;
 use core::borrow::Borrow;
@@ -261,6 +262,28 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadget<PoseidonCRH<F, P>, F>
             _ => panic!("incorrect number (elements) for poseidon hash"),
         };
         Ok(result.unwrap_or(Self::OutputVar::zero()))
+    }
+}
+
+impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<PoseidonCRH<F, P>, F>
+    for PoseidonCRHGadget<F, P>
+{
+    type OutputVar = FpVar<F>;
+    type ParametersVar = PoseidonRoundParamsVar<F, P>;
+
+    fn evaluate_both(
+        parameters: &Self::ParametersVar,
+        left_input: &[UInt8<F>],
+        right_input: &[UInt8<F>],
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        // assume equality of left and right length
+        assert_eq!(left_input.len(), right_input.len());
+        let chained_input: Vec<_> = left_input
+            .to_vec()
+            .into_iter()
+            .chain(right_input.to_vec().into_iter())
+            .collect();
+        Self::evaluate(parameters, &chained_input)
     }
 }
 
