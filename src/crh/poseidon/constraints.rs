@@ -1,7 +1,7 @@
 use super::sbox::constraints::SboxConstraints;
 use super::PoseidonRoundParams;
 use super::{Poseidon, PoseidonCRH};
-use crate::FixedLengthCRHGadget;
+use crate::CRHGadget;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::uint8::UInt8;
@@ -221,7 +221,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
 }
 
 // https://github.com/arkworks-rs/r1cs-std/blob/master/src/bits/uint8.rs#L343
-impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<F, P>, F>
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadget<PoseidonCRH<F, P>, F>
     for PoseidonCRHGadget<F, P>
 {
     type OutputVar = FpVar<F>;

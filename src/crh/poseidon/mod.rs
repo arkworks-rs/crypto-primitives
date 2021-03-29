@@ -1,6 +1,5 @@
 use crate::crh::poseidon::sbox::PoseidonSbox;
-use crate::crh::FixedLengthCRH;
-use crate::{Error, Vec};
+use crate::{Error, Vec, CRH};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 
@@ -182,12 +181,12 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH for PoseidonCRH<F, P> {
     const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
     type Parameters = Poseidon<F, P>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         // let time = start_timer!(|| format!(
         //     "Poseidon::Setup: {} {}-bit windows; {{0,1}}^{{{}}} -> C",
         //     W::NUM_WINDOWS,
