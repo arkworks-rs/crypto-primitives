@@ -262,14 +262,6 @@ mod tests {
     impl Config for JubJubMerkleTreeParams {
         type LeafHash = H;
         type TwoToOneHash = H;
-
-        fn leaf_hash_output_size_upper_bound() -> usize {
-            32
-        }
-
-        fn two_to_one_hash_output_size_upper_bound() -> usize {
-            32
-        }
     }
 
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;

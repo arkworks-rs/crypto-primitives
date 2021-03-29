@@ -11,10 +11,6 @@ pub mod constraints;
 pub trait Config {
     type LeafHash: CRH;
     type TwoToOneHash: TwoToOneCRH;
-    /// Determine the upper bound of output size of leaf hash.
-    fn leaf_hash_output_size_upper_bound() -> usize;
-    /// Determine the upper bound of output size of two-to-one hash.
-    fn two_to_one_hash_output_size_upper_bound() -> usize;
 }
 
 pub type TwoToOneDigest<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Output;
@@ -144,12 +140,15 @@ pub struct MerkleTree<P: Config> {
 }
 
 impl<P: Config> MerkleTree<P> {
+    /// Create an empty merkle tree such that all leaves are zero-filled.
     pub fn blank(
-        _leaf_hash_param: &LeafParam<P>,
-        _two_to_one_hash_param: &TwoToOneParam<P>,
-        _height: usize,
-    ) -> Self {
-        todo!()
+        leaf_hash_param: &LeafParam<P>,
+        two_to_one_hash_param: &TwoToOneParam<P>,
+        height: usize,
+    ) -> Result<Self, crate::Error> {
+        let leaf = vec![0u8; P::LeafHash::INPUT_SIZE_BITS / 8];
+        let leaves = vec![leaf; 1 << (height - 1)];
+        Self::new(leaf_hash_param, two_to_one_hash_param, &leaves)
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
@@ -484,14 +483,6 @@ mod tests {
     impl Config for JubJubMerkleTreeParams {
         type LeafHash = H;
         type TwoToOneHash = H;
-
-        fn leaf_hash_output_size_upper_bound() -> usize {
-            32
-        }
-
-        fn two_to_one_hash_output_size_upper_bound() -> usize {
-            32
-        }
     }
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
