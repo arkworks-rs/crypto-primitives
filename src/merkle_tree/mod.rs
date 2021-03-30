@@ -196,16 +196,14 @@ impl<P: Config> MerkleTree<P> {
 
         // compute the hash values for the non-leaf bottom layer
         {
-            let mut left_bytes;
-            let mut right_bytes;
             let start_index = level_indices.pop().unwrap();
             let upper_bound = left_child(start_index);
             for current_index in start_index..upper_bound {
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
-                left_bytes = ark_ff::to_bytes!(&leaf_nodes[left_leaf_index])?;
-                right_bytes = ark_ff::to_bytes!(&leaf_nodes[right_leaf_index])?;
+                let left_bytes = ark_ff::to_bytes!(&leaf_nodes[left_leaf_index])?;
+                let right_bytes = ark_ff::to_bytes!(&leaf_nodes[right_leaf_index])?;
                 non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_both(
                     &two_to_one_hash_param,
                     &left_bytes,
@@ -215,16 +213,14 @@ impl<P: Config> MerkleTree<P> {
         }
 
         // compute the hash values for nodes in every other layer in the tree
-        let mut left_bytes;
-        let mut right_bytes;
         level_indices.reverse();
         for &start_index in &level_indices {
             let upper_bound = left_child(start_index); // The exclusive index upper bound for this layer
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
-                left_bytes = ark_ff::to_bytes!(&non_leaf_nodes[left_index])?;
-                right_bytes = ark_ff::to_bytes!(&non_leaf_nodes[right_index])?;
+                let left_bytes = ark_ff::to_bytes!(&non_leaf_nodes[left_index])?;
+                let right_bytes = ark_ff::to_bytes!(&non_leaf_nodes[right_index])?;
                 non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_both(
                     &two_to_one_hash_param,
                     &left_bytes,
