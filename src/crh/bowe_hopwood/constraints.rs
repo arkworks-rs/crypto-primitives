@@ -27,7 +27,7 @@ pub struct ParametersVar<P: TEModelParameters, W: Window> {
     _window: PhantomData<W>,
 }
 
-pub struct BoweHopwoodGadGet<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+pub struct BoweHopwoodGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
 {
@@ -37,7 +37,7 @@ where
     _base_field: PhantomData<F>,
 }
 
-impl<P, F, W> CRHGadget<BoweHopwoodCRH<P, W>, ConstraintF<P>> for BoweHopwoodGadGet<P, F>
+impl<P, F, W> CRHGadget<BoweHopwoodCRH<P, W>, ConstraintF<P>> for BoweHopwoodGadget<P, F>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
     F: FieldVar<P::BaseField, ConstraintF<P>>,
@@ -108,7 +108,7 @@ where
 mod test {
     use ark_std::rand::Rng;
 
-    use crate::crh::bowe_hopwood::constraints::BoweHopwoodGadGet;
+    use crate::crh::bowe_hopwood::constraints::BoweHopwoodGadget;
     use crate::crh::bowe_hopwood::BoweHopwoodCRH;
     use crate::crh::{pedersen::Window as PedersenWindow, CRHGadget, CRH};
     use ark_ec::ProjectiveCurve;
@@ -118,7 +118,7 @@ mod test {
     use ark_std::test_rng;
 
     type TestCRH = BoweHopwoodCRH<EdwardsParameters, Window>;
-    type TestCRHGadget = BoweHopwoodGadGet<EdwardsParameters, FqVar>;
+    type TestCRHGadget = BoweHopwoodGadget<EdwardsParameters, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
