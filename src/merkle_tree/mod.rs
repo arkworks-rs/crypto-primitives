@@ -52,6 +52,30 @@ impl<P: Config> Path<P> {
     }
 }
 
+/// convert `computed_hash` and `sibling_hash` to bytes. `index` is the first `path.len()` bits of
+/// the position of tree.
+///
+/// If the least significant bit of `index` is 0, then `input_1` will be left and `input_2` will be right.
+/// Otherwise, `input_1` will be right and `input_2` will be left.
+///
+/// Returns: (left, right)
+fn select_left_right_bytes<B: ToBytes>(
+    index: usize,
+    computed_hash: &B,
+    sibling_hash: &B,
+) -> Result<(Vec<u8>, Vec<u8>), crate::Error> {
+    let mut left_bytes;
+    let mut right_bytes;
+    if index & 1 == 0 {
+        left_bytes = ark_ff::to_bytes!(computed_hash)?;
+        right_bytes = ark_ff::to_bytes!(sibling_hash)?;
+    } else {
+        left_bytes = ark_ff::to_bytes!(sibling_hash)?;
+        right_bytes = ark_ff::to_bytes!(computed_hash)?;
+    };
+    Ok((left_bytes, right_bytes))
+}
+
 impl<P: Config> Path<P> {
     /// Verify that a leaf is at `self.index` of the merkle tree.
     /// * `leaf_size`: leaf size in number of bytes
@@ -68,17 +92,8 @@ impl<P: Config> Path<P> {
         let claimed_leaf_hash =
             P::LeafHash::evaluate(&leaf_hash_parameters, &ark_ff::to_bytes!(&leaf)?)?;
         // check hash along the path from bottom to root
-        let mut left_bytes;
-        let mut right_bytes;
-        if self.leaf_index & 1 == 0 {
-            // leaf is on left
-            left_bytes = ark_ff::to_bytes!(&claimed_leaf_hash)?;
-            right_bytes = ark_ff::to_bytes!(&self.leaf_sibling_hash)?;
-        } else {
-            // leaf is on right
-            left_bytes = ark_ff::to_bytes!(&self.leaf_sibling_hash)?;
-            right_bytes = ark_ff::to_bytes!(&claimed_leaf_hash)?;
-        };
+        let (left_bytes, right_bytes) =
+            select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
 
         let mut curr_path_node = P::TwoToOneHash::evaluate_two_to_one_hash(
             &two_to_one_hash_parameters,
@@ -86,8 +101,6 @@ impl<P: Config> Path<P> {
             &right_bytes,
         )?;
 
-        let mut left_bytes;
-        let mut right_bytes;
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
         index >>= 1;
@@ -95,15 +108,8 @@ impl<P: Config> Path<P> {
         // Check levels between leaf level and root
         for level in (0..self.auth_path.len()).rev() {
             // check if path node at this level is left or right
-            if index & 1 == 0 {
-                // curr_path_node is on the left
-                left_bytes = ark_ff::to_bytes!(&curr_path_node)?;
-                right_bytes = ark_ff::to_bytes!(&self.auth_path[level])?;
-            } else {
-                // curr_path_node is on the right
-                left_bytes = ark_ff::to_bytes!(&self.auth_path[level])?;
-                right_bytes = ark_ff::to_bytes!(&curr_path_node)?;
-            }
+            let (left_bytes, right_bytes) =
+                select_left_right_bytes(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
             curr_path_node = P::TwoToOneHash::evaluate_two_to_one_hash(
                 &two_to_one_hash_parameters,
