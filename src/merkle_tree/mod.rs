@@ -137,6 +137,7 @@ impl<P: Config> Path<P> {
 /// solve the problem.
 pub struct MerkleTree<P: Config> {
     /// stores the non-leaf nodes in level order. The first element is the root node.
+    /// The ith nodes (starting at 1st) children are at indices `2*i`, `2*i+1`
     non_leaf_nodes: Vec<TwoToOneDigest<P>>,
     /// store the hash of leaf nodes from left to right
     leaf_nodes: Vec<LeafDigest<P>>,
@@ -150,6 +151,7 @@ pub struct MerkleTree<P: Config> {
 
 impl<P: Config> MerkleTree<P> {
     /// Create an empty merkle tree such that all leaves are zero-filled.
+    /// Consider using a sparse merkle tree if you need the tree to be low memory
     pub fn blank(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
@@ -173,7 +175,7 @@ impl<P: Config> MerkleTree<P> {
         );
         let non_leaf_nodes_size = leaf_nodes_size - 1;
 
-        let tree_height = tree_height(non_leaf_nodes_size + leaf_nodes_size);
+        let tree_height = tree_height(leaf_nodes_size);
 
         let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate_two_to_one_hash(
             two_to_one_hash_param,
@@ -260,7 +262,7 @@ impl<P: Config> MerkleTree<P> {
     /// Returns the authentication path from leaf at `index` to root
     pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
         // gather basic tree information
-        let tree_height = tree_height(self.non_leaf_nodes.len() + self.leaf_nodes.len());
+        let tree_height = tree_height(self.leaf_nodes.len());
 
         // Get Leaf hash, and leaf sibling hash,
         let leaf_index_in_tree = convert_index_to_last_level(index, tree_height);
@@ -395,14 +397,14 @@ impl<P: Config> MerkleTree<P> {
     }
 }
 
-/// Returns the height of the tree, given the size of the tree.
+/// Returns the height of the tree, given the number of leaves.
 #[inline]
-fn tree_height(tree_size: usize) -> usize {
-    if tree_size == 1 {
+fn tree_height(num_leaves: usize) -> usize {
+    if num_leaves == 1 {
         return 1;
     }
 
-    ark_std::log2(tree_size) as usize
+    (ark_std::log2(num_leaves) as usize) + 1
 }
 /// Returns true iff the index represents the root.
 #[inline]
