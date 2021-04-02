@@ -29,12 +29,12 @@ where
     leaf_position_bit: Boolean<ConstraintF>,
 }
 
-impl<P, LeafHG, TwoToOneHG, ConstraintF> AllocVar<Path<P>, ConstraintF>
-    for PathVar<P, LeafHG, TwoToOneHG, ConstraintF>
+impl<P, LeafH, TwoToOneH, ConstraintF> AllocVar<Path<P>, ConstraintF>
+    for PathVar<P, LeafH, TwoToOneH, ConstraintF>
 where
     P: Config,
-    LeafHG: CRHGadget<P::LeafHash, ConstraintF>,
-    TwoToOneHG: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
+    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
+    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     fn new_variable<T: Borrow<Path<P>>>(
@@ -45,7 +45,7 @@ where
         let ns = cs.into();
         let cs = ns.cs();
         f().and_then(|val| {
-            let leaf_sibling = LeafHG::OutputVar::new_variable(
+            let leaf_sibling = LeafH::OutputVar::new_variable(
                 ark_relations::ns!(cs, "leaf_sibling"),
                 || Ok(val.borrow().leaf_sibling_hash.clone()),
                 mode,
@@ -68,7 +68,7 @@ where
 
             let mut auth_path = Vec::with_capacity(val.borrow().auth_path.len());
             for v in val.borrow().auth_path.iter() {
-                auth_path.push(TwoToOneHG::OutputVar::new_variable(
+                auth_path.push(TwoToOneH::OutputVar::new_variable(
                     ark_relations::ns!(cs, "auth_path_node"),
                     || Ok(v.clone()),
                     mode,
