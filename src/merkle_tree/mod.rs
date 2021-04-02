@@ -386,15 +386,6 @@ impl<P: Config> MerkleTree<P> {
     }
 }
 
-// /// read `data` to `buf`
-// fn read_to_buffer(data: &impl ToBytes, buf: &mut [u8]) -> Result<(), crate::Error> {
-//     buf.iter_mut()
-//         .zip(&ark_ff::to_bytes![&data]?)
-//         .for_each(|(b, l_b)| *b = *l_b);
-//
-//     Ok(())
-// }
-
 /// Returns the height of the tree, given the size of the tree.
 #[inline]
 fn tree_height(tree_size: usize) -> usize {
