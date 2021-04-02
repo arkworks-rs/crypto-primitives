@@ -80,8 +80,11 @@ impl<P: Config> Path<P> {
             right_bytes = ark_ff::to_bytes!(&claimed_leaf_hash)?;
         };
 
-        let mut curr_path_node =
-            P::TwoToOneHash::evaluate_both(&two_to_one_hash_parameters, &left_bytes, &right_bytes)?;
+        let mut curr_path_node = P::TwoToOneHash::evaluate_two_to_one_hash(
+            &two_to_one_hash_parameters,
+            &left_bytes,
+            &right_bytes,
+        )?;
 
         let mut left_bytes;
         let mut right_bytes;
@@ -102,7 +105,7 @@ impl<P: Config> Path<P> {
                 right_bytes = ark_ff::to_bytes!(&curr_path_node)?;
             }
             // update curr_path_node
-            curr_path_node = P::TwoToOneHash::evaluate_both(
+            curr_path_node = P::TwoToOneHash::evaluate_two_to_one_hash(
                 &two_to_one_hash_parameters,
                 &left_bytes,
                 &right_bytes,
@@ -166,7 +169,7 @@ impl<P: Config> MerkleTree<P> {
 
         let tree_height = tree_height(non_leaf_nodes_size + leaf_nodes_size);
 
-        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate_both(
+        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate_two_to_one_hash(
             two_to_one_hash_param,
             &vec![0u8; P::TwoToOneHash::LEFT_INPUT_SIZE_BITS / 8],
             &vec![0u8; P::TwoToOneHash::RIGHT_INPUT_SIZE_BITS / 8],
@@ -204,7 +207,7 @@ impl<P: Config> MerkleTree<P> {
                 // compute hash
                 let left_bytes = ark_ff::to_bytes!(&leaf_nodes[left_leaf_index])?;
                 let right_bytes = ark_ff::to_bytes!(&leaf_nodes[right_leaf_index])?;
-                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_both(
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_two_to_one_hash(
                     &two_to_one_hash_param,
                     &left_bytes,
                     &right_bytes,
@@ -221,7 +224,7 @@ impl<P: Config> MerkleTree<P> {
                 let right_index = right_child(current_index);
                 let left_bytes = ark_ff::to_bytes!(&non_leaf_nodes[left_index])?;
                 let right_bytes = ark_ff::to_bytes!(&non_leaf_nodes[right_index])?;
-                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_both(
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate_two_to_one_hash(
                     &two_to_one_hash_param,
                     &left_bytes,
                     &right_bytes,
@@ -305,7 +308,7 @@ impl<P: Config> MerkleTree<P> {
         // calculate the updated hash at bottom non-leaf-level
         let mut path_bottom_to_top = Vec::with_capacity(self.height - 1);
         {
-            path_bottom_to_top.push(P::TwoToOneHash::evaluate_both(
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate_two_to_one_hash(
                 &self.two_to_one_hash_param,
                 &ark_ff::to_bytes!(&leaf_left)?,
                 &ark_ff::to_bytes!(&leaf_right)?,
@@ -327,7 +330,7 @@ impl<P: Config> MerkleTree<P> {
                     ark_ff::to_bytes!(path_bottom_to_top.last().unwrap())?,
                 )
             };
-            path_bottom_to_top.push(P::TwoToOneHash::evaluate_both(
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate_two_to_one_hash(
                 &self.two_to_one_hash_param,
                 &left_hash_bytes,
                 &right_hash_bytes,

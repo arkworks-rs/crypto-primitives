@@ -188,7 +188,7 @@ mod test {
         let (right_input, right_input_var) = generate_u8_input(cs.clone(), 64, rng);
         let parameters = TestCRH::setup_crh(rng).unwrap();
         let primitive_result =
-            TestCRH::evaluate_both(&parameters, &left_input, &right_input).unwrap();
+            TestCRH::evaluate_two_to_one_hash(&parameters, &left_input, &right_input).unwrap();
 
         let parameters_var =
             CRHParametersVar::new_constant(ark_relations::ns!(cs, "CRH Parameters"), &parameters)

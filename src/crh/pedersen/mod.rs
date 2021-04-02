@@ -133,7 +133,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
     /// A simple implementation method: just concat the left input and right input together
     ///
     /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate_both(
+    fn evaluate_two_to_one_hash(
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],

@@ -33,7 +33,7 @@ pub trait TwoToOneCRH {
     type Parameters: Clone + Default;
 
     fn setup_two_to_one_crh<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    fn evaluate_both(
+    fn evaluate_two_to_one_hash(
         // we do not use `evaluate` because some implementations may use both `CRH` and `TwoToOneCRH` trait, which causes ambiguity
         parameters: &Self::Parameters,
         left_input: &[u8],

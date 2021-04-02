@@ -120,23 +120,17 @@ where
         let mut curr_hash =
             TwoToOneH::evaluate_both(two_to_one_hash_parameter, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (in reverse)
-        let path_rev = {
-            let mut p = self.path.to_vec();
-            p.reverse();
-            p
-        };
-        let auth_path_rev = {
-            let mut p = self.auth_path.to_vec();
-            p.reverse();
-            p
-        };
+
+        let path_rev: Vec<_> = self.path.iter().rev().collect();
+
+        let auth_path_rev: Vec<_> = self.auth_path.iter().rev().collect();
 
         for level in 0..auth_path_rev.len() {
             // At any given bit, the bit being 0 indicates our currently hashed value is the left,
             // and the bit being 1 indicates our currently hashed value is on the right.
-            // Thus `left_hash` is sibling if bit is 1, and leaf if bit is 0
-            let bit = &path_rev[level];
-            let sibling = &auth_path_rev[level];
+            // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
+            let bit = path_rev[level];
+            let sibling = auth_path_rev[level];
 
             let left_hash = bit.select(sibling, &curr_hash)?;
             let right_hash = bit.select(&curr_hash, sibling)?;
