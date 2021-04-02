@@ -226,7 +226,8 @@ impl<P: Config> MerkleTree<P> {
         // compute the hash values for nodes in every other layer in the tree
         level_indices.reverse();
         for &start_index in &level_indices {
-            let upper_bound = left_child(start_index); // The exclusive index upper bound for this layer
+            // The layer beginning `start_index` ends at `upper_bound` (exclusive).
+            let upper_bound = left_child(start_index);
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
@@ -274,8 +275,9 @@ impl<P: Config> MerkleTree<P> {
             self.leaf_nodes[index - 1].clone()
         };
 
-        let mut path = Vec::with_capacity(tree_height - 2); // tree height - one for leaf node - one for root
-                                                            // Iterate from the bottom inner node to top, storing all intermediate hash values
+        // path.len() = `tree height - 2`, the two missing elements being the leaf sibling hash and the root
+        let mut path = Vec::with_capacity(tree_height - 2);
+        // Iterate from the bottom layer after the leaves, to the top, storing all sibling node's hash values.
         let mut current_node = parent(leaf_index_in_tree).unwrap();
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
@@ -295,7 +297,8 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
-    /// Given the index and new leaf, return an updated path in order from root to bottom non-leaf level
+    /// Given the index and new leaf, return the hash of leaf and an updated path in order from root to bottom non-leaf level.
+    /// This does not mutate the underlying tree.
     fn updated_path<L: ToBytes>(
         &self,
         index: usize,
@@ -361,6 +364,7 @@ impl<P: Config> MerkleTree<P> {
     ///   .. / \ ....
     ///    [I] J
     /// ```
+    /// update(3, {new leaf}) would swap the leaf value associated at `[I]` and cause a recomputation of `[A], [B], [E]`.
     pub fn update<L: ToBytes>(&mut self, index: usize, new_leaf: &L) -> Result<(), crate::Error> {
         assert!(index < self.leaf_nodes.len(), "index out of range");
         let (updated_leaf_hash, mut updated_path) = self.updated_path(index, new_leaf)?;
