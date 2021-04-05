@@ -12,19 +12,19 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::borrow::Borrow;
 
 /// Represents a merkle tree path gadget.
-pub struct PathVar<P, LeafHG, TwoToOneHG, ConstraintF>
+pub struct PathVar<P, LeafH, TwoToOneH, ConstraintF>
 where
     P: Config,
-    LeafHG: CRHGadget<P::LeafHash, ConstraintF>,
-    TwoToOneHG: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
+    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
+    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
-    auth_path: Vec<TwoToOneHG::OutputVar>,
+    auth_path: Vec<TwoToOneH::OutputVar>,
     /// THe sibling of leaf.
-    leaf_sibling: LeafHG::OutputVar,
+    leaf_sibling: LeafH::OutputVar,
     /// position of leaf. Should be 0 (false) iff leaf is on the left.
     leaf_position_bit: Boolean<ConstraintF>,
 }
@@ -174,8 +174,6 @@ where
         leaf: &impl ToBytesGadget<ConstraintF>,
         should_enforce: &Boolean<ConstraintF>,
     ) -> Result<(), SynthesisError> {
-        // calculate leaf hash
-
         let expected_root =
             self.calculate_root(leaf_hash_parameter, two_to_one_hash_parameter, leaf)?;
         // enforce `curr_hash` is root
