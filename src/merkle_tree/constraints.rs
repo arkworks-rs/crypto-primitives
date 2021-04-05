@@ -176,7 +176,7 @@ where
     ) -> Result<(), SynthesisError> {
         let expected_root =
             self.calculate_root(leaf_hash_parameter, two_to_one_hash_parameter, leaf)?;
-        // enforce `curr_hash` is root
+        // enforce `expected_root` is equal to the given root
         expected_root.conditional_enforce_equal(root, should_enforce);
         Ok(())
     }
@@ -206,7 +206,7 @@ where
     ///
     /// If the `old_leaf` does not lead to `old_root`, or `new_leaf` does not lead to `new_root`,
     /// then constraints will not be satisfied.
-    pub fn check_and_update(
+    pub fn update_and_check(
         &self,
         leaf_hash_parameter: &LeafH::ParametersVar,
         two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
@@ -416,7 +416,7 @@ mod tests {
             .unwrap();
             // verifier need to get a proof (the witness) to show the known new root is correct
             old_path_var
-                .check_and_update(
+                .update_and_check(
                     &leaf_crh_parameters_var,
                     &two_to_one_crh_parameters_var,
                     &old_root_var,
