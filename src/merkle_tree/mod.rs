@@ -210,6 +210,9 @@ impl<P: Config> MerkleTree<P> {
             let start_index = level_indices.pop().unwrap();
             let upper_bound = left_child(start_index);
             for current_index in start_index..upper_bound {
+                // `left_child(current_index)` and `right_child(current_index) returns the position of
+                // leaf in the whole tree (represented as a list in level order). We need to shift it
+                // by `-upper_bound` to get the index in `leaf_nodes` list.
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
