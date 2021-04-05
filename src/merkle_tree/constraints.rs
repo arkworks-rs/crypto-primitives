@@ -192,12 +192,11 @@ where
         old_leaf: &impl ToBytesGadget<ConstraintF>,
         new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
-        self.conditionally_check_membership(
+        self.check_membership(
             leaf_hash_parameter,
             two_to_one_hash_parameter,
             old_root,
             old_leaf,
-            &Boolean::TRUE,
         )?;
         Ok(self.calculate_root(leaf_hash_parameter, two_to_one_hash_parameter, new_leaf)?)
     }
