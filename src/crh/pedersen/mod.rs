@@ -144,8 +144,6 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
             "left and right input should be of equal length"
         );
         // check overflow
-        // The reason to feature gate this `debug_assert` is that debug assert
-        // does not allow formatted string in no-std
 
         debug_assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
 

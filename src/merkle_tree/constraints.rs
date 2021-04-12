@@ -23,10 +23,10 @@ where
     path: Vec<Boolean<ConstraintF>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
     auth_path: Vec<TwoToOneH::OutputVar>,
-    /// THe sibling of leaf.
+    /// The sibling of leaf.
     leaf_sibling: LeafH::OutputVar,
-    /// position of leaf. Should be 0 (false) iff leaf is on the left.
-    leaf_position_bit: Boolean<ConstraintF>,
+    /// Is this leaf the right child?
+    leaf_is_right_child: Boolean<ConstraintF>,
 }
 
 impl<P, LeafH, TwoToOneH, ConstraintF> AllocVar<Path<P>, ConstraintF>
@@ -78,7 +78,7 @@ where
                 path,
                 auth_path,
                 leaf_sibling,
-                leaf_position_bit,
+                leaf_is_right_child: leaf_position_bit,
             })
         })
     }
@@ -109,11 +109,11 @@ where
         // Thus `left_hash` is sibling if leaf_position_bit is 1, and leaf if bit is 0
 
         let left_hash = self
-            .leaf_position_bit
+            .leaf_is_right_child
             .select(leaf_sibling_hash, &claimed_leaf_hash)?
             .to_bytes()?;
         let right_hash = self
-            .leaf_position_bit
+            .leaf_is_right_child
             .select(&claimed_leaf_hash, leaf_sibling_hash)?
             .to_bytes()?;
 
@@ -331,7 +331,7 @@ mod tests {
             // check pathvar correctness
             assert_eq!(cw.leaf_sibling.value().unwrap(), proof.leaf_sibling_hash);
             assert_eq!(
-                cw.leaf_position_bit.value().unwrap(),
+                cw.leaf_is_right_child.value().unwrap(),
                 proof.leaf_index & 1 == 1
             );
             let position_list = proof.position_list();
