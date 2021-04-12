@@ -83,20 +83,20 @@ impl<P: Config> Path<P> {
     /// `verify` infers the tree height by setting `tree_height = self.auth_path.len() + 2`
     pub fn verify<L: ToBytes>(
         &self,
-        leaf_hash_parameters: &LeafParam<P>,
-        two_to_one_hash_parameters: &TwoToOneParam<P>,
+        leaf_hash_params: &LeafParam<P>,
+        two_to_one_hash_params: &TwoToOneParam<P>,
         root_hash: &TwoToOneDigest<P>,
         leaf: &L,
     ) -> Result<bool, crate::Error> {
         // calculate leaf hash
         let claimed_leaf_hash =
-            P::LeafHash::evaluate(&leaf_hash_parameters, &ark_ff::to_bytes!(&leaf)?)?;
+            P::LeafHash::evaluate(&leaf_hash_params, &ark_ff::to_bytes!(&leaf)?)?;
         // check hash along the path from bottom to root
         let (left_bytes, right_bytes) =
             select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
 
         let mut curr_path_node = P::TwoToOneHash::evaluate_two_to_one_hash(
-            &two_to_one_hash_parameters,
+            &two_to_one_hash_params,
             &left_bytes,
             &right_bytes,
         )?;
@@ -112,7 +112,7 @@ impl<P: Config> Path<P> {
                 select_left_right_bytes(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
             curr_path_node = P::TwoToOneHash::evaluate_two_to_one_hash(
-                &two_to_one_hash_parameters,
+                &two_to_one_hash_params,
                 &left_bytes,
                 &right_bytes,
             )?;
@@ -494,11 +494,11 @@ mod tests {
     fn merkle_tree_test<L: ToBytes + Clone + Eq>(leaves: &[L], update_query: &[(usize, L)]) -> () {
         let mut rng = ark_std::test_rng();
         let mut leaves = leaves.to_vec();
-        let leaf_crh_parameters = <H as CRH>::setup_crh(&mut rng).unwrap();
-        let two_to_one_crh_parameters = H::setup_two_to_one_crh(&mut rng).unwrap();
+        let leaf_crh_params = <H as CRH>::setup_crh(&mut rng).unwrap();
+        let two_to_one_crh_params = H::setup_two_to_one_crh(&mut rng).unwrap();
         let mut tree = JubJubMerkleTree::new(
-            &leaf_crh_parameters.clone(),
-            &two_to_one_crh_parameters.clone(),
+            &leaf_crh_params.clone(),
+            &two_to_one_crh_params.clone(),
             &leaves,
         )
         .unwrap();
@@ -507,12 +507,7 @@ mod tests {
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.generate_proof(i).unwrap();
             assert!(proof
-                .verify(
-                    &leaf_crh_parameters,
-                    &two_to_one_crh_parameters,
-                    &root,
-                    &leaf
-                )
+                .verify(&leaf_crh_params, &two_to_one_crh_params, &root, &leaf)
                 .unwrap());
         }
 
@@ -527,12 +522,7 @@ mod tests {
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.generate_proof(i).unwrap();
             assert!(proof
-                .verify(
-                    &leaf_crh_parameters,
-                    &two_to_one_crh_parameters,
-                    &root,
-                    &leaf
-                )
+                .verify(&leaf_crh_params, &two_to_one_crh_params, &root, &leaf)
                 .unwrap());
         }
     }

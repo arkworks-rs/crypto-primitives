@@ -94,12 +94,12 @@ where
     /// Given a leaf, calculate the root as if the merkle has this leaf at this path.
     fn calculate_root(
         &self,
-        leaf_hash_parameter: &LeafH::ParametersVar,
-        two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
+        leaf_hash_params: &LeafH::ParametersVar,
+        two_to_one_hash_params: &TwoToOneH::ParametersVar,
         leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
         let leaf_bytes = leaf.to_bytes()?;
-        let claimed_leaf_hash = LeafH::evaluate(leaf_hash_parameter, &leaf_bytes)?;
+        let claimed_leaf_hash = LeafH::evaluate(leaf_hash_params, &leaf_bytes)?;
         let leaf_sibling_hash = &self.leaf_sibling;
 
         // calculate hash for the bottom non_leaf_layer
@@ -118,7 +118,7 @@ where
             .to_bytes()?;
 
         let mut curr_hash =
-            TwoToOneH::evaluate_both(two_to_one_hash_parameter, &left_hash, &right_hash)?;
+            TwoToOneH::evaluate_both(two_to_one_hash_params, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (in reverse)
 
         let path_rev: Vec<_> = self.path.iter().rev().collect();
@@ -136,7 +136,7 @@ where
             let right_hash = bit.select(&curr_hash, sibling)?;
 
             curr_hash = TwoToOneH::evaluate_both(
-                two_to_one_hash_parameter,
+                two_to_one_hash_params,
                 &left_hash.to_bytes()?,
                 &right_hash.to_bytes()?,
             )?;
@@ -151,14 +151,14 @@ where
     /// Constraints will not be satisfied if root is incorrect.
     pub fn check_membership(
         &self,
-        leaf_hash_parameter: &LeafH::ParametersVar,
-        two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
+        leaf_hash_params: &LeafH::ParametersVar,
+        two_to_one_hash_params: &TwoToOneH::ParametersVar,
         root: &TwoToOneH::OutputVar,
         leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<(), SynthesisError> {
         self.conditionally_check_membership(
-            leaf_hash_parameter,
-            two_to_one_hash_parameter,
+            leaf_hash_params,
+            two_to_one_hash_params,
             root,
             leaf,
             &Boolean::constant(true),
@@ -168,14 +168,13 @@ where
     /// Check membership if `should_enforce` is True.
     pub fn conditionally_check_membership(
         &self,
-        leaf_hash_parameter: &LeafH::ParametersVar,
-        two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
+        leaf_hash_params: &LeafH::ParametersVar,
+        two_to_one_hash_params: &TwoToOneH::ParametersVar,
         root: &TwoToOneH::OutputVar,
         leaf: &impl ToBytesGadget<ConstraintF>,
         should_enforce: &Boolean<ConstraintF>,
     ) -> Result<(), SynthesisError> {
-        let expected_root =
-            self.calculate_root(leaf_hash_parameter, two_to_one_hash_parameter, leaf)?;
+        let expected_root = self.calculate_root(leaf_hash_params, two_to_one_hash_params, leaf)?;
         // enforce `expected_root` is equal to the given root
         expected_root.conditional_enforce_equal(root, should_enforce);
         Ok(())
@@ -186,19 +185,14 @@ where
     /// If the `old_leaf` does not lead to `old_root`, constraints will not be satisfied.
     pub fn update_leaf(
         &self,
-        leaf_hash_parameter: &LeafH::ParametersVar,
-        two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
+        leaf_hash_params: &LeafH::ParametersVar,
+        two_to_one_hash_params: &TwoToOneH::ParametersVar,
         old_root: &TwoToOneH::OutputVar,
         old_leaf: &impl ToBytesGadget<ConstraintF>,
         new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
-        self.check_membership(
-            leaf_hash_parameter,
-            two_to_one_hash_parameter,
-            old_root,
-            old_leaf,
-        )?;
-        Ok(self.calculate_root(leaf_hash_parameter, two_to_one_hash_parameter, new_leaf)?)
+        self.check_membership(leaf_hash_params, two_to_one_hash_params, old_root, old_leaf)?;
+        Ok(self.calculate_root(leaf_hash_params, two_to_one_hash_params, new_leaf)?)
     }
 
     /// update the `old_leaf` to `new_leaf` and returned the updated MT root.
@@ -207,16 +201,16 @@ where
     /// then constraints will not be satisfied.
     pub fn update_and_check(
         &self,
-        leaf_hash_parameter: &LeafH::ParametersVar,
-        two_to_one_hash_parameter: &TwoToOneH::ParametersVar,
+        leaf_hash_params: &LeafH::ParametersVar,
+        two_to_one_hash_params: &TwoToOneH::ParametersVar,
         old_root: &TwoToOneH::OutputVar,
         new_root: &TwoToOneH::OutputVar,
         old_leaf: &impl ToBytesGadget<ConstraintF>,
         new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<(), SynthesisError> {
         let actual_new_root = self.update_leaf(
-            leaf_hash_parameter,
-            two_to_one_hash_parameter,
+            leaf_hash_params,
+            two_to_one_hash_params,
             old_root,
             old_leaf,
             new_leaf,
@@ -265,22 +259,16 @@ mod tests {
     ) -> () {
         let mut rng = ark_std::test_rng();
 
-        let leaf_crh_parameters = H::setup_crh(&mut rng).unwrap();
-        let two_to_one_crh_parameters = H::setup_two_to_one_crh(&mut rng).unwrap();
+        let leaf_crh_params = H::setup_crh(&mut rng).unwrap();
+        let two_to_one_crh_params = H::setup_two_to_one_crh(&mut rng).unwrap();
         let mut tree =
-            JubJubMerkleTree::new(&leaf_crh_parameters, &two_to_one_crh_parameters, leaves)
-                .unwrap();
+            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_crh_params, leaves).unwrap();
         let root = tree.root();
         let cs = ConstraintSystem::<Fq>::new_ref();
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.generate_proof(i).unwrap();
             assert!(proof
-                .verify(
-                    &leaf_crh_parameters,
-                    &two_to_one_crh_parameters,
-                    &root,
-                    &leaf
-                )
+                .verify(&leaf_crh_params, &two_to_one_crh_params, &root, &leaf)
                 .unwrap());
 
             // Allocate Merkle Tree Root
@@ -300,29 +288,26 @@ mod tests {
             println!("constraints from digest: {}", constraints_from_digest);
 
             // Allocate Parameters for CRH
-            let leaf_crh_parameters_var = <HG as CRHGadget<H, _>>::ParametersVar::new_constant(
+            let leaf_crh_params_var = <HG as CRHGadget<H, _>>::ParametersVar::new_constant(
                 ark_relations::ns!(cs, "leaf_crh_parameter"),
-                &leaf_crh_parameters,
+                &leaf_crh_params,
             )
             .unwrap();
-            let two_to_one_crh_parameters_var =
+            let two_to_one_crh_params_var =
                 <HG as TwoToOneCRHGadget<H, _>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_crh_parameter"),
-                    &two_to_one_crh_parameters,
+                    &two_to_one_crh_params,
                 )
                 .unwrap();
 
-            let constraints_from_parameters = cs.num_constraints() - constraints_from_digest;
-            println!(
-                "constraints from parameters: {}",
-                constraints_from_parameters
-            );
+            let constraints_from_params = cs.num_constraints() - constraints_from_digest;
+            println!("constraints from parameters: {}", constraints_from_params);
 
             // Allocate Leaf
             let leaf_g = UInt8::constant_vec(leaf);
 
             let constraints_from_leaf =
-                cs.num_constraints() - constraints_from_parameters - constraints_from_digest;
+                cs.num_constraints() - constraints_from_params - constraints_from_digest;
             println!("constraints from leaf: {}", constraints_from_leaf);
 
             // Allocate Merkle Tree Path
@@ -343,22 +328,22 @@ mod tests {
             }
 
             let constraints_from_path = cs.num_constraints()
-                - constraints_from_parameters
+                - constraints_from_params
                 - constraints_from_digest
                 - constraints_from_leaf;
             println!("constraints from path: {}", constraints_from_path);
             let leaf_g: &[_] = leaf_g.as_slice();
             assert!(cs.is_satisfied().unwrap());
             cw.check_membership(
-                &leaf_crh_parameters_var,
-                &two_to_one_crh_parameters_var,
+                &leaf_crh_params_var,
+                &two_to_one_crh_params_var,
                 &root,
                 &leaf_g,
             )
             .unwrap();
             let setup_constraints = constraints_from_leaf
                 + constraints_from_digest
-                + constraints_from_parameters
+                + constraints_from_params
                 + constraints_from_path;
             println!(
                 "number of constraints: {}",
@@ -375,15 +360,15 @@ mod tests {
         if let Some(update_query) = update_query {
             let cs = ConstraintSystem::<Fq>::new_ref();
             // allocate parameters for CRH
-            let leaf_crh_parameters_var = <HG as CRHGadget<H, _>>::ParametersVar::new_constant(
+            let leaf_crh_params_var = <HG as CRHGadget<H, _>>::ParametersVar::new_constant(
                 ark_relations::ns!(cs, "leaf_crh_parameter"),
-                &leaf_crh_parameters,
+                &leaf_crh_params,
             )
             .unwrap();
-            let two_to_one_crh_parameters_var =
+            let two_to_one_crh_params_var =
                 <HG as TwoToOneCRHGadget<H, _>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_crh_parameter"),
-                    &two_to_one_crh_parameters,
+                    &two_to_one_crh_params,
                 )
                 .unwrap();
 
@@ -416,8 +401,8 @@ mod tests {
             // verifier need to get a proof (the witness) to show the known new root is correct
             old_path_var
                 .update_and_check(
-                    &leaf_crh_parameters_var,
-                    &two_to_one_crh_parameters_var,
+                    &leaf_crh_params_var,
+                    &two_to_one_crh_params_var,
                     &old_root_var,
                     &new_root_var,
                     &old_leaf_var.as_slice(),
