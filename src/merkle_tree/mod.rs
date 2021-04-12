@@ -64,15 +64,12 @@ fn select_left_right_bytes<B: ToBytes>(
     computed_hash: &B,
     sibling_hash: &B,
 ) -> Result<(Vec<u8>, Vec<u8>), crate::Error> {
-    let mut left_bytes;
-    let mut right_bytes;
-    if index & 1 == 0 {
-        left_bytes = ark_ff::to_bytes!(computed_hash)?;
-        right_bytes = ark_ff::to_bytes!(sibling_hash)?;
-    } else {
-        left_bytes = ark_ff::to_bytes!(sibling_hash)?;
-        right_bytes = ark_ff::to_bytes!(computed_hash)?;
-    };
+    let is_left = index & 1 == 0;
+    let mut left_bytes = ark_ff::to_bytes!(computed_hash)?;
+    let mut right_bytes = ark_ff::to_bytes!(sibling_hash)?;
+    if !is_left {
+        core::mem::swap(&mut left_bytes, &mut right_bytes);
+    }
     Ok((left_bytes, right_bytes))
 }
 
