@@ -43,12 +43,12 @@ impl<P: Config> Path<P> {
     /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
-    fn position_list(&self) -> Vec<bool> {
+    fn position_list(&self) -> impl Iterator<Item = bool> {
         let position: Vec<_> = (0..self.auth_path.len() + 1)
             .map(|i| ((self.leaf_index >> i) & 1) != 0)
             .rev()
             .collect();
-        position
+        position.into_iter()
     }
 }
 

@@ -55,7 +55,7 @@ where
                 || Ok(val.borrow().leaf_index & 1 == 1),
                 mode,
             )?;
-            let pos_list = val.borrow().position_list();
+            let pos_list: Vec<_> = val.borrow().position_list().collect();
             let mut path = Vec::with_capacity(pos_list.len() - 1);
             for &bit in &pos_list[..pos_list.len() - 1] {
                 // we do not include leaf bit here, so ignore last element returned by pos_list
@@ -312,7 +312,7 @@ mod tests {
                 cw.leaf_is_right_child.value().unwrap(),
                 proof.leaf_index & 1 == 1
             );
-            let position_list = proof.position_list();
+            let position_list: Vec<_> = proof.position_list().collect();
             for (i, path_node) in cw.path.iter().enumerate() {
                 assert_eq!(path_node.value().unwrap(), position_list[i]);
             }
