@@ -117,8 +117,7 @@ where
             .select(&claimed_leaf_hash, leaf_sibling_hash)?
             .to_bytes()?;
 
-        let mut curr_hash =
-            TwoToOneH::evaluate_both(two_to_one_hash_params, &left_hash, &right_hash)?;
+        let mut curr_hash = TwoToOneH::evaluate(two_to_one_hash_params, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
@@ -128,7 +127,7 @@ where
             let left_hash = bit.select(sibling, &curr_hash)?;
             let right_hash = bit.select(&curr_hash, sibling)?;
 
-            curr_hash = TwoToOneH::evaluate_both(
+            curr_hash = TwoToOneH::evaluate(
                 two_to_one_hash_params,
                 &left_hash.to_bytes()?,
                 &right_hash.to_bytes()?,
@@ -252,8 +251,8 @@ mod tests {
     ) -> () {
         let mut rng = ark_std::test_rng();
 
-        let leaf_crh_params = H::setup_crh(&mut rng).unwrap();
-        let two_to_one_crh_params = H::setup_two_to_one_crh(&mut rng).unwrap();
+        let leaf_crh_params = <H as CRH>::setup(&mut rng).unwrap();
+        let two_to_one_crh_params = <H as TwoToOneCRH>::setup(&mut rng).unwrap();
         let mut tree =
             JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_crh_params, leaves).unwrap();
         let root = tree.root();

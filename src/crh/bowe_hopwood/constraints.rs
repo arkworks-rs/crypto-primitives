@@ -150,7 +150,7 @@ mod test {
         let (input, input_var) = generate_input(cs.clone(), rng);
         println!("number of constraints for input: {}", cs.num_constraints());
 
-        let parameters = TestCRH::setup_crh(rng).unwrap();
+        let parameters = TestCRH::setup(rng).unwrap();
         let primitive_result = TestCRH::evaluate(&parameters, &input).unwrap();
 
         let parameters_var = <TestCRHGadget as CRHGadget<TestCRH, Fr>>::ParametersVar::new_witness(

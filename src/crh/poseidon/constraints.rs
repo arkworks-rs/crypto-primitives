@@ -271,7 +271,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<PoseidonCRH<F, 
     type OutputVar = FpVar<F>;
     type ParametersVar = PoseidonRoundParamsVar<F, P>;
 
-    fn evaluate_both(
+    fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &[UInt8<F>],
         right_input: &[UInt8<F>],
@@ -283,7 +283,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<PoseidonCRH<F, 
             .into_iter()
             .chain(right_input.to_vec().into_iter())
             .collect();
-        Self::evaluate(parameters, &chained_input)
+        <Self as CRHGadget<_, _>>::evaluate(parameters, &chained_input)
     }
 }
 

@@ -187,7 +187,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for PoseidonCRH<F, P> {
     type Output = F;
     type Parameters = CRH<F, P>;
 
-    fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         // let time = start_timer!(|| format!(
         //     "Poseidon::Setup: {} {}-bit windows; {{0,1}}^{{{}}} -> C",
         //     W::NUM_WINDOWS,
@@ -226,12 +226,12 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for PoseidonCRH<F, P>
     type Output = F;
     type Parameters = CRH<F, P>;
 
-    fn setup_two_to_one_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
-        Self::setup_crh(rng)
+    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+        <Self as CRHTrait>::setup(rng)
     }
 
     /// A simple implementation of TwoToOneCRH by asserting left and right input has same length and chain them together.
-    fn evaluate_two_to_one_hash(
+    fn evaluate(
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],
@@ -244,6 +244,6 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for PoseidonCRH<F, P>
             .map(|x| *x)
             .collect();
 
-        Self::evaluate(parameters, &chained)
+        <Self as CRHTrait>::evaluate(parameters, &chained)
     }
 }

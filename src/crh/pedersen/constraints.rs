@@ -86,7 +86,7 @@ where
     type ParametersVar = CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
-    fn evaluate_both(
+    fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &[UInt8<ConstraintF<C>>],
         right_input: &[UInt8<ConstraintF<C>>],
@@ -98,7 +98,7 @@ where
             .into_iter()
             .chain(right_input.to_vec().into_iter())
             .collect();
-        Self::evaluate(parameters, &chained_input)
+        <Self as CRHGadget<_, _>>::evaluate(parameters, &chained_input)
     }
 }
 
@@ -165,14 +165,15 @@ mod test {
 
         let (input, input_var) = generate_u8_input(cs.clone(), 128, rng);
 
-        let parameters = TestCRH::setup_crh(rng).unwrap();
-        let primitive_result = TestCRH::evaluate(&parameters, &input).unwrap();
+        let parameters = <TestCRH as CRH>::setup(rng).unwrap();
+        let primitive_result = <TestCRH as CRH>::evaluate(&parameters, &input).unwrap();
 
         let parameters_var =
             CRHParametersVar::new_constant(ark_relations::ns!(cs, "CRH Parameters"), &parameters)
                 .unwrap();
 
-        let result_var = TestCRHGadget::evaluate(&parameters_var, &input_var).unwrap();
+        let result_var =
+            <TestCRHGadget as CRHGadget<_, _>>::evaluate(&parameters_var, &input_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
@@ -186,17 +187,20 @@ mod test {
 
         let (left_input, left_input_var) = generate_u8_input(cs.clone(), 64, rng);
         let (right_input, right_input_var) = generate_u8_input(cs.clone(), 64, rng);
-        let parameters = TestCRH::setup_crh(rng).unwrap();
+        let parameters = <TestCRH as TwoToOneCRH>::setup(rng).unwrap();
         let primitive_result =
-            TestCRH::evaluate_two_to_one_hash(&parameters, &left_input, &right_input).unwrap();
+            <TestCRH as TwoToOneCRH>::evaluate(&parameters, &left_input, &right_input).unwrap();
 
         let parameters_var =
             CRHParametersVar::new_constant(ark_relations::ns!(cs, "CRH Parameters"), &parameters)
                 .unwrap();
 
-        let result_var =
-            TestCRHGadget::evaluate_both(&parameters_var, &left_input_var, &right_input_var)
-                .unwrap();
+        let result_var = <TestCRHGadget as TwoToOneCRHGadget<_, _>>::evaluate(
+            &parameters_var,
+            &left_input_var,
+            &right_input_var,
+        )
+        .unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

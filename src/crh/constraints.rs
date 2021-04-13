@@ -36,7 +36,7 @@ pub trait TwoToOneCRHGadget<H: TwoToOneCRH, ConstraintF: Field>: Sized {
 
     type ParametersVar: AllocVar<H::Parameters, ConstraintF> + Clone;
 
-    fn evaluate_both(
+    fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &[UInt8<ConstraintF>],
         right_input: &[UInt8<ConstraintF>],
