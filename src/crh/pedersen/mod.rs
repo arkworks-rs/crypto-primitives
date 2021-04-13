@@ -7,7 +7,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::{TwoToOneCRH, CRH};
+use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
@@ -25,12 +25,12 @@ pub struct Parameters<C: ProjectiveCurve> {
     pub generators: Vec<Vec<C>>,
 }
 
-pub struct PedersenCRH<C: ProjectiveCurve, W: Window> {
+pub struct CRH<C: ProjectiveCurve, W: Window> {
     group: PhantomData<C>,
     window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, W: Window> PedersenCRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -50,7 +50,7 @@ impl<C: ProjectiveCurve, W: Window> PedersenCRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CRH for PedersenCRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
     const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     type Output = C::Affine;
     type Parameters = Parameters<C>;
@@ -120,14 +120,14 @@ impl<C: ProjectiveCurve, W: Window> CRH for PedersenCRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for PedersenCRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
     const LEFT_INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS / 2;
     const RIGHT_INPUT_SIZE_BITS: usize = Self::LEFT_INPUT_SIZE_BITS;
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
     fn setup_two_to_one_crh<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
-        <Self as CRH>::setup_crh(r)
+        Self::setup_crh(r)
     }
 
     /// A simple implementation method: just concat the left input and right input together

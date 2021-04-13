@@ -8,7 +8,7 @@ use ark_std::{
 use rayon::prelude::*;
 
 use super::pedersen;
-use crate::crh::CRH;
+use crate::crh::CRH as CRHTrait;
 use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
@@ -27,12 +27,12 @@ pub struct Parameters<P: TEModelParameters> {
     pub generators: Vec<Vec<TEProjective<P>>>,
 }
 
-pub struct BoweHopwoodCRH<P: TEModelParameters, W: pedersen::Window> {
+pub struct CRH<P: TEModelParameters, W: pedersen::Window> {
     group: PhantomData<P>,
     window: PhantomData<W>,
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> BoweHopwoodCRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         let mut generators = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -50,8 +50,8 @@ impl<P: TEModelParameters, W: pedersen::Window> BoweHopwoodCRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRH for BoweHopwoodCRH<P, W> {
-    const INPUT_SIZE_BITS: usize = pedersen::PedersenCRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
+impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
+    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
     type Output = TEProjective<P>;
     type Parameters = Parameters<P>;
 
@@ -172,7 +172,7 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 #[cfg(test)]
 mod test {
     use crate::{
-        crh::{bowe_hopwood::BoweHopwoodCRH, pedersen::Window},
+        crh::{bowe_hopwood, pedersen::Window},
         CRH,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
@@ -189,9 +189,11 @@ mod test {
 
         let rng = &mut test_rng();
         let params =
-            <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::setup_crh(rng).unwrap();
-        let _ =
-            <BoweHopwoodCRH<EdwardsParameters, TestWindow> as CRH>::evaluate(&params, &[1, 2, 3])
-                .unwrap();
+            <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::setup_crh(rng).unwrap();
+        let _ = <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::evaluate(
+            &params,
+            &[1, 2, 3],
+        )
+        .unwrap();
     }
 }

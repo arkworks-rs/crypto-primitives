@@ -478,7 +478,7 @@ mod tests {
         const NUM_WINDOWS: usize = 256;
     }
 
-    type H = pedersen::PedersenCRH<JubJub, Window4x256>;
+    type H = pedersen::CRH<JubJub, Window4x256>;
 
     struct JubJubMerkleTreeParams;
 

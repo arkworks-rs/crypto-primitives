@@ -33,27 +33,26 @@ impl<P: TEModelParameters> InjectiveMap<TEProjective<P>> for TECompressor {
 pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
-    _crh: pedersen::PedersenCRH<C, W>,
+    _crh: pedersen::CRH<C, W>,
 }
 
 impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
     for PedersenCRHCompressor<C, I, W>
 {
-    const INPUT_SIZE_BITS: usize = pedersen::PedersenCRH::<C, W>::INPUT_SIZE_BITS;
+    const INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::INPUT_SIZE_BITS;
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
     fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         let time = start_timer!(|| format!("PedersenCRHCompressor::Setup"));
-        let params = pedersen::PedersenCRH::<C, W>::setup_crh(rng);
+        let params = pedersen::CRH::<C, W>::setup_crh(rng);
         end_timer!(time);
         params
     }
 
     fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
-        let result =
-            I::injective_map(&pedersen::PedersenCRH::<C, W>::evaluate(parameters, input)?)?;
+        let result = I::injective_map(&pedersen::CRH::<C, W>::evaluate(parameters, input)?)?;
         end_timer!(eval_time);
         Ok(result)
     }

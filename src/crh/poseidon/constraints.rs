@@ -1,6 +1,6 @@
 use super::sbox::constraints::SboxConstraints;
 use super::PoseidonRoundParams;
-use super::{Poseidon, PoseidonCRH};
+use super::{PoseidonCRH, CRH};
 use crate::CRHGadget;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
@@ -17,7 +17,7 @@ use core::borrow::Borrow;
 
 #[derive(Derivative, Clone)]
 pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
-    params: Poseidon<F, P>,
+    params: CRH<F, P>,
 }
 
 pub struct PoseidonCRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
@@ -287,11 +287,11 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<PoseidonCRH<F, 
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<Poseidon<F, P>, F>
+impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<CRH<F, P>, F>
     for PoseidonRoundParamsVar<F, P>
 {
     #[tracing::instrument(target = "r1cs", skip(_cs, f))]
-    fn new_variable<T: Borrow<Poseidon<F, P>>>(
+    fn new_variable<T: Borrow<CRH<F, P>>>(
         _cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         _mode: AllocationMode,

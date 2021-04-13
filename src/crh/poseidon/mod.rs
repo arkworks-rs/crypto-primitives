@@ -1,5 +1,5 @@
 use crate::crh::poseidon::sbox::PoseidonSbox;
-use crate::{Error, Vec, CRH};
+use crate::{Error, Vec, CRH as CRHTrait};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 
@@ -31,7 +31,7 @@ pub trait PoseidonRoundParams<F: PrimeField>: Default + Clone {
 
 /// The Poseidon permutation.
 #[derive(Default, Clone)]
-pub struct Poseidon<F, P> {
+pub struct CRH<F, P> {
     pub params: P,
     /// The round key constants
     pub round_keys: Vec<F>,
@@ -39,7 +39,7 @@ pub struct Poseidon<F, P> {
     pub mds_matrix: Vec<Vec<F>>,
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH<F, P> {
     fn permute(&self, input: &[F]) -> Vec<F> {
         let width = P::WIDTH;
         assert_eq!(input.len(), width);
@@ -182,10 +182,10 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH for PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for PoseidonCRH<F, P> {
     const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
-    type Parameters = Poseidon<F, P>;
+    type Parameters = CRH<F, P>;
 
     fn setup_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         // let time = start_timer!(|| format!(
@@ -224,7 +224,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for PoseidonCRH<F, P>
     const LEFT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     const RIGHT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     type Output = F;
-    type Parameters = Poseidon<F, P>;
+    type Parameters = CRH<F, P>;
 
     fn setup_two_to_one_crh<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         Self::setup_crh(rng)

@@ -55,8 +55,8 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
             W::NUM_WINDOWS * W::WINDOW_SIZE
         ));
         let num_powers = <C::ScalarField as PrimeField>::Params::MODULUS_BITS as usize;
-        let randomness_generator = pedersen::PedersenCRH::<C, W>::generator_powers(num_powers, rng);
-        let generators = pedersen::PedersenCRH::<C, W>::create_generators(rng);
+        let randomness_generator = pedersen::CRH::<C, W>::generator_powers(num_powers, rng);
+        let generators = pedersen::CRH::<C, W>::create_generators(rng);
         end_timer!(time);
 
         Ok(Self::Parameters {
@@ -91,8 +91,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
         let crh_parameters = pedersen::Parameters {
             generators: parameters.generators.clone(),
         };
-        let mut result: C =
-            pedersen::PedersenCRH::<C, W>::evaluate(&crh_parameters, &input)?.into();
+        let mut result: C = pedersen::CRH::<C, W>::evaluate(&crh_parameters, &input)?.into();
         let randomize_time = start_timer!(|| "Randomize");
 
         // Compute h^r.

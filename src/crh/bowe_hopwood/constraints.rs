@@ -2,7 +2,7 @@ use core::{borrow::Borrow, marker::PhantomData};
 
 use crate::{
     crh::{
-        bowe_hopwood::{BoweHopwoodCRH, Parameters, CHUNK_SIZE},
+        bowe_hopwood::{Parameters, CHUNK_SIZE, CRH},
         pedersen::Window,
         CRHGadget,
     },
@@ -37,7 +37,7 @@ where
     _base_field: PhantomData<F>,
 }
 
-impl<P, F, W> CRHGadget<BoweHopwoodCRH<P, W>, ConstraintF<P>> for BoweHopwoodGadget<P, F>
+impl<P, F, W> CRHGadget<CRH<P, W>, ConstraintF<P>> for BoweHopwoodGadget<P, F>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
     F: FieldVar<P::BaseField, ConstraintF<P>>,
@@ -108,8 +108,8 @@ where
 mod test {
     use ark_std::rand::Rng;
 
+    use crate::crh::bowe_hopwood;
     use crate::crh::bowe_hopwood::constraints::BoweHopwoodGadget;
-    use crate::crh::bowe_hopwood::BoweHopwoodCRH;
     use crate::crh::{pedersen::Window as PedersenWindow, CRHGadget, CRH};
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
@@ -117,7 +117,7 @@ mod test {
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::test_rng;
 
-    type TestCRH = BoweHopwoodCRH<EdwardsParameters, Window>;
+    type TestCRH = bowe_hopwood::CRH<EdwardsParameters, Window>;
     type TestCRHGadget = BoweHopwoodGadget<EdwardsParameters, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]

@@ -1,6 +1,6 @@
 use crate::{
     crh::{
-        pedersen::{Parameters, PedersenCRH, Window},
+        pedersen::{Parameters, Window, CRH},
         CRHGadget,
     },
     Vec,
@@ -37,7 +37,7 @@ where
     _window: PhantomData<*const W>,
 }
 
-impl<C, GG, W> CRHGadget<PedersenCRH<C, W>, ConstraintF<C>> for PedersenGadget<C, GG, W>
+impl<C, GG, W> CRHGadget<CRH<C, W>, ConstraintF<C>> for PedersenGadget<C, GG, W>
 where
     C: ProjectiveCurve,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<C, GG, W> TwoToOneCRHGadget<PedersenCRH<C, W>, ConstraintF<C>> for PedersenGadget<C, GG, W>
+impl<C, GG, W> TwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>> for PedersenGadget<C, GG, W>
 where
     C: ProjectiveCurve,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -132,7 +132,7 @@ mod test {
     use ark_std::rand::Rng;
     use ark_std::test_rng;
 
-    type TestCRH = pedersen::PedersenCRH<JubJub, Window>;
+    type TestCRH = pedersen::CRH<JubJub, Window>;
     type TestCRHGadget = PedersenGadget<JubJub, EdwardsVar, Window>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
