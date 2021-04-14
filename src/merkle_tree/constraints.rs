@@ -56,24 +56,25 @@ where
                 mode,
             )?;
             let pos_list: Vec<_> = val.borrow().position_list().collect();
-            let mut path = Vec::with_capacity(pos_list.len() - 1);
-            for &bit in &pos_list[..pos_list.len() - 1] {
-                // we do not include leaf bit here, so ignore last element returned by pos_list
-                path.push(Boolean::new_variable(
-                    ark_relations::ns!(cs, "path_bit"),
-                    || Ok(bit),
-                    mode,
-                )?)
-            }
+            let path = Vec::new_variable(
+                ark_relations::ns!(cs, "path_bits"),
+                || Ok(&pos_list[..(pos_list.len() - 1)]),
+                mode,
+            )?;
 
-            let mut auth_path = Vec::with_capacity(val.borrow().auth_path.len());
-            for v in val.borrow().auth_path.iter() {
-                auth_path.push(TwoToOneH::OutputVar::new_variable(
-                    ark_relations::ns!(cs, "auth_path_node"),
-                    || Ok(v.clone()),
-                    mode,
-                )?)
-            }
+            // let mut auth_path = Vec::with_capacity(val.borrow().auth_path.len());
+            // for v in val.borrow().auth_path.iter() {
+            //     auth_path.push(TwoToOneH::OutputVar::new_variable(
+            //         ark_relations::ns!(cs, "auth_path_node"),
+            //         || Ok(v.clone()),
+            //         mode,
+            //     )?)
+            // }
+            let auth_path = Vec::new_variable(
+                ark_relations::ns!(cs, "auth_path_nodes"),
+                || Ok(&val.borrow().auth_path[..]),
+                mode,
+            )?;
             Ok(PathVar {
                 path,
                 auth_path,
@@ -91,7 +92,7 @@ where
     TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
-    /// Given a leaf, calculate the root as if the merkle has this leaf at this path.
+    /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
     fn calculate_root(
         &self,
         leaf_hash_params: &LeafH::ParametersVar,
@@ -104,9 +105,9 @@ where
 
         // calculate hash for the bottom non_leaf_layer
 
-        // At any given bit, the bit being 0 indicates our currently hashed value is the left,
-        // and the bit being 1 indicates our currently hashed value is on the right.
-        // Thus `left_hash` is sibling if leaf_position_bit is 1, and leaf if bit is 0
+        // We assume that when a bit is 0, it indicates that the currently hashed value H is the left child,
+        // and when bit is 1, it indicates our H is the right child.
+        // Thus `left_hash` is sibling if the bit `leaf_is_right_child` is 1, and is leaf otherwise.
 
         let left_hash = self
             .leaf_is_right_child
@@ -118,7 +119,7 @@ where
             .to_bytes()?;
 
         let mut curr_hash = TwoToOneH::evaluate(two_to_one_hash_params, &left_hash, &right_hash)?;
-        // To traverse up a MT, we iterate over the path from bottom to top (in reverse)
+        // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
         // and the bit being 1 indicates our currently hashed value is on the right.
@@ -137,8 +138,8 @@ where
         Ok(curr_hash)
     }
 
-    /// Given a leaf, calculate the hash of the merkle tree
-    /// along the path and check if the given root is correct.
+    /// Check that hashing a Merkle tree path according to `self`, and
+    /// with `leaf` as the leaf, leads to a Merkle tree root equalling `root`.
     pub fn verify_membership(
         &self,
         leaf_hash_params: &LeafH::ParametersVar,
@@ -147,14 +148,11 @@ where
         leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         let expected_root = self.calculate_root(leaf_hash_params, two_to_one_hash_params, leaf)?;
-        // enforce `expected_root` is equal to the given root
         Ok(expected_root.is_eq(root)?)
     }
 
-    /// update the `old_leaf` to `new_leaf` and returned the updated MT root. `self` will not be
-    /// modified.
-    ///
-    /// If the `old_leaf` does not lead to `old_root`, constraints will not be satisfied.
+    /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
+    /// `self`, and then compute the new root when replacing `old_leaf` by `new_leaf`.
     pub fn update_leaf(
         &self,
         leaf_hash_params: &LeafH::ParametersVar,
@@ -168,10 +166,9 @@ where
         Ok(self.calculate_root(leaf_hash_params, two_to_one_hash_params, new_leaf)?)
     }
 
-    /// update the `old_leaf` to `new_leaf` and returned the updated MT root.`self` will not be modified.
-    ///
-    /// If the `old_leaf` does not lead to `old_root`, or `new_leaf` does not lead to `new_root`,
-    /// then constraints will not be satisfied.
+    /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
+    /// `self`, and then compute the expected new root when replacing `old_leaf` by `new_leaf`.
+    /// Return a boolean indicating whether expected new root equals `new_root`.
     pub fn update_and_check(
         &self,
         leaf_hash_params: &LeafH::ParametersVar,
@@ -180,7 +177,7 @@ where
         new_root: &TwoToOneH::OutputVar,
         old_leaf: &impl ToBytesGadget<ConstraintF>,
         new_leaf: &impl ToBytesGadget<ConstraintF>,
-    ) -> Result<(), SynthesisError> {
+    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         let actual_new_root = self.update_leaf(
             leaf_hash_params,
             two_to_one_hash_params,
@@ -188,7 +185,7 @@ where
             old_leaf,
             new_leaf,
         )?;
-        actual_new_root.enforce_equal(new_root)
+        Ok(actual_new_root.is_eq(&new_root)?)
     }
 }
 
@@ -374,7 +371,7 @@ mod tests {
             )
             .unwrap();
             // verifier need to get a proof (the witness) to show the known new root is correct
-            old_path_var
+            assert!(old_path_var
                 .update_and_check(
                     &leaf_crh_params_var,
                     &two_to_one_crh_params_var,
@@ -383,7 +380,9 @@ mod tests {
                     &old_leaf_var.as_slice(),
                     &new_leaf_var.as_slice(),
                 )
-                .unwrap();
+                .unwrap()
+                .value()
+                .unwrap());
             assert!(cs.is_satisfied().unwrap())
         }
     }
