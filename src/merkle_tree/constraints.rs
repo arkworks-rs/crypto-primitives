@@ -139,40 +139,20 @@ where
 
     /// Given a leaf, calculate the hash of the merkle tree
     /// along the path and check if the given root is correct.
-    ///
-    /// Constraints will not be satisfied if root is incorrect.
-    pub fn check_membership(
+    pub fn verify_membership(
         &self,
         leaf_hash_params: &LeafH::ParametersVar,
         two_to_one_hash_params: &TwoToOneH::ParametersVar,
         root: &TwoToOneH::OutputVar,
         leaf: &impl ToBytesGadget<ConstraintF>,
-    ) -> Result<(), SynthesisError> {
-        self.conditionally_check_membership(
-            leaf_hash_params,
-            two_to_one_hash_params,
-            root,
-            leaf,
-            &Boolean::constant(true),
-        )
-    }
-
-    /// Check membership if `should_enforce` is True.
-    pub fn conditionally_check_membership(
-        &self,
-        leaf_hash_params: &LeafH::ParametersVar,
-        two_to_one_hash_params: &TwoToOneH::ParametersVar,
-        root: &TwoToOneH::OutputVar,
-        leaf: &impl ToBytesGadget<ConstraintF>,
-        should_enforce: &Boolean<ConstraintF>,
-    ) -> Result<(), SynthesisError> {
+    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         let expected_root = self.calculate_root(leaf_hash_params, two_to_one_hash_params, leaf)?;
         // enforce `expected_root` is equal to the given root
-        expected_root.conditional_enforce_equal(root, should_enforce);
-        Ok(())
+        Ok(expected_root.is_eq(root)?)
     }
 
-    /// update the `old_leaf` to `new_leaf` and returned the updated MT root.
+    /// update the `old_leaf` to `new_leaf` and returned the updated MT root. `self` will not be
+    /// modified.
     ///
     /// If the `old_leaf` does not lead to `old_root`, constraints will not be satisfied.
     pub fn update_leaf(
@@ -183,11 +163,12 @@ where
         old_leaf: &impl ToBytesGadget<ConstraintF>,
         new_leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
-        self.check_membership(leaf_hash_params, two_to_one_hash_params, old_root, old_leaf)?;
+        self.verify_membership(leaf_hash_params, two_to_one_hash_params, old_root, old_leaf)?
+            .enforce_equal(&Boolean::TRUE);
         Ok(self.calculate_root(leaf_hash_params, two_to_one_hash_params, new_leaf)?)
     }
 
-    /// update the `old_leaf` to `new_leaf` and returned the updated MT root.
+    /// update the `old_leaf` to `new_leaf` and returned the updated MT root.`self` will not be modified.
     ///
     /// If the `old_leaf` does not lead to `old_root`, or `new_leaf` does not lead to `new_root`,
     /// then constraints will not be satisfied.
@@ -326,13 +307,16 @@ mod tests {
             println!("constraints from path: {}", constraints_from_path);
             let leaf_g: &[_] = leaf_g.as_slice();
             assert!(cs.is_satisfied().unwrap());
-            cw.check_membership(
-                &leaf_crh_params_var,
-                &two_to_one_crh_params_var,
-                &root,
-                &leaf_g,
-            )
-            .unwrap();
+            assert!(cw
+                .verify_membership(
+                    &leaf_crh_params_var,
+                    &two_to_one_crh_params_var,
+                    &root,
+                    &leaf_g,
+                )
+                .unwrap()
+                .value()
+                .unwrap());
             let setup_constraints = constraints_from_leaf
                 + constraints_from_digest
                 + constraints_from_params
