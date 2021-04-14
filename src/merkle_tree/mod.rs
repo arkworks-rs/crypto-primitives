@@ -43,16 +43,14 @@ impl<P: Config> Path<P> {
     /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
-    fn position_list(&self) -> impl Iterator<Item = bool> {
-        let position: Vec<_> = (0..self.auth_path.len() + 1)
-            .map(|i| ((self.leaf_index >> i) & 1) != 0)
+    fn position_list<'a>(&'a self) -> impl 'a + Iterator<Item = bool> {
+        (0..self.auth_path.len() + 1)
+            .map(move |i| ((self.leaf_index >> i) & 1) != 0)
             .rev()
-            .collect();
-        position.into_iter()
     }
 }
 
-/// convert `computed_hash` and `sibling_hash` to bytes. `index` is the first `path.len()` bits of
+/// Convert `computed_hash` and `sibling_hash` to bytes. `index` is the first `path.len()` bits of
 /// the position of tree.
 ///
 /// If the least significant bit of `index` is 0, then `input_1` will be left and `input_2` will be right.
@@ -238,17 +236,17 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
-    /// returns the root fo the merkle tree
+    /// Returns the root of the Merkle tree.
     pub fn root(&self) -> TwoToOneDigest<P> {
         self.non_leaf_nodes[0].clone()
     }
 
-    /// returns height of the merkle tree
+    /// Returns the height of the Merkle tree.
     pub fn height(&self) -> usize {
         self.height
     }
 
-    /// Returns the authentication path from leaf at `index` to root
+    /// Returns the authentication path from leaf at `index` to root.
     pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
         // gather basic tree information
         let tree_height = tree_height(self.leaf_nodes.len());
@@ -352,7 +350,7 @@ impl<P: Config> MerkleTree<P> {
     ///   .. / \ ....
     ///    [I] J
     /// ```
-    /// update(3, {new leaf}) would swap the leaf value associated at `[I]` and cause a recomputation of `[A], [B], [E]`.
+    /// update(3, {new leaf}) would swap the leaf value at `[I]` and cause a recomputation of `[A]`, `[B]`, and `[E]`.
     pub fn update<L: ToBytes>(&mut self, index: usize, new_leaf: &L) -> Result<(), crate::Error> {
         assert!(index < self.leaf_nodes.len(), "index out of range");
         let (updated_leaf_hash, mut updated_path) = self.updated_path(index, new_leaf)?;
@@ -367,7 +365,7 @@ impl<P: Config> MerkleTree<P> {
 
     /// Update the leaf and check if the updated root is equal to `asserted_new_root`.
     ///
-    /// Tree will not be modified if check failed.
+    /// Tree will not be modified if the check fails.
     pub fn check_update<L: ToBytes>(
         &mut self,
         index: usize,
