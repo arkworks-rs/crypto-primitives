@@ -14,6 +14,8 @@ pub mod constraints;
 #[cfg(feature = "r1cs")]
 pub use constraints::*;
 
+/// Interface to CRH. Note that in this release, while all implementations of `CRH` have fixed length,
+/// variable length CRH may also implement this trait in future.
 pub trait CRH {
     const INPUT_SIZE_BITS: usize;
 
