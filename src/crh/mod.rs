@@ -27,16 +27,22 @@ pub trait CRH {
 }
 
 pub trait TwoToOneCRH {
-    /// The size for left input and right input
+    /// The bit size of the left input.
     const LEFT_INPUT_SIZE_BITS: usize;
+    /// The bit size of the right input.
     const RIGHT_INPUT_SIZE_BITS: usize;
 
     type Output: ToBytes + Clone + Eq + core::fmt::Debug + Hash + Default;
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
+    /// Evaluates this CRH on the left and right inputs.
+    ///
+    /// # Panics
+    ///
+    /// If `left_input.len() != Self::LEFT_INPUT_SIZE_BITS`, or if
+    /// `right_input.len() != Self::RIGHT_INPUT_SIZE_BITS`, then this method panics.
     fn evaluate(
-        // we do not use `evaluate` because some implementations may use both `CRH` and `TwoToOneCRH` trait, which causes ambiguity
         parameters: &Self::Parameters,
         left_input: &[u8],
         right_input: &[u8],
