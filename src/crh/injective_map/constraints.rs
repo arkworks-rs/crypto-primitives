@@ -69,7 +69,7 @@ where
     #[doc(hidden)]
     _compressor_gadget: PhantomData<IG>,
     #[doc(hidden)]
-    _crh: ped_constraints::PedersenGadget<C, GG, W>,
+    _crh: ped_constraints::CRHGadget<C, GG, W>,
 }
 
 impl<C, I, GG, IG, W> CRHGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
@@ -90,7 +90,7 @@ where
         parameters: &Self::ParametersVar,
         input: &[UInt8<ConstraintF<C>>],
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let result = ped_constraints::PedersenGadget::<C, GG, W>::evaluate(parameters, input)?;
+        let result = ped_constraints::CRHGadget::<C, GG, W>::evaluate(parameters, input)?;
         IG::evaluate(&result)
     }
 }

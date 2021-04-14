@@ -4,7 +4,7 @@ use crate::{
     crh::{
         bowe_hopwood::{Parameters, CHUNK_SIZE, CRH},
         pedersen::Window,
-        CRHGadget,
+        CRHGadget as CRGGadgetTrait,
     },
     Vec,
 };
@@ -27,7 +27,7 @@ pub struct ParametersVar<P: TEModelParameters, W: Window> {
     _window: PhantomData<W>,
 }
 
-pub struct BoweHopwoodGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+pub struct CRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
 {
@@ -37,7 +37,7 @@ where
     _base_field: PhantomData<F>,
 }
 
-impl<P, F, W> CRHGadget<CRH<P, W>, ConstraintF<P>> for BoweHopwoodGadget<P, F>
+impl<P, F, W> CRGGadgetTrait<CRH<P, W>, ConstraintF<P>> for CRHGadget<P, F>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
     F: FieldVar<P::BaseField, ConstraintF<P>>,
@@ -109,8 +109,8 @@ mod test {
     use ark_std::rand::Rng;
 
     use crate::crh::bowe_hopwood;
-    use crate::crh::bowe_hopwood::constraints::BoweHopwoodGadget;
-    use crate::crh::{pedersen::Window as PedersenWindow, CRHGadget, CRH};
+    use crate::crh::pedersen;
+    use crate::{CRHGadget, CRH};
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
@@ -118,12 +118,12 @@ mod test {
     use ark_std::test_rng;
 
     type TestCRH = bowe_hopwood::CRH<EdwardsParameters, Window>;
-    type TestCRHGadget = BoweHopwoodGadget<EdwardsParameters, FqVar>;
+    type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsParameters, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
 
-    impl PedersenWindow for Window {
+    impl pedersen::Window for Window {
         const WINDOW_SIZE: usize = 63;
         const NUM_WINDOWS: usize = 8;
     }

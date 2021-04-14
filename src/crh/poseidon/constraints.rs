@@ -1,7 +1,7 @@
 use super::sbox::constraints::SboxConstraints;
 use super::PoseidonRoundParams;
-use super::{PoseidonCRH, CRH};
-use crate::CRHGadget;
+use super::{Poseidon, CRH};
+use crate::CRHGadget as CRHGadgetTrait;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::uint8::UInt8;
@@ -17,10 +17,10 @@ use core::borrow::Borrow;
 
 #[derive(Derivative, Clone)]
 pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
-    params: CRH<F, P>,
+    params: Poseidon<F, P>,
 }
 
-pub struct PoseidonCRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
+pub struct CRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
     params: PhantomData<PoseidonRoundParamsVar<F, P>>,
 }
@@ -222,9 +222,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
 }
 
 // https://github.com/arkworks-rs/r1cs-std/blob/master/src/bits/uint8.rs#L343
-impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadget<PoseidonCRH<F, P>, F>
-    for PoseidonCRHGadget<F, P>
-{
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadgetTrait<CRH<F, P>, F> for CRHGadget<F, P> {
     type OutputVar = FpVar<F>;
     type ParametersVar = PoseidonRoundParamsVar<F, P>;
 
@@ -265,9 +263,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadget<PoseidonCRH<F, P>, F>
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<PoseidonCRH<F, P>, F>
-    for PoseidonCRHGadget<F, P>
-{
+impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGadget<F, P> {
     type OutputVar = FpVar<F>;
     type ParametersVar = PoseidonRoundParamsVar<F, P>;
 
@@ -283,15 +279,15 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<PoseidonCRH<F, 
             .into_iter()
             .chain(right_input.to_vec().into_iter())
             .collect();
-        <Self as CRHGadget<_, _>>::evaluate(parameters, &chained_input)
+        <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<CRH<F, P>, F>
+impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<Poseidon<F, P>, F>
     for PoseidonRoundParamsVar<F, P>
 {
     #[tracing::instrument(target = "r1cs", skip(_cs, f))]
-    fn new_variable<T: Borrow<CRH<F, P>>>(
+    fn new_variable<T: Borrow<Poseidon<F, P>>>(
         _cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         _mode: AllocationMode,

@@ -1,7 +1,7 @@
 use crate::{
     crh::{
         pedersen::{Parameters, Window, CRH},
-        CRHGadget,
+        CRHGadget as CRHGadgetTrait,
     },
     Vec,
 };
@@ -25,7 +25,7 @@ where
 }
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
-pub struct PedersenGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
+pub struct CRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -37,7 +37,7 @@ where
     _window: PhantomData<*const W>,
 }
 
-impl<C, GG, W> CRHGadget<CRH<C, W>, ConstraintF<C>> for PedersenGadget<C, GG, W>
+impl<C, GG, W> CRHGadgetTrait<CRH<C, W>, ConstraintF<C>> for CRHGadget<C, GG, W>
 where
     C: ProjectiveCurve,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<C, GG, W> TwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>> for PedersenGadget<C, GG, W>
+impl<C, GG, W> TwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>> for CRHGadget<C, GG, W>
 where
     C: ProjectiveCurve,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -98,7 +98,7 @@ where
             .into_iter()
             .chain(right_input.to_vec().into_iter())
             .collect();
-        <Self as CRHGadget<_, _>>::evaluate(parameters, &chained_input)
+        <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
     }
 }
 
@@ -124,16 +124,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::crh::{
-        pedersen, pedersen::constraints::*, CRHGadget, TwoToOneCRH, TwoToOneCRHGadget, CRH,
-    };
+    use crate::crh::{pedersen, CRHGadget, TwoToOneCRH, TwoToOneCRHGadget, CRH};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
+    use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::rand::Rng;
     use ark_std::test_rng;
 
     type TestCRH = pedersen::CRH<JubJub, Window>;
-    type TestCRHGadget = PedersenGadget<JubJub, EdwardsVar, Window>;
+    type TestCRHGadget = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
@@ -168,9 +167,11 @@ mod test {
         let parameters = <TestCRH as CRH>::setup(rng).unwrap();
         let primitive_result = <TestCRH as CRH>::evaluate(&parameters, &input).unwrap();
 
-        let parameters_var =
-            CRHParametersVar::new_constant(ark_relations::ns!(cs, "CRH Parameters"), &parameters)
-                .unwrap();
+        let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
+            ark_relations::ns!(cs, "CRH Parameters"),
+            &parameters,
+        )
+        .unwrap();
 
         let result_var =
             <TestCRHGadget as CRHGadget<_, _>>::evaluate(&parameters_var, &input_var).unwrap();
@@ -191,9 +192,11 @@ mod test {
         let primitive_result =
             <TestCRH as TwoToOneCRH>::evaluate(&parameters, &left_input, &right_input).unwrap();
 
-        let parameters_var =
-            CRHParametersVar::new_constant(ark_relations::ns!(cs, "CRH Parameters"), &parameters)
-                .unwrap();
+        let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
+            ark_relations::ns!(cs, "CRH Parameters"),
+            &parameters,
+        )
+        .unwrap();
 
         let result_var = <TestCRHGadget as TwoToOneCRHGadget<_, _>>::evaluate(
             &parameters_var,

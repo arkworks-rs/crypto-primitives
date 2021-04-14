@@ -31,7 +31,7 @@ pub trait PoseidonRoundParams<F: PrimeField>: Default + Clone {
 
 /// The Poseidon permutation.
 #[derive(Default, Clone)]
-pub struct CRH<F, P> {
+pub struct Poseidon<F, P> {
     pub params: P,
     /// The round key constants
     pub round_keys: Vec<F>,
@@ -39,7 +39,7 @@ pub struct CRH<F, P> {
     pub mds_matrix: Vec<Vec<F>>,
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
     fn permute(&self, input: &[F]) -> Vec<F> {
         let width = P::WIDTH;
         assert_eq!(input.len(), width);
@@ -165,12 +165,12 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH<F, P> {
     }
 }
 
-pub struct PoseidonCRH<F: PrimeField, P: PoseidonRoundParams<F>> {
+pub struct CRH<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
     params: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH<F, P> {
     pub fn create_mds<R: Rng>(_rng: &mut R) -> Vec<Vec<F>> {
         let mds_matrix = Vec::new();
         mds_matrix
@@ -182,10 +182,10 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for CRH<F, P> {
     const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
-    type Parameters = CRH<F, P>;
+    type Parameters = Poseidon<F, P>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         // let time = start_timer!(|| format!(
@@ -220,11 +220,11 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for PoseidonCRH<F, P> {
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for CRH<F, P> {
     const LEFT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     const RIGHT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     type Output = F;
-    type Parameters = CRH<F, P>;
+    type Parameters = Poseidon<F, P>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         <Self as CRHTrait>::setup(rng)

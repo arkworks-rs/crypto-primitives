@@ -194,7 +194,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::crh::pedersen::constraints::PedersenGadget;
     use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget};
 
     use crate::merkle_tree::Config;
@@ -213,7 +212,7 @@ mod tests {
     }
 
     type H = pedersen::CRH<JubJub, Window4x256>;
-    type HG = PedersenGadget<JubJub, EdwardsVar, Window4x256>;
+    type HG = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window4x256>;
 
     struct JubJubMerkleTreeParams;
 
