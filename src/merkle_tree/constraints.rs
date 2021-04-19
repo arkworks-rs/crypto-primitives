@@ -62,14 +62,6 @@ where
                 mode,
             )?;
 
-            // let mut auth_path = Vec::with_capacity(val.borrow().auth_path.len());
-            // for v in val.borrow().auth_path.iter() {
-            //     auth_path.push(TwoToOneH::OutputVar::new_variable(
-            //         ark_relations::ns!(cs, "auth_path_node"),
-            //         || Ok(v.clone()),
-            //         mode,
-            //     )?)
-            // }
             let auth_path = Vec::new_variable(
                 ark_relations::ns!(cs, "auth_path_nodes"),
                 || Ok(&val.borrow().auth_path[..]),
