@@ -9,7 +9,7 @@ use ark_std::UniformRand;
 use super::CommitmentScheme;
 
 pub use crate::crh::pedersen::Window;
-use crate::crh::{pedersen, FixedLengthCRH};
+use crate::crh::{pedersen, CRH};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

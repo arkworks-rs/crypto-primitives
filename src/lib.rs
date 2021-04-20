@@ -20,13 +20,14 @@ pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
 pub mod commitment;
 pub mod crh;
 pub mod merkle_tree;
+
 pub mod prf;
 pub mod signature;
 pub mod snark;
 
 pub use self::{
     commitment::CommitmentScheme,
-    crh::FixedLengthCRH,
+    crh::CRH,
     merkle_tree::{MerkleTree, Path},
     prf::PRF,
     signature::SignatureScheme,
@@ -35,7 +36,7 @@ pub use self::{
 
 #[cfg(feature = "r1cs")]
 pub use self::{
-    commitment::CommitmentGadget, crh::FixedLengthCRHGadget, merkle_tree::constraints::PathVar,
+    commitment::CommitmentGadget, crh::CRHGadget, merkle_tree::constraints::PathVar,
     prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
 };
 

@@ -8,7 +8,7 @@ use ark_std::{
 use rayon::prelude::*;
 
 use super::pedersen;
-use crate::crh::FixedLengthCRH;
+use crate::crh::CRH as CRHTrait;
 use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
@@ -50,7 +50,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> FixedLengthCRH for CRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
     const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
     type Output = TEProjective<P>;
     type Parameters = Parameters<P>;
@@ -172,8 +172,8 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 #[cfg(test)]
 mod test {
     use crate::{
-        crh::{bowe_hopwood::CRH, pedersen::Window},
-        FixedLengthCRH,
+        crh::{bowe_hopwood, pedersen::Window},
+        CRH,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_std::test_rng;
@@ -188,9 +188,11 @@ mod test {
         }
 
         let rng = &mut test_rng();
-        let params = <CRH<EdwardsParameters, TestWindow> as FixedLengthCRH>::setup(rng).unwrap();
-        let _ =
-            <CRH<EdwardsParameters, TestWindow> as FixedLengthCRH>::evaluate(&params, &[1, 2, 3])
-                .unwrap();
+        let params = <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::setup(rng).unwrap();
+        let _ = <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::evaluate(
+            &params,
+            &[1, 2, 3],
+        )
+        .unwrap();
     }
 }

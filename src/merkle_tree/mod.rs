@@ -1,264 +1,401 @@
-use crate::{crh::FixedLengthCRH, Vec};
-use ark_ff::bytes::ToBytes;
-use ark_std::fmt;
+#![allow(unused)] // temporary
+
+use crate::crh::TwoToOneCRH;
+use crate::CRH;
+use ark_ff::ToBytes;
+use ark_std::vec::Vec;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
 pub trait Config {
-    const HEIGHT: usize;
-    type H: FixedLengthCRH;
+    type LeafHash: CRH;
+    type TwoToOneHash: TwoToOneCRH;
 }
 
-/// Stores the hashes of a particular path (in order) from leaf to root.
-/// Our path `is_left_child()` if the boolean in `path` is true.
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "P: Config"),
-    Debug(bound = "P: Config, <P::H as FixedLengthCRH>::Output: fmt::Debug")
-)]
+pub type TwoToOneDigest<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Output;
+pub type LeafDigest<P> = <<P as Config>::LeafHash as CRH>::Output;
+pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
+pub type LeafParam<P> = <<P as Config>::LeafHash as CRH>::Parameters;
+
+/// Stores the hashes of a particular path (in order) from root to leaf.
+/// For example:
+/// ```tree_diagram
+///         [A]
+///        /   \
+///      [B]    C
+///     / \   /  \
+///    D [E] F    H
+///   .. / \ ....
+///    [I] J
+/// ```
+///  Suppose we want to prove I, then `leaf_sibling_hash` is J, `auth_path` is `[C,D]`
 pub struct Path<P: Config> {
-    pub(crate) path: Vec<(Digest<P>, Digest<P>)>,
-}
-
-pub type Parameters<P> = <<P as Config>::H as FixedLengthCRH>::Parameters;
-pub type Digest<P> = <<P as Config>::H as FixedLengthCRH>::Output;
-
-impl<P: Config> Default for Path<P> {
-    fn default() -> Self {
-        let mut path = Vec::with_capacity(P::HEIGHT as usize);
-        for _i in 1..P::HEIGHT as usize {
-            path.push((
-                <P::H as FixedLengthCRH>::Output::default(),
-                <P::H as FixedLengthCRH>::Output::default(),
-            ));
-        }
-        Self { path }
-    }
+    pub(crate) leaf_sibling_hash: LeafDigest<P>,
+    /// The sibling of path node ordered from higher layer to lower layer (does not include root node).
+    pub(crate) auth_path: Vec<TwoToOneDigest<P>>,
+    /// stores the leaf index of the node
+    pub(crate) leaf_index: usize,
 }
 
 impl<P: Config> Path<P> {
-    pub fn verify<L: ToBytes>(
-        &self,
-        parameters: &<P::H as FixedLengthCRH>::Parameters,
-        root_hash: &<P::H as FixedLengthCRH>::Output,
-        leaf: &L,
-    ) -> Result<bool, crate::Error> {
-        if self.path.len() != (P::HEIGHT - 1) as usize {
-            return Ok(false);
-        }
-        // Check that the given leaf matches the leaf in the membership proof.
-        let mut buffer = [0u8; 128];
-
-        if !self.path.is_empty() {
-            let claimed_leaf_hash = hash_leaf::<P::H, L>(parameters, leaf, &mut buffer)?;
-
-            // Check if leaf is one of the bottom-most siblings.
-            if claimed_leaf_hash != self.path[0].0 && claimed_leaf_hash != self.path[0].1 {
-                return Ok(false);
-            };
-
-            let mut prev = claimed_leaf_hash;
-            // Check levels between leaf level and root.
-            for &(ref hash, ref sibling_hash) in &self.path {
-                // Check if the previous hash matches the correct current hash.
-                if &prev != hash && &prev != sibling_hash {
-                    return Ok(false);
-                };
-                prev = hash_inner_node::<P::H>(parameters, hash, sibling_hash, &mut buffer)?;
-            }
-
-            if root_hash != &prev {
-                return Ok(false);
-            }
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+    /// The position of on_path node in `leaf_and_sibling_hash` and `non_leaf_and_sibling_hash_path`.
+    /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
+    ///
+    /// This function simply converts `self.leaf_index` to boolean array in big endian form.
+    fn position_list<'a>(&'a self) -> impl 'a + Iterator<Item = bool> {
+        (0..self.auth_path.len() + 1)
+            .map(move |i| ((self.leaf_index >> i) & 1) != 0)
+            .rev()
     }
 }
 
+/// Convert `computed_hash` and `sibling_hash` to bytes. `index` is the first `path.len()` bits of
+/// the position of tree.
+///
+/// If the least significant bit of `index` is 0, then `input_1` will be left and `input_2` will be right.
+/// Otherwise, `input_1` will be right and `input_2` will be left.
+///
+/// Returns: (left, right)
+fn select_left_right_bytes<B: ToBytes>(
+    index: usize,
+    computed_hash: &B,
+    sibling_hash: &B,
+) -> Result<(Vec<u8>, Vec<u8>), crate::Error> {
+    let is_left = index & 1 == 0;
+    let mut left_bytes = ark_ff::to_bytes!(computed_hash)?;
+    let mut right_bytes = ark_ff::to_bytes!(sibling_hash)?;
+    if !is_left {
+        core::mem::swap(&mut left_bytes, &mut right_bytes);
+    }
+    Ok((left_bytes, right_bytes))
+}
+
+impl<P: Config> Path<P> {
+    /// Verify that a leaf is at `self.index` of the merkle tree.
+    /// * `leaf_size`: leaf size in number of bytes
+    ///
+    /// `verify` infers the tree height by setting `tree_height = self.auth_path.len() + 2`
+    pub fn verify<L: ToBytes>(
+        &self,
+        leaf_hash_params: &LeafParam<P>,
+        two_to_one_hash_params: &TwoToOneParam<P>,
+        root_hash: &TwoToOneDigest<P>,
+        leaf: &L,
+    ) -> Result<bool, crate::Error> {
+        // calculate leaf hash
+        let claimed_leaf_hash =
+            P::LeafHash::evaluate(&leaf_hash_params, &ark_ff::to_bytes!(&leaf)?)?;
+        // check hash along the path from bottom to root
+        let (left_bytes, right_bytes) =
+            select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
+
+        let mut curr_path_node =
+            P::TwoToOneHash::evaluate(&two_to_one_hash_params, &left_bytes, &right_bytes)?;
+
+        // we will use `index` variable to track the position of path
+        let mut index = self.leaf_index;
+        index >>= 1;
+
+        // Check levels between leaf level and root
+        for level in (0..self.auth_path.len()).rev() {
+            // check if path node at this level is left or right
+            let (left_bytes, right_bytes) =
+                select_left_right_bytes(index, &curr_path_node, &self.auth_path[level])?;
+            // update curr_path_node
+            curr_path_node =
+                P::TwoToOneHash::evaluate(&two_to_one_hash_params, &left_bytes, &right_bytes)?;
+            index >>= 1;
+        }
+
+        // check if final hash is root
+        if &curr_path_node != root_hash {
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+}
+
+/// Defines a merkle tree data structure.
+/// This merkle tree has runtime fixed height, and assumes number of leaves is 2^height.
+///
+/// TODO: add RFC-6962 compatible merkle tree in the future.
+/// For this release, padding will not be supported because of security concerns: if the leaf hash and two to one hash uses same underlying
+/// CRH, a malicious prover can prove a leaf while the actual node is an inner node. In the future, we can prefix leaf hashes in different layers to
+/// solve the problem.
 pub struct MerkleTree<P: Config> {
-    tree: Vec<Digest<P>>,
-    padding_tree: Vec<(Digest<P>, Digest<P>)>,
-    parameters: <P::H as FixedLengthCRH>::Parameters,
-    root: Option<Digest<P>>,
+    /// stores the non-leaf nodes in level order. The first element is the root node.
+    /// The ith nodes (starting at 1st) children are at indices `2*i`, `2*i+1`
+    non_leaf_nodes: Vec<TwoToOneDigest<P>>,
+    /// store the hash of leaf nodes from left to right
+    leaf_nodes: Vec<LeafDigest<P>>,
+    /// Store the two-to-one hash parameters
+    two_to_one_hash_param: TwoToOneParam<P>,
+    /// Store the leaf hash parameters
+    leaf_hash_param: LeafParam<P>,
+    /// Stores the height of the MerkleTree
+    height: usize,
 }
 
 impl<P: Config> MerkleTree<P> {
-    pub const HEIGHT: u8 = P::HEIGHT as u8;
-
-    pub fn blank(parameters: Parameters<P>) -> Self {
-        MerkleTree {
-            tree: Vec::new(),
-            padding_tree: Vec::new(),
-            root: None,
-            parameters,
-        }
+    /// Create an empty merkle tree such that all leaves are zero-filled.
+    /// Consider using a sparse merkle tree if you need the tree to be low memory
+    pub fn blank(
+        leaf_hash_param: &LeafParam<P>,
+        two_to_one_hash_param: &TwoToOneParam<P>,
+        height: usize,
+    ) -> Result<Self, crate::Error> {
+        let leaf = vec![0u8; P::LeafHash::INPUT_SIZE_BITS / 8];
+        let leaves = vec![leaf; 1 << (height - 1)];
+        Self::new(leaf_hash_param, two_to_one_hash_param, &leaves)
     }
 
-    pub fn new<L: ToBytes>(parameters: Parameters<P>, leaves: &[L]) -> Result<Self, crate::Error> {
-        let new_time = start_timer!(|| "MerkleTree::New");
+    /// Returns a new merkle tree. `leaves.len()` should be power of two.
+    pub fn new<L: ToBytes>(
+        leaf_hash_param: &LeafParam<P>,
+        two_to_one_hash_param: &TwoToOneParam<P>,
+        leaves: &[L],
+    ) -> Result<Self, crate::Error> {
+        let leaf_nodes_size = leaves.len(); // size of the leaf layer
+        assert!(
+            leaf_nodes_size.is_power_of_two(),
+            "`leaves.len() should be power of two"
+        );
+        let non_leaf_nodes_size = leaf_nodes_size - 1;
 
-        let last_level_size = leaves.len().next_power_of_two();
-        let tree_size = 2 * last_level_size - 1;
-        let tree_height = tree_height(tree_size);
-        assert!(tree_height as u8 <= Self::HEIGHT);
+        let tree_height = tree_height(leaf_nodes_size);
 
-        // Initialize the merkle tree.
-        let mut tree = Vec::with_capacity(tree_size);
-        let empty_hash = hash_empty::<P::H>(&parameters)?;
-        for _ in 0..tree_size {
-            tree.push(empty_hash.clone());
-        }
+        let hash_of_empty: TwoToOneDigest<P> = P::TwoToOneHash::evaluate(
+            two_to_one_hash_param,
+            &vec![0u8; P::TwoToOneHash::LEFT_INPUT_SIZE_BITS / 8],
+            &vec![0u8; P::TwoToOneHash::RIGHT_INPUT_SIZE_BITS / 8],
+        )?;
 
-        // Compute the starting indices for each level of the tree.
+        // initialize the merkle tree as array of nodes in level order
+        let mut non_leaf_nodes: Vec<TwoToOneDigest<P>> = (0..non_leaf_nodes_size)
+            .map(|_| hash_of_empty.clone())
+            .collect();
+        let mut leaf_nodes: Vec<LeafDigest<P>> = Vec::with_capacity(leaf_nodes_size);
+
+        // Compute the starting indices for each non-leaf level of the tree
         let mut index = 0;
-        let mut level_indices = Vec::with_capacity(tree_height);
-        for _ in 0..tree_height {
+        let mut level_indices = Vec::with_capacity(tree_height - 1);
+        for _ in 0..(tree_height - 1) {
             level_indices.push(index);
             index = left_child(index);
         }
 
-        // Compute and store the hash values for each leaf.
-        let last_level_index = level_indices.pop().unwrap_or(0);
-        let mut buffer = [0u8; 128];
-        for (i, leaf) in leaves.iter().enumerate() {
-            tree[last_level_index + i] = hash_leaf::<P::H, _>(&parameters, leaf, &mut buffer)?;
+        // compute and store hash values for each leaf
+        for leaf in leaves.iter() {
+            leaf_nodes.push(P::LeafHash::evaluate(
+                leaf_hash_param,
+                &ark_ff::to_bytes!(leaf)?,
+            )?)
         }
 
-        // Compute the hash values for every node in the tree.
-        let mut upper_bound = last_level_index;
-        let mut buffer = [0u8; 128];
+        // compute the hash values for the non-leaf bottom layer
+        {
+            let start_index = level_indices.pop().unwrap();
+            let upper_bound = left_child(start_index);
+            for current_index in start_index..upper_bound {
+                // `left_child(current_index)` and `right_child(current_index) returns the position of
+                // leaf in the whole tree (represented as a list in level order). We need to shift it
+                // by `-upper_bound` to get the index in `leaf_nodes` list.
+                let left_leaf_index = left_child(current_index) - upper_bound;
+                let right_leaf_index = right_child(current_index) - upper_bound;
+                // compute hash
+                let left_bytes = ark_ff::to_bytes!(&leaf_nodes[left_leaf_index])?;
+                let right_bytes = ark_ff::to_bytes!(&leaf_nodes[right_leaf_index])?;
+                non_leaf_nodes[current_index] =
+                    P::TwoToOneHash::evaluate(&two_to_one_hash_param, &left_bytes, &right_bytes)?
+            }
+        }
+
+        // compute the hash values for nodes in every other layer in the tree
         level_indices.reverse();
         for &start_index in &level_indices {
-            // Iterate over the current level.
+            // The layer beginning `start_index` ends at `upper_bound` (exclusive).
+            let upper_bound = left_child(start_index);
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
-
-                // Compute Hash(left || right).
-                tree[current_index] = hash_inner_node::<P::H>(
-                    &parameters,
-                    &tree[left_index],
-                    &tree[right_index],
-                    &mut buffer,
-                )?;
+                let left_bytes = ark_ff::to_bytes!(&non_leaf_nodes[left_index])?;
+                let right_bytes = ark_ff::to_bytes!(&non_leaf_nodes[right_index])?;
+                non_leaf_nodes[current_index] =
+                    P::TwoToOneHash::evaluate(&two_to_one_hash_param, &left_bytes, &right_bytes)?
             }
-            upper_bound = start_index;
         }
-        // Finished computing actual tree.
-        // Now, we compute the dummy nodes until we hit our HEIGHT goal.
-        let mut cur_height = tree_height;
-        let mut padding_tree = Vec::new();
-        let mut cur_hash = tree[0].clone();
-        let root_hash = if cur_height < Self::HEIGHT as usize {
-            while cur_height < (Self::HEIGHT - 1) as usize {
-                cur_hash =
-                    hash_inner_node::<P::H>(&parameters, &cur_hash, &empty_hash, &mut buffer)?;
-                padding_tree.push((cur_hash.clone(), empty_hash.clone()));
-                cur_height += 1;
-            }
-            hash_inner_node::<P::H>(&parameters, &cur_hash, &empty_hash, &mut buffer)?
-        } else {
-            cur_hash
-        };
-        end_timer!(new_time);
 
         Ok(MerkleTree {
-            tree,
-            padding_tree,
-            parameters,
-            root: Some(root_hash),
+            leaf_nodes,
+            non_leaf_nodes,
+            height: tree_height,
+            two_to_one_hash_param: two_to_one_hash_param.clone(),
+            leaf_hash_param: leaf_hash_param.clone(),
         })
     }
 
-    #[inline]
-    pub fn root(&self) -> Digest<P> {
-        self.root.clone().unwrap()
+    /// Returns the root of the Merkle tree.
+    pub fn root(&self) -> TwoToOneDigest<P> {
+        self.non_leaf_nodes[0].clone()
     }
 
-    pub fn generate_proof<L: ToBytes>(
-        &self,
-        index: usize,
-        leaf: &L,
-    ) -> Result<Path<P>, crate::Error> {
-        let prove_time = start_timer!(|| "MerkleTree::GenProof");
-        let mut path = Vec::new();
+    /// Returns the height of the Merkle tree.
+    pub fn height(&self) -> usize {
+        self.height
+    }
 
-        let mut buffer = [0u8; 128];
-        let leaf_hash = hash_leaf::<P::H, _>(&self.parameters, leaf, &mut buffer)?;
-        let tree_height = tree_height(self.tree.len());
-        let tree_index = convert_index_to_last_level(index, tree_height);
-        let empty_hash = hash_empty::<P::H>(&self.parameters)?;
+    /// Returns the authentication path from leaf at `index` to root.
+    pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
+        // gather basic tree information
+        let tree_height = tree_height(self.leaf_nodes.len());
 
-        // Check that the given index corresponds to the correct leaf.
-        if leaf_hash != self.tree[tree_index] {
-            return Err(Error::IncorrectLeafIndex(tree_index).into());
-        }
+        // Get Leaf hash, and leaf sibling hash,
+        let leaf_index_in_tree = convert_index_to_last_level(index, tree_height);
+        let leaf_sibling_hash = if index & 1 == 0 {
+            // leaf is left child
+            self.leaf_nodes[index + 1].clone()
+        } else {
+            // leaf is right child
+            self.leaf_nodes[index - 1].clone()
+        };
 
-        // Iterate from the leaf up to the root, storing all intermediate hash values.
-        let mut current_node = tree_index;
+        // path.len() = `tree height - 2`, the two missing elements being the leaf sibling hash and the root
+        let mut path = Vec::with_capacity(tree_height - 2);
+        // Iterate from the bottom layer after the leaves, to the top, storing all sibling node's hash values.
+        let mut current_node = parent(leaf_index_in_tree).unwrap();
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
-            let (curr_hash, sibling_hash) = (
-                self.tree[current_node].clone(),
-                self.tree[sibling_node].clone(),
-            );
-            if is_left_child(current_node) {
-                path.push((curr_hash, sibling_hash));
-            } else {
-                path.push((sibling_hash, curr_hash));
-            }
+            path.push(self.non_leaf_nodes[sibling_node].clone());
             current_node = parent(current_node).unwrap();
         }
 
-        // Store the root node. Set boolean as true for consistency with digest
-        // location.
-        assert!(path.len() < Self::HEIGHT as usize);
-        if path.len() != (Self::HEIGHT - 1) as usize {
-            path.push((self.tree[0].clone(), empty_hash));
-            for &(ref hash, ref sibling_hash) in &self.padding_tree {
-                path.push((hash.clone(), sibling_hash.clone()));
-            }
-        }
-        end_timer!(prove_time);
-        if path.len() != (Self::HEIGHT - 1) as usize {
-            Err(Error::IncorrectPathLength(path.len()).into())
+        debug_assert_eq!(path.len(), tree_height - 2);
+
+        // we want to make path from root to bottom
+        path.reverse();
+
+        Ok(Path {
+            leaf_index: index,
+            auth_path: path,
+            leaf_sibling_hash,
+        })
+    }
+
+    /// Given the index and new leaf, return the hash of leaf and an updated path in order from root to bottom non-leaf level.
+    /// This does not mutate the underlying tree.
+    fn updated_path<L: ToBytes>(
+        &self,
+        index: usize,
+        new_leaf: &L,
+    ) -> Result<(LeafDigest<P>, Vec<TwoToOneDigest<P>>), crate::Error> {
+        // calculate the hash of leaf
+        let new_leaf_hash =
+            P::LeafHash::evaluate(&self.leaf_hash_param, &ark_ff::to_bytes!(&new_leaf)?)?;
+
+        // calculate leaf sibling hash and locate its position (left or right)
+        let (leaf_left, leaf_right) = if index & 1 == 0 {
+            // leaf on left
+            (&new_leaf_hash, &self.leaf_nodes[index + 1])
         } else {
-            Ok(Path { path })
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Error {
-    IncorrectLeafIndex(usize),
-    IncorrectPathLength(usize),
-}
-
-impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let msg = match self {
-            Error::IncorrectLeafIndex(index) => format!("incorrect leaf index: {}", index),
-            Error::IncorrectPathLength(len) => format!("incorrect path length: {}", len),
+            (&self.leaf_nodes[index - 1], &new_leaf_hash)
         };
-        write!(f, "{}", msg)
+
+        // calculate the updated hash at bottom non-leaf-level
+        let mut path_bottom_to_top = Vec::with_capacity(self.height - 1);
+        {
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
+                &self.two_to_one_hash_param,
+                &ark_ff::to_bytes!(&leaf_left)?,
+                &ark_ff::to_bytes!(&leaf_right)?,
+            )?);
+        }
+
+        // then calculate the updated hash from bottom to root
+        let leaf_index_in_tree = convert_index_to_last_level(index, self.height);
+        let mut prev_index = parent(leaf_index_in_tree).unwrap();
+        while !is_root(prev_index) {
+            let (left_hash_bytes, right_hash_bytes) = if is_left_child(prev_index) {
+                (
+                    ark_ff::to_bytes!(path_bottom_to_top.last().unwrap())?,
+                    ark_ff::to_bytes!(&self.non_leaf_nodes[sibling(prev_index).unwrap()])?,
+                )
+            } else {
+                (
+                    ark_ff::to_bytes!(&self.non_leaf_nodes[sibling(prev_index).unwrap()])?,
+                    ark_ff::to_bytes!(path_bottom_to_top.last().unwrap())?,
+                )
+            };
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
+                &self.two_to_one_hash_param,
+                &left_hash_bytes,
+                &right_hash_bytes,
+            )?);
+            prev_index = parent(prev_index).unwrap();
+        }
+
+        debug_assert_eq!(path_bottom_to_top.len(), self.height - 1);
+        let path_top_to_bottom: Vec<_> = path_bottom_to_top.into_iter().rev().collect();
+        return Ok((new_leaf_hash, path_top_to_bottom));
+    }
+
+    /// Update the leaf at `index` to updated leaf.
+    /// ```tree_diagram
+    ///         [A]
+    ///        /   \
+    ///      [B]    C
+    ///     / \   /  \
+    ///    D [E] F    H
+    ///   .. / \ ....
+    ///    [I] J
+    /// ```
+    /// update(3, {new leaf}) would swap the leaf value at `[I]` and cause a recomputation of `[A]`, `[B]`, and `[E]`.
+    pub fn update<L: ToBytes>(&mut self, index: usize, new_leaf: &L) -> Result<(), crate::Error> {
+        assert!(index < self.leaf_nodes.len(), "index out of range");
+        let (updated_leaf_hash, mut updated_path) = self.updated_path(index, new_leaf)?;
+        self.leaf_nodes[index] = updated_leaf_hash;
+        let mut curr_index = convert_index_to_last_level(index, self.height);
+        for _ in 0..self.height - 1 {
+            curr_index = parent(curr_index).unwrap();
+            self.non_leaf_nodes[curr_index] = updated_path.pop().unwrap();
+        }
+        Ok(())
+    }
+
+    /// Update the leaf and check if the updated root is equal to `asserted_new_root`.
+    ///
+    /// Tree will not be modified if the check fails.
+    pub fn check_update<L: ToBytes>(
+        &mut self,
+        index: usize,
+        new_leaf: &L,
+        asserted_new_root: &TwoToOneDigest<P>,
+    ) -> Result<bool, crate::Error> {
+        assert!(index < self.leaf_nodes.len(), "index out of range");
+        let (updated_leaf_hash, mut updated_path) = self.updated_path(index, new_leaf)?;
+        if &updated_path[0] != asserted_new_root {
+            return Ok(false);
+        }
+        self.leaf_nodes[index] = updated_leaf_hash;
+        let mut curr_index = convert_index_to_last_level(index, self.height);
+        for _ in 0..self.height - 1 {
+            curr_index = parent(curr_index).unwrap();
+            self.non_leaf_nodes[curr_index] = updated_path.pop().unwrap();
+        }
+        Ok(true)
     }
 }
 
-impl ark_std::error::Error for Error {}
-
-/// Returns the height of the tree, given the size of the tree.
+/// Returns the height of the tree, given the number of leaves.
 #[inline]
-fn tree_height(tree_size: usize) -> usize {
-    if tree_size == 1 {
+fn tree_height(num_leaves: usize) -> usize {
+    if num_leaves == 1 {
         return 1;
     }
 
-    ark_std::log2(tree_size) as usize
+    (ark_std::log2(num_leaves) as usize) + 1
 }
-
 /// Returns true iff the index represents the root.
 #[inline]
 fn is_root(index: usize) -> bool {
@@ -310,48 +447,15 @@ fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
 }
 
-/// Returns the output hash, given a left and right hash value.
-pub(crate) fn hash_inner_node<H: FixedLengthCRH>(
-    parameters: &H::Parameters,
-    left: &H::Output,
-    right: &H::Output,
-    buffer: &mut [u8],
-) -> Result<H::Output, crate::Error> {
-    let bytes = ark_ff::to_bytes![left]?
-        .into_iter()
-        .chain(ark_ff::to_bytes![right]?);
-    buffer.iter_mut().zip(bytes).for_each(|(b, l_b)| *b = l_b);
-    H::evaluate(parameters, &buffer[..(H::INPUT_SIZE_BITS / 8)])
-}
-
-/// Returns the hash of a leaf.
-pub(crate) fn hash_leaf<H: FixedLengthCRH, L: ToBytes>(
-    parameters: &H::Parameters,
-    leaf: &L,
-    buffer: &mut [u8],
-) -> Result<H::Output, crate::Error> {
-    buffer
-        .iter_mut()
-        .zip(&ark_ff::to_bytes![leaf]?)
-        .for_each(|(b, l_b)| *b = *l_b);
-    H::evaluate(parameters, &buffer[..(H::INPUT_SIZE_BITS / 8)])
-}
-
-pub(crate) fn hash_empty<H: FixedLengthCRH>(
-    parameters: &H::Parameters,
-) -> Result<H::Output, crate::Error> {
-    let empty_buffer = vec![0u8; H::INPUT_SIZE_BITS / 8];
-    H::evaluate(parameters, &empty_buffer)
-}
-
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{
         crh::{pedersen, *},
         merkle_tree::*,
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_ff::Zero;
+    use ark_ff::{BigInteger256, ToBytes};
+    use ark_std::{test_rng, UniformRand};
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -365,75 +469,82 @@ mod test {
     struct JubJubMerkleTreeParams;
 
     impl Config for JubJubMerkleTreeParams {
-        const HEIGHT: usize = 8;
-        type H = H;
+        type LeafHash = H;
+        type TwoToOneHash = H;
     }
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
-    fn generate_merkle_tree<L: ToBytes + Clone + Eq>(leaves: &[L]) -> () {
+    fn merkle_tree_test<L: ToBytes + Clone + Eq>(leaves: &[L], update_query: &[(usize, L)]) -> () {
         let mut rng = ark_std::test_rng();
-
-        let crh_parameters = H::setup(&mut rng).unwrap();
-        let tree = JubJubMerkleTree::new(crh_parameters.clone(), &leaves).unwrap();
-        let root = tree.root();
+        let mut leaves = leaves.to_vec();
+        let leaf_crh_params = <H as CRH>::setup(&mut rng).unwrap();
+        let two_to_one_crh_params = <H as TwoToOneCRH>::setup(&mut rng).unwrap();
+        let mut tree = JubJubMerkleTree::new(
+            &leaf_crh_params.clone(),
+            &two_to_one_crh_params.clone(),
+            &leaves,
+        )
+        .unwrap();
+        let mut root = tree.root();
+        // test merkle tree functionality without update
         for (i, leaf) in leaves.iter().enumerate() {
-            let proof = tree.generate_proof(i, &leaf).unwrap();
-            assert!(proof.verify(&crh_parameters, &root, &leaf).unwrap());
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_crh_params, &root, &leaf)
+                .unwrap());
+        }
+
+        // test merkle tree update functionality
+        for (i, v) in update_query {
+            tree.update(*i, v);
+            leaves[*i] = v.clone();
+        }
+        // update the root
+        root = tree.root();
+        // verify again
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_crh_params, &root, &leaf)
+                .unwrap());
         }
     }
 
     #[test]
     fn good_root_test() {
-        let mut leaves = Vec::new();
-        for i in 0..4u8 {
-            leaves.push([i, i, i, i, i, i, i, i]);
-        }
-        generate_merkle_tree(&leaves);
-        let mut leaves = Vec::new();
-        for i in 0..100u8 {
-            leaves.push([i, i, i, i, i, i, i, i]);
-        }
-        generate_merkle_tree(&leaves);
-    }
+        let mut rng = test_rng();
 
-    #[test]
-    fn no_dummy_nodes_test() {
         let mut leaves = Vec::new();
-        for i in 0..(1u8 << JubJubMerkleTree::HEIGHT - 1) {
-            leaves.push([i, i, i, i, i, i, i, i]);
+        for _ in 0..2u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
         }
-        generate_merkle_tree(&leaves);
-    }
+        merkle_tree_test(
+            &leaves,
+            &vec![
+                (0, BigInteger256::rand(&mut rng)),
+                (1, BigInteger256::rand(&mut rng)),
+            ],
+        );
 
-    #[test]
-    fn single_leaf_test() {
-        generate_merkle_tree(&[[1u8; 8]]);
-    }
-
-    fn bad_merkle_tree_verify<L: ToBytes + Clone + Eq>(leaves: &[L]) -> () {
-        let mut rng = ark_std::test_rng();
-
-        let crh_parameters = H::setup(&mut rng).unwrap();
-        let tree = JubJubMerkleTree::new(crh_parameters.clone(), &leaves).unwrap();
-        let root = JubJub::zero().into();
-        for (i, leaf) in leaves.iter().enumerate() {
-            let proof = tree.generate_proof(i, &leaf).unwrap();
-            assert!(proof.verify(&crh_parameters, &root, &leaf).unwrap());
-        }
-    }
-
-    #[should_panic]
-    #[test]
-    fn bad_root_test() {
         let mut leaves = Vec::new();
-        for i in 0..4u8 {
-            leaves.push([i, i, i, i, i, i, i, i]);
+        for _ in 0..4u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
         }
-        generate_merkle_tree(&leaves);
+        merkle_tree_test(&leaves, &vec![(3, BigInteger256::rand(&mut rng))]);
+
         let mut leaves = Vec::new();
-        for i in 0..100u8 {
-            leaves.push([i, i, i, i, i, i, i, i]);
+        for _ in 0..128u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
         }
-        bad_merkle_tree_verify(&leaves);
+        merkle_tree_test(
+            &leaves,
+            &vec![
+                (2, BigInteger256::rand(&mut rng)),
+                (3, BigInteger256::rand(&mut rng)),
+                (5, BigInteger256::rand(&mut rng)),
+                (111, BigInteger256::rand(&mut rng)),
+                (127, BigInteger256::rand(&mut rng)),
+            ],
+        );
     }
 }

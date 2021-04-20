@@ -3,7 +3,7 @@ use ark_ff::bytes::ToBytes;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
-use super::{pedersen, FixedLengthCRH};
+use super::{pedersen, CRH};
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
@@ -36,7 +36,7 @@ pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pede
     _crh: pedersen::CRH<C, W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> FixedLengthCRH
+impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
     for PedersenCRHCompressor<C, I, W>
 {
     const INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::INPUT_SIZE_BITS;

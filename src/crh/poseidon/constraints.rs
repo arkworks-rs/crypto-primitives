@@ -1,7 +1,7 @@
 use super::sbox::constraints::SboxConstraints;
 use super::PoseidonRoundParams;
-use super::{Poseidon, PoseidonCRH};
-use crate::FixedLengthCRHGadget;
+use super::{Poseidon, CRH};
+use crate::CRHGadget as CRHGadgetTrait;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::uint8::UInt8;
@@ -10,6 +10,7 @@ use ark_r1cs_std::{alloc::AllocVar, fields::FieldVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::vec::Vec;
 
+use crate::crh::TwoToOneCRHGadget;
 use ark_std::borrow::ToOwned;
 use ark_std::marker::PhantomData;
 use core::borrow::Borrow;
@@ -19,7 +20,7 @@ pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
     params: Poseidon<F, P>,
 }
 
-pub struct PoseidonCRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
+pub struct CRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
     params: PhantomData<PoseidonRoundParamsVar<F, P>>,
 }
@@ -221,9 +222,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
 }
 
 // https://github.com/arkworks-rs/r1cs-std/blob/master/src/bits/uint8.rs#L343
-impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<F, P>, F>
-    for PoseidonCRHGadget<F, P>
-{
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadgetTrait<CRH<F, P>, F> for CRHGadget<F, P> {
     type OutputVar = FpVar<F>;
     type ParametersVar = PoseidonRoundParamsVar<F, P>;
 
@@ -261,6 +260,26 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRHGadget<PoseidonCRH<
             _ => panic!("incorrect number (elements) for poseidon hash"),
         };
         Ok(result.unwrap_or(Self::OutputVar::zero()))
+    }
+}
+
+impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGadget<F, P> {
+    type OutputVar = FpVar<F>;
+    type ParametersVar = PoseidonRoundParamsVar<F, P>;
+
+    fn evaluate(
+        parameters: &Self::ParametersVar,
+        left_input: &[UInt8<F>],
+        right_input: &[UInt8<F>],
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        // assume equality of left and right length
+        assert_eq!(left_input.len(), right_input.len());
+        let chained_input: Vec<_> = left_input
+            .to_vec()
+            .into_iter()
+            .chain(right_input.to_vec().into_iter())
+            .collect();
+        <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
     }
 }
 

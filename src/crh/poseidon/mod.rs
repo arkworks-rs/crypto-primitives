@@ -1,9 +1,9 @@
 use crate::crh::poseidon::sbox::PoseidonSbox;
-use crate::crh::FixedLengthCRH;
-use crate::{Error, Vec};
+use crate::{Error, Vec, CRH as CRHTrait};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 
+use crate::crh::TwoToOneCRH;
 use ark_ff::fields::PrimeField;
 use ark_ff::ToConstraintField;
 
@@ -165,12 +165,12 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
     }
 }
 
-pub struct PoseidonCRH<F: PrimeField, P: PoseidonRoundParams<F>> {
+pub struct CRH<F: PrimeField, P: PoseidonRoundParams<F>> {
     field: PhantomData<F>,
     params: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH<F, P> {
     pub fn create_mds<R: Rng>(_rng: &mut R) -> Vec<Vec<F>> {
         let mds_matrix = Vec::new();
         mds_matrix
@@ -182,7 +182,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonCRH<F, P> {
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F, P> {
+impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for CRH<F, P> {
     const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
     type Parameters = Poseidon<F, P>;
@@ -217,5 +217,33 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> FixedLengthCRH for PoseidonCRH<F,
         end_timer!(eval_time);
 
         Ok(result)
+    }
+}
+
+impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for CRH<F, P> {
+    const LEFT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    const RIGHT_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    type Output = F;
+    type Parameters = Poseidon<F, P>;
+
+    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+        <Self as CRHTrait>::setup(rng)
+    }
+
+    /// A simple implementation of TwoToOneCRH by asserting left and right input has same length and chain them together.
+    fn evaluate(
+        parameters: &Self::Parameters,
+        left_input: &[u8],
+        right_input: &[u8],
+    ) -> Result<Self::Output, Error> {
+        assert_eq!(left_input.len(), right_input.len());
+        assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        let chained: Vec<_> = left_input
+            .iter()
+            .chain(right_input.iter())
+            .map(|x| *x)
+            .collect();
+
+        <Self as CRHTrait>::evaluate(parameters, &chained)
     }
 }

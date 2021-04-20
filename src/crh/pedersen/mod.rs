@@ -7,7 +7,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::FixedLengthCRH;
+use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
@@ -50,7 +50,7 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> FixedLengthCRH for CRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
     const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     type Output = C::Affine;
     type Parameters = Parameters<C>;
@@ -117,6 +117,44 @@ impl<C: ProjectiveCurve, W: Window> FixedLengthCRH for CRH<C, W> {
         end_timer!(eval_time);
 
         Ok(result.into())
+    }
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
+    const LEFT_INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS / 2;
+    const RIGHT_INPUT_SIZE_BITS: usize = Self::LEFT_INPUT_SIZE_BITS;
+    type Output = C::Affine;
+    type Parameters = Parameters<C>;
+
+    fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
+        <Self as CRHTrait>::setup(r)
+    }
+
+    /// A simple implementation method: just concat the left input and right input together
+    ///
+    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
+    fn evaluate(
+        parameters: &Self::Parameters,
+        left_input: &[u8],
+        right_input: &[u8],
+    ) -> Result<Self::Output, Error> {
+        assert_eq!(
+            left_input.len(),
+            right_input.len(),
+            "left and right input should be of equal length"
+        );
+        // check overflow
+
+        debug_assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+
+        let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
+
+        buffer
+            .iter_mut()
+            .zip(left_input.iter().chain(right_input.iter()))
+            .for_each(|(b, l_b)| *b = *l_b);
+
+        <Self as CRHTrait>::evaluate(parameters, &buffer)
     }
 }
 
