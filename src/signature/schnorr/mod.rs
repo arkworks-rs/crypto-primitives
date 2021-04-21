@@ -74,6 +74,8 @@ where
     ) -> Result<(Self::PublicKey, Self::SecretKey), Error> {
         let keygen_time = start_timer!(|| "SchnorrSig::KeyGen");
 
+        // Secret is a random scalar x
+        // the pubkey is y = xG
         let secret_key = C::ScalarField::rand(rng);
         let public_key = parameters.generator.mul(secret_key).into();
 
@@ -133,16 +135,21 @@ where
             prover_response,
             verifier_challenge,
         } = signature;
+        // sG = kG - eY
+        // kG = sG + eY
+        // so we first solve for kG.
         let mut claimed_prover_commitment = parameters.generator.mul(*prover_response);
         let public_key_times_verifier_challenge = pk.mul(*verifier_challenge);
         claimed_prover_commitment += &public_key_times_verifier_challenge;
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
+        // e = H(salt, kG, msg)
         let mut hash_input = Vec::new();
         hash_input.extend_from_slice(&parameters.salt);
         hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
         hash_input.extend_from_slice(&message);
 
+        // cast the hash output to get e
         let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
             C::ScalarField::from_random_bytes(&D::digest(&hash_input))
         {
@@ -151,6 +158,8 @@ where
             return Ok(false);
         };
         end_timer!(verify_time);
+        // The signature is valid iff the computed verifier challenge is the same as the one
+        // provided in the signature
         Ok(verifier_challenge == &obtained_verifier_challenge)
     }
 

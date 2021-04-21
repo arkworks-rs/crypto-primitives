@@ -1,5 +1,6 @@
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
+use ark_r1cs_std::fields::fp::FpVar;
 use ark_relations::r1cs::SynthesisError;
 
 use crate::signature::SignatureScheme;
@@ -16,6 +17,8 @@ pub trait SigVerifyGadget<S: SignatureScheme, ConstraintF: Field> {
     fn verify(
         parameters: &Self::ParametersVar,
         public_key: &Self::PublicKeyVar,
+        // TODO: Should we make this take in bytes or something different?
+        message: &[FpVar<ConstraintF>],
         signature: &Self::SignatureVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError>;
 }
