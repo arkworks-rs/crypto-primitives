@@ -4,6 +4,22 @@ use ark_relations::r1cs::SynthesisError;
 
 use crate::signature::SignatureScheme;
 
+pub trait SigVerifyGadget<S: SignatureScheme, ConstraintF: Field> {
+    type ParametersVar: AllocVar<S::Parameters, ConstraintF> + Clone;
+
+    type PublicKeyVar: ToBytesGadget<ConstraintF>
+        + AllocVar<S::PublicKey, ConstraintF>
+        + Clone;
+
+    type SignatureVar;
+
+    fn verify(
+        parameters: &Self::ParametersVar,
+        public_key: &Self::PublicKeyVar,
+        signature: &Self::SignatureVar,
+    ) -> Result<Boolean<ConstraintF>, SynthesisError>;
+}
+
 pub trait SigRandomizePkGadget<S: SignatureScheme, ConstraintF: Field> {
     type ParametersVar: AllocVar<S::Parameters, ConstraintF> + Clone;
 

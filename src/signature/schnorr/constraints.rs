@@ -1,10 +1,11 @@
 use crate::Vec;
 use ark_ec::ProjectiveCurve;
 use ark_ff::Field;
-use ark_r1cs_std::prelude::*;
+use ark_r1cs_std::{prelude::*, fields::FieldVar};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::signature::SigRandomizePkGadget;
+use crate::crh::*;
+use crate::signature::{SigVerifyGadget, SigRandomizePkGadget};
 
 use core::{borrow::Borrow, marker::PhantomData};
 
@@ -34,6 +35,54 @@ where
     pub_key: GC,
     #[doc(hidden)]
     _group: PhantomData<*const C>,
+}
+
+pub struct SignatureVar<F: Field, CF: Field, FVar: FieldVar<F, CF>>
+{
+    pub_key: FVar,
+    #[doc(hidden)]
+    _field: PhantomData<*const F>,
+    #[doc(hidden)]
+    _constraint_field: PhantomData<*const CF>,
+}
+
+pub struct SchnorrSignatureVerifyGadget<
+    H: CRH, 
+    C: ProjectiveCurve, 
+    H2F: CRHGadget<H, ConstraintF<C>>, 
+    GC: CurveVar<C, ConstraintF<C>>>
+where
+    for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
+{
+    #[doc(hidden)]
+    _group: PhantomData<*const C>,
+    #[doc(hidden)]
+    _group_gadget: PhantomData<*const GC>,
+}
+
+impl<C, GC, D, H, H2F> SigVerifyGadget<Schnorr<C, D>> 
+    for SchnorrSignatureVerifyGadget<H, C, H2F, GC>
+where
+    H: CRH,
+    C: ProjectiveCurve,
+    H2F: CRHGadget<H, ConstraintF<C>>,
+    GC: CurveVar<C, ConstraintF<C>>,
+    D: Digest + Send + Sync,
+    for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
+{
+    type ParametersVar = ParametersVar<C, GC>;
+    type PublicKeyVar = PublicKeyVar<C, GC>;
+    type SignatureVar = SignatureVar<ConstraintF<C>, ConstraintF<C>, ConstraintF<C>>;
+
+
+    fn verify(
+        parameters: &Self::ParametersVar,
+        public_key: &Self::PublicKeyVar,
+        signature: &Self::SignatureVar,
+    ) -> Result<Boolean<ConstraintF>, SynthesisError>
+    {
+        Ok(Boolean::True)
+    }
 }
 
 pub struct SchnorrRandomizePkGadget<C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>>
