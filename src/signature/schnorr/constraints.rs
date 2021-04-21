@@ -20,6 +20,7 @@ where
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
     generator: GC,
+    salt: [UInt8; 32],
     _curve: PhantomData<C>,
 }
 
@@ -39,7 +40,8 @@ where
 
 pub struct SignatureVar<F: Field, CF: Field, FVar: FieldVar<F, CF>>
 {
-    pub_key: FVar,
+    prover_response: FVar,
+    verifier_challenge: FVar,
     #[doc(hidden)]
     _field: PhantomData<*const F>,
     #[doc(hidden)]
@@ -78,10 +80,32 @@ where
     fn verify(
         parameters: &Self::ParametersVar,
         public_key: &Self::PublicKeyVar,
+        message: UInt8<ConstraintF>,
         signature: &Self::SignatureVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError>
     {
-        Ok(Boolean::True)
+        let prover_response = signature.prover_response;
+        let verifier_challenge = signature.verifier_challenge;
+        let mut claimed_prover_commitment = parameters.generator.mul(*prover_response);
+        let public_key_times_verifier_challenge = public_key.mul(*verifier_challenge);
+        claimed_prover_commitment += &public_key_times_verifier_challenge;
+        let claimed_prover_commitment = claimed_prover_commitment.into_affine();
+
+        let mut hash_input = Vec::new();
+        hash_input.extend_from_slice(&parameters.salt);
+        hash_input.extend_from_slice(&claimed_prover_commitment.to_bytes()?);
+        hash_input.extend_from_slice(&message);
+
+        // TODO: Change to H2F
+        let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
+            C::ScalarField::from_random_bytes(&D::digest(&hash_input))
+        {
+            obtained_verifier_challenge
+        } else {
+            return Ok(false);
+        };
+        
+        Ok(verifier_challenge.equals(obtained_verifier_challenge))
     }
 }
 
@@ -138,8 +162,10 @@ where
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let generator = GC::new_variable(cs, || f().map(|g| g.borrow().generator), mode)?;
+        let salt = f().map(|b| b.borrow().salt);
         Ok(Self {
             generator,
+            salt,
             _curve: PhantomData,
         })
     }

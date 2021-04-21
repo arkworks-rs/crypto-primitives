@@ -12,13 +12,15 @@ pub trait SigVerifyGadget<S: SignatureScheme, ConstraintF: Field> {
         + AllocVar<S::PublicKey, ConstraintF>
         + Clone;
 
-    type SignatureVar;
+    type SignatureVar: ToBytesGadget<ConstraintF>
+        + AllocVar<S::Signature, ConstraintF>
+        + Clone;
 
     fn verify(
         parameters: &Self::ParametersVar,
         public_key: &Self::PublicKeyVar,
         // TODO: Should we make this take in bytes or something different?
-        message: &[FpVar<ConstraintF>],
+        message: &[UInt8<ConstraintF>],
         signature: &Self::SignatureVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError>;
 }
