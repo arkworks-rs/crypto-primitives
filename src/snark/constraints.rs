@@ -11,7 +11,7 @@ use ark_relations::r1cs::OptimizationGoal;
 use ark_relations::{
     lc, ns,
     r1cs::{
-        ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
+        R1CS, ConstraintGenerator, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
@@ -22,8 +22,8 @@ use ark_std::{
     vec::{IntoIter, Vec},
 };
 
-/// This implements constraints for SNARK verifiers.
-pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
+/// This implements constraints for R1CS SNARK verifiers.
+pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<R1CS<F>>> {
     type ProcessedVerifyingKeyVar: AllocVar<S::ProcessedVerifyingKey, ConstraintF> + Clone;
     type VerifyingKeyVar: AllocVar<S::VerifyingKey, ConstraintF>
         + ToBytesGadget<ConstraintF>
@@ -96,7 +96,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
 pub trait CircuitSpecificSetupSNARKGadget<
     F: PrimeField,
     ConstraintF: PrimeField,
-    S: CircuitSpecificSetupSNARK<F>,
+    S: CircuitSpecificSetupSNARK<R1CS<F>>,
 >: SNARKGadget<F, ConstraintF, S>
 {
 }
@@ -104,10 +104,10 @@ pub trait CircuitSpecificSetupSNARKGadget<
 pub trait UniversalSetupSNARKGadget<
     F: PrimeField,
     ConstraintF: PrimeField,
-    S: UniversalSetupSNARK<F>,
+    S: UniversalSetupSNARK<R1CS<F>>,
 >: SNARKGadget<F, ConstraintF, S>
 {
-    type BoundCircuit: From<S::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+    type BoundCircuit: From<S::IndexBound> + ConstraintGenerator<F> + Clone;
 }
 
 /// Gadgets to convert elements between different fields for recursive proofs

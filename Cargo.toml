@@ -44,3 +44,7 @@ ark-ed-on-bls12-381 = { version = "^0.2.0", default-features = false, features =
 ark-bls12-377 = { version = "^0.2.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt4-298 = { version = "^0.2.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.2.0", default-features = false, features = [ "r1cs" ] }
+
+[patch.crates-io]
+ark-relations = { git = "https://github.com/arkworks-rs/snark", branch = "relations", default-features = false }
+ark-snark = { git = "https://github.com/arkworks-rs/snark", branch = "relations", default-features = false }
