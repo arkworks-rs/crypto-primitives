@@ -11,7 +11,8 @@ use ark_relations::r1cs::OptimizationGoal;
 use ark_relations::{
     lc, ns,
     r1cs::{
-        R1CS, ConstraintGenerator, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
+        ConstraintGenerator, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
+        R1CS,
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
