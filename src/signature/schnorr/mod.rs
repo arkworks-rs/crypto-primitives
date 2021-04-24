@@ -105,6 +105,7 @@ where
             hash_input.extend_from_slice(message);
 
             // Compute the supposed verifier response: e := H(salt || r || msg);
+            // TODO: Switch this from digest to CRH API
             if let Some(verifier_challenge) =
                 C::ScalarField::from_random_bytes(&D::digest(&hash_input))
             {

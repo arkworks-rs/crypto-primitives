@@ -190,6 +190,23 @@ where
     }
 }
 
+impl<ConstraintF> AllocVar<ConstraintF> for SignatureVar<ConstraintF>
+where
+    ConstraintF: ProjectiveCurve,
+{
+    fn new_variable<T: Borrow<Signature<ConstraintF>>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self, SynthesisError> {
+        let pub_key = GC::new_variable(cs, f, mode)?;
+        Ok(Self {
+            pub_key,
+            _group: PhantomData,
+        })
+    }
+}
+
 impl<C, GC> EqGadget<ConstraintF<C>> for PublicKeyVar<C, GC>
 where
     C: ProjectiveCurve,
