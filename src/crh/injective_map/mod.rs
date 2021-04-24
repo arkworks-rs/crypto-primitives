@@ -3,7 +3,7 @@ use ark_ff::bytes::ToBytes;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
-use super::{pedersen, CRH, TwoToOneCRH};
+use super::{pedersen, TwoToOneCRH, CRH};
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
@@ -79,7 +79,11 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
         right_input: &[u8],
     ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
-        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::evaluate(parameters, left_input, right_input)?)?;
+        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::evaluate(
+            parameters,
+            left_input,
+            right_input,
+        )?)?;
         end_timer!(eval_time);
         Ok(result)
     }
