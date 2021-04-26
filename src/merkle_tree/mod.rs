@@ -124,6 +124,7 @@ impl<P: Config> Path<P> {
 /// For this release, padding will not be supported because of security concerns: if the leaf hash and two to one hash uses same underlying
 /// CRH, a malicious prover can prove a leaf while the actual node is an inner node. In the future, we can prefix leaf hashes in different layers to
 /// solve the problem.
+#[derive(Clone)]
 pub struct MerkleTree<P: Config> {
     /// stores the non-leaf nodes in level order. The first element is the root node.
     /// The ith nodes (starting at 1st) children are at indices `2*i`, `2*i+1`
