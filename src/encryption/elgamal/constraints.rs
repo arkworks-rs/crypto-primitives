@@ -4,7 +4,7 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use crate::encryption::elgamal::{
     Ciphertext, ElGamal, Parameters, Plaintext, PublicKey, Randomness,
 };
-use crate::encryption::{AsymmetricEncryptionGadget};
+use crate::encryption::AsymmetricEncryptionGadget;
 use ark_ec::ProjectiveCurve;
 use ark_ff::{
     fields::{Field, PrimeField},
@@ -126,7 +126,7 @@ where
     }
 }
 
-#[derive(Derivative,Debug)]
+#[derive(Derivative, Debug)]
 #[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
 pub struct OutputVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
 where

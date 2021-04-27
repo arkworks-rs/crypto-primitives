@@ -8,10 +8,10 @@ use ark_ff::fields::Field;
 
 pub trait AsymmetricEncryptionGadget<C: AsymmetricEncryptionScheme, ConstraintF: Field> {
     type OutputVar: AllocVar<C::Ciphertext, ConstraintF>
-    + EqGadget<ConstraintF>
-    + Clone
-    + Sized
-    + Debug;
+        + EqGadget<ConstraintF>
+        + Clone
+        + Sized
+        + Debug;
     type ParametersVar: AllocVar<C::Parameters, ConstraintF> + Clone;
     type PlaintextVar: AllocVar<C::Plaintext, ConstraintF> + Clone;
     type PublicKeyVar: AllocVar<C::PublicKey, ConstraintF> + Clone;
