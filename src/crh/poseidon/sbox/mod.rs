@@ -1,3 +1,4 @@
+use super::PoseidonError;
 use ark_ff::PrimeField;
 
 #[cfg(feature = "r1cs")]
@@ -11,42 +12,43 @@ pub enum PoseidonSbox {
 }
 
 impl PoseidonSbox {
-    pub fn apply_sbox<F: PrimeField>(&self, elem: F) -> F {
+    pub fn apply_sbox<F: PrimeField>(&self, elem: F) -> Result<F, PoseidonError> {
         match self {
             PoseidonSbox::Exponentiation(val) => {
-                match val {
-                    2 => elem.clone() * elem.clone(),
-                    3 => elem.clone() * elem.clone() * elem.clone(),
+                let res = match val {
+                    2 => elem * elem,
+                    3 => elem * elem * elem,
                     4 => {
-                        let sqr = elem.clone() * elem.clone();
-                        sqr.clone() * sqr.clone()
+                        let sqr = elem * elem;
+                        sqr * sqr
                     }
                     5 => {
-                        let sqr = elem.clone() * elem.clone();
-                        sqr.clone() * sqr.clone() * elem.clone()
+                        let sqr = elem * elem;
+                        sqr * sqr * elem
                     }
                     6 => {
-                        let sqr = elem.clone() * elem.clone();
+                        let sqr = elem * elem;
                         let quad = sqr * sqr;
-                        sqr.clone() * quad
+                        sqr * quad
                     }
                     7 => {
-                        let sqr = elem.clone() * elem.clone();
+                        let sqr = elem * elem;
                         let quad = sqr * sqr;
-                        sqr.clone() * quad * elem.clone()
+                        sqr * quad * elem
                     }
                     17 => {
-                        let sqr = elem.clone() * elem.clone();
+                        let sqr = elem * elem;
                         let quad = sqr * sqr;
                         let eighth = quad * quad;
                         let sixteenth = eighth * eighth;
-                        sixteenth * elem.clone()
+                        sixteenth * elem
                     }
                     // default to cubed
-                    _ => elem.clone() * elem.clone() * elem.clone(),
-                }
+                    n => return Err(PoseidonError::InvalidSboxSize(*n)),
+                };
+                Ok(res)
             }
-            PoseidonSbox::Inverse => elem.inverse().unwrap_or(F::zero()),
+            PoseidonSbox::Inverse => elem.inverse().ok_or(PoseidonError::ApplySboxFailed),
         }
     }
 }

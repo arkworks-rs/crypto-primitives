@@ -19,6 +19,7 @@ ark-ff = { version = "^0.2.0", default-features = false }
 ark-ec = { version = "^0.2.0", default-features = false }
 ark-std = { version = "^0.2.0", default-features = false }
 ark-relations = { version = "^0.2.0", default-features = false }
+ark-serialize = {version = "^0.2.0", default-features = false }
 
 blake2 = { version = "0.9", default-features = false }
 digest = "0.9"
@@ -30,7 +31,7 @@ ark-nonnative-field = { version = "^0.2.0", optional = true, default-features = 
 
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
-tracing = { version = "0.1", default-features = false, features = [ "attributes" ], optional = true }
+tracing = { version = "0.1", default-features = false, optional = true }
 
 [features]
 default = ["std"]
@@ -44,3 +45,4 @@ ark-ed-on-bls12-381 = { version = "^0.2.0", default-features = false, features =
 ark-bls12-377 = { version = "^0.2.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt4-298 = { version = "^0.2.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bn254 = { version = "^0.2.0", default-features = false, features = [ "r1cs" ] }

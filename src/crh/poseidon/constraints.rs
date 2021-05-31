@@ -1,271 +1,134 @@
 use super::sbox::constraints::SboxConstraints;
-use super::PoseidonRoundParams;
-use super::{Poseidon, CRH};
-use crate::CRHGadget as CRHGadgetTrait;
+use super::{PoseidonParameters, Rounds, CRH};
+use crate::crh::constraints::{CRHGadget as CRHGadgetTrait, TwoToOneCRHGadget};
+use ark_ff::BigInteger;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::uint8::UInt8;
-use ark_r1cs_std::ToConstraintFieldGadget;
 use ark_r1cs_std::{alloc::AllocVar, fields::FieldVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
-use ark_std::vec::Vec;
-
-use crate::crh::TwoToOneCRHGadget;
-use ark_std::borrow::ToOwned;
 use ark_std::marker::PhantomData;
+use ark_std::vec::Vec;
 use core::borrow::Borrow;
 
-#[derive(Derivative, Clone)]
-pub struct PoseidonRoundParamsVar<F: PrimeField, P: PoseidonRoundParams<F>> {
-    params: Poseidon<F, P>,
+#[derive(Default, Clone)]
+pub struct PoseidonParametersVar<F: PrimeField> {
+    /// The round key constants
+    pub round_keys: Vec<FpVar<F>>,
+    /// The MDS matrix to apply in the mix layer.
+    pub mds_matrix: Vec<Vec<FpVar<F>>>,
 }
 
-pub struct CRHGadget<F: PrimeField, P: PoseidonRoundParams<F>> {
+pub struct CRHGadget<F: PrimeField, P: Rounds> {
     field: PhantomData<F>,
-    params: PhantomData<PoseidonRoundParamsVar<F, P>>,
+    params: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> PoseidonRoundParamsVar<F, P> {
-    fn permute(&self, input: Vec<FpVar<F>>) -> Result<Vec<FpVar<F>>, SynthesisError> {
+impl<F: PrimeField, P: Rounds> CRHGadget<F, P> {
+    fn permute(
+        parameters: &PoseidonParametersVar<F>,
+        mut state: Vec<FpVar<F>>,
+    ) -> Result<Vec<FpVar<F>>, SynthesisError> {
         let width = P::WIDTH;
-        assert_eq!(input.len(), width);
-
-        let full_rounds_beginning = P::FULL_ROUNDS_BEGINNING;
-        let partial_rounds = P::PARTIAL_ROUNDS;
-        let full_rounds_end = P::FULL_ROUNDS_END;
-
-        let mut input_vars: Vec<FpVar<F>> = input;
 
         let mut round_keys_offset = 0;
 
-        // ------------ First rounds with full SBox begin --------------------
-
-        for _k in 0..full_rounds_beginning {
-            // TODO: Check if Scalar::default() can be replaced by FpVar<F>::one() or FpVar<F>::zero()
-            let mut sbox_outputs: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
-
+        // full Sbox rounds
+        for _ in 0..(P::FULL_ROUNDS / 2) {
             // Substitution (S-box) layer
             for i in 0..width {
-                let round_key = self.params.round_keys[round_keys_offset];
-                sbox_outputs[i] = P::SBOX
-                    .synthesize_sbox(input_vars[i].clone(), round_key)?
-                    .into();
-
+                state[i] += &parameters.round_keys[round_keys_offset];
+                state[i] = P::SBOX.synthesize_sbox(&state[i])?;
                 round_keys_offset += 1;
             }
-
-            // TODO: Check if Scalar::default() can be replaced by FpVar<F>::one()
-            let mut next_input_vars: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
-
-            self.apply_linear_layer(
-                width,
-                sbox_outputs,
-                &mut next_input_vars,
-                &self.params.mds_matrix,
-            );
-
-            for i in 0..width {
-                // replace input_vars with next_input_vars
-                input_vars[i] = next_input_vars.remove(0);
-            }
+            // Apply linear layer
+            state = Self::apply_linear_layer(&state, &parameters.mds_matrix);
         }
 
-        // ------------ First rounds with full SBox begin --------------------
-
-        // ------------ Middle rounds with partial SBox begin --------------------
-
-        for _k in full_rounds_beginning..(full_rounds_beginning + partial_rounds) {
-            let mut sbox_outputs: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
-
+        // middle partial Sbox rounds
+        for _ in 0..P::PARTIAL_ROUNDS {
             // Substitution (S-box) layer
             for i in 0..width {
-                let round_key = self.params.round_keys[round_keys_offset];
-
-                // apply Sbox to only 1 element of the state.
-                // Here the last one is chosen but the choice is arbitrary.
-                if i == width - 1 {
-                    sbox_outputs[i] = P::SBOX
-                        .synthesize_sbox(input_vars[i].clone(), round_key)?
-                        .into();
-                } else {
-                    sbox_outputs[i] = input_vars[i].clone() + round_key;
-                }
-
+                state[i] += &parameters.round_keys[round_keys_offset];
                 round_keys_offset += 1;
             }
-
+            // apply Sbox to only 1 element of the state.
+            // Here the last one is chosen but the choice is arbitrary.
+            state[0] = P::SBOX.synthesize_sbox(&state[0])?;
             // Linear layer
-            // TODO: Check if Scalar::default() can be replaced by FpVar<F>::one()
-            let mut next_input_vars: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
-
-            self.apply_linear_layer(
-                width,
-                sbox_outputs,
-                &mut next_input_vars,
-                &self.params.mds_matrix,
-            );
-
-            for i in 0..width {
-                // replace input_vars with simplified next_input_vars
-                input_vars[i] = next_input_vars.remove(0);
-            }
+            state = Self::apply_linear_layer(&state, &parameters.mds_matrix);
         }
 
-        // ------------ Middle rounds with partial SBox end --------------------
-
-        // ------------ Last rounds with full SBox begin --------------------
-
-        for _k in (full_rounds_beginning + partial_rounds)
-            ..(full_rounds_beginning + partial_rounds + full_rounds_end)
-        {
-            // TODO: Check if Scalar::default() can be replaced by FpVar<F>::one()
-            let mut sbox_outputs: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
-
+        // last full Sbox rounds
+        for _ in 0..(P::FULL_ROUNDS / 2) {
             // Substitution (S-box) layer
             for i in 0..width {
-                let round_key = self.params.round_keys[round_keys_offset];
-                sbox_outputs[i] = P::SBOX
-                    .synthesize_sbox(input_vars[i].clone(), round_key)?
-                    .into();
-
+                state[i] += &parameters.round_keys[round_keys_offset];
+                state[i] = P::SBOX.synthesize_sbox(&state[i])?;
                 round_keys_offset += 1;
             }
-
             // Linear layer
-            // TODO: Check if Scalar::default() can be replaced by FpVar<F>::one()
-            let mut next_input_vars: Vec<FpVar<F>> = vec![FpVar::<F>::one(); width];
+            state = Self::apply_linear_layer(&state, &parameters.mds_matrix);
+        }
 
-            self.apply_linear_layer(
-                width,
-                sbox_outputs,
-                &mut next_input_vars,
-                &self.params.mds_matrix,
-            );
+        Ok(state)
+    }
 
-            for i in 0..width {
-                // replace input_vars with next_input_vars
-                input_vars[i] = next_input_vars.remove(0);
+    fn apply_linear_layer(state: &Vec<FpVar<F>>, mds_matrix: &Vec<Vec<FpVar<F>>>) -> Vec<FpVar<F>> {
+        let mut new_state: Vec<FpVar<F>> = Vec::new();
+        for i in 0..state.len() {
+            let mut sc = FpVar::<F>::zero();
+            for j in 0..state.len() {
+                let mij = &mds_matrix[i][j];
+                sc += mij * &state[j];
             }
+            new_state.push(sc);
         }
-
-        // ------------ Last rounds with full SBox end --------------------
-
-        Ok(input_vars)
-    }
-
-    fn apply_linear_layer(
-        &self,
-        width: usize,
-        sbox_outs: Vec<FpVar<F>>,
-        next_inputs: &mut Vec<FpVar<F>>,
-        mds_matrix: &Vec<Vec<F>>,
-    ) {
-        for j in 0..width {
-            for i in 0..width {
-                next_inputs[i] = next_inputs[i].clone()
-                    + sbox_outs[j].clone() * &FpVar::<F>::Constant(mds_matrix[i][j]);
-            }
-        }
-    }
-
-    fn hash_2(
-        &self,
-        xl: FpVar<F>,
-        xr: FpVar<F>,
-        statics: Vec<FpVar<F>>,
-    ) -> Result<FpVar<F>, SynthesisError> {
-        let width = P::WIDTH;
-        // Only 2 inputs to the permutation are set to the input of this hash
-        // function.
-        assert_eq!(statics.len(), width - 2);
-
-        // Always keep the 1st input as 0
-        let mut inputs = vec![statics[0].to_owned()];
-        inputs.push(xl);
-        inputs.push(xr);
-
-        // statics correspond to committed variables with values as PADDING_CONST
-        // and 0s and randomness as 0
-        for i in 1..statics.len() {
-            inputs.push(statics[i].to_owned());
-        }
-        let permutation_output = self.permute(inputs)?;
-        Ok(permutation_output[1].clone())
-    }
-
-    fn hash_4(
-        &self,
-        input: &[FpVar<F>],
-        statics: Vec<FpVar<F>>,
-    ) -> Result<FpVar<F>, SynthesisError> {
-        assert_eq!(input.len(), 4);
-        let width = P::WIDTH;
-        // Only 4 inputs to the permutation are set to the input of this hash
-        // function.
-        assert_eq!(statics.len(), width - 4);
-        // Always keep the 1st input as 0
-        let mut inputs = vec![statics[0].to_owned()];
-        inputs.push(input[0].clone());
-        inputs.push(input[1].clone());
-        inputs.push(input[2].clone());
-        inputs.push(input[3].clone());
-
-        // statics correspond to committed variables with values as PADDING_CONST
-        // and 0s and randomness as 0
-        for i in 1..statics.len() {
-            inputs.push(statics[i].to_owned());
-        }
-
-        let permutation_output = self.permute(inputs)?;
-        Ok(permutation_output[1].to_owned())
+        new_state
     }
 }
 
 // https://github.com/arkworks-rs/r1cs-std/blob/master/src/bits/uint8.rs#L343
-impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHGadgetTrait<CRH<F, P>, F> for CRHGadget<F, P> {
+impl<F: PrimeField, P: Rounds> CRHGadgetTrait<CRH<F, P>, F> for CRHGadget<F, P> {
     type OutputVar = FpVar<F>;
-    type ParametersVar = PoseidonRoundParamsVar<F, P>;
+    type ParametersVar = PoseidonParametersVar<F>;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
         input: &[UInt8<F>],
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let f_var_vec: Vec<FpVar<F>> = input.to_constraint_field()?;
+        assert_eq!(
+            parameters.round_keys.len(),
+            P::PARTIAL_ROUNDS * P::WIDTH + P::FULL_ROUNDS * P::WIDTH
+        );
+        assert_eq!(parameters.mds_matrix.len(), P::WIDTH);
 
-        // Choice is arbitrary
-        let padding_const: F = F::from(101u32);
-        let zero_const: F = F::zero();
+        for m in &parameters.mds_matrix {
+            assert_eq!(m.len(), P::WIDTH);
+        }
 
-        let statics = match f_var_vec.len() {
-            2 => {
-                vec![
-                    FpVar::<F>::Constant(zero_const),
-                    FpVar::<F>::Constant(padding_const),
-                    FpVar::<F>::Constant(zero_const),
-                    FpVar::<F>::Constant(zero_const),
-                ]
-            }
-            4 => {
-                vec![
-                    FpVar::<F>::Constant(zero_const),
-                    FpVar::<F>::Constant(padding_const),
-                ]
-            }
-            _ => panic!("incorrect number (elements) for poseidon hash"),
-        };
+        let max_size = F::BigInt::NUM_LIMBS * 8;
+        let f_var_inputs = input
+            .chunks(max_size)
+            .map(|chunk| Boolean::le_bits_to_fp_var(chunk.to_bits_le()?.as_slice()))
+            .collect::<Result<Vec<_>, SynthesisError>>()?;
 
-        let result = match f_var_vec.len() {
-            2 => parameters.hash_2(f_var_vec[0].clone(), f_var_vec[1].clone(), statics),
-            4 => parameters.hash_4(&f_var_vec, statics),
-            _ => panic!("incorrect number (elements) for poseidon hash"),
-        };
-        Ok(result.unwrap_or(Self::OutputVar::zero()))
+        assert_eq!(f_var_inputs.len(), P::WIDTH);
+
+        let mut buffer = vec![FpVar::zero(); P::WIDTH];
+        buffer
+            .iter_mut()
+            .zip(f_var_inputs)
+            .for_each(|(b, l_b)| *b = l_b);
+
+        let result = Self::permute(&parameters, buffer);
+        result.map(|x| x.get(0).cloned().ok_or(SynthesisError::AssignmentMissing))?
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGadget<F, P> {
+impl<F: PrimeField, P: Rounds> TwoToOneCRHGadget<CRH<F, P>, F> for CRHGadget<F, P> {
     type OutputVar = FpVar<F>;
-    type ParametersVar = PoseidonRoundParamsVar<F, P>;
+    type ParametersVar = PoseidonParametersVar<F>;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
@@ -283,16 +146,79 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRHGadget<CRH<F, P>, F> f
     }
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> AllocVar<Poseidon<F, P>, F>
-    for PoseidonRoundParamsVar<F, P>
-{
+impl<F: PrimeField> AllocVar<PoseidonParameters<F>, F> for PoseidonParametersVar<F> {
     #[tracing::instrument(target = "r1cs", skip(_cs, f))]
-    fn new_variable<T: Borrow<Poseidon<F, P>>>(
+    fn new_variable<T: Borrow<PoseidonParameters<F>>>(
         _cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let params = f()?.borrow().clone();
-        Ok(Self { params })
+
+        let mut round_keys_var = Vec::new();
+        for rk in params.round_keys {
+            round_keys_var.push(FpVar::Constant(rk));
+        }
+        let mut mds_var = Vec::new();
+        for row in params.mds_matrix {
+            let mut row_var = Vec::new();
+            for mk in row {
+                row_var.push(FpVar::Constant(mk));
+            }
+            mds_var.push(row_var);
+        }
+        Ok(Self {
+            round_keys: round_keys_var,
+            mds_matrix: mds_var,
+        })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::crh::poseidon::test_data::{get_mds_3, get_rounds_3};
+    use crate::crh::poseidon::PoseidonSbox;
+    use crate::crh::CRH as CRHTrait;
+    use ark_ed_on_bn254::Fq;
+    use ark_ff::{to_bytes, Zero};
+    use ark_relations::r1cs::ConstraintSystem;
+
+    #[derive(Default, Clone)]
+    struct PoseidonRounds3;
+
+    impl Rounds for PoseidonRounds3 {
+        const WIDTH: usize = 3;
+        const PARTIAL_ROUNDS: usize = 57;
+        const FULL_ROUNDS: usize = 8;
+        const SBOX: PoseidonSbox = PoseidonSbox::Exponentiation(5);
+    }
+
+    type PoseidonCRH3 = CRH<Fq, PoseidonRounds3>;
+    type PoseidonCRH3Gadget = CRHGadget<Fq, PoseidonRounds3>;
+
+    #[test]
+    fn test_poseidon_native_equality() {
+        let rounds = get_rounds_3::<Fq>();
+        let mds = get_mds_3::<Fq>();
+
+        let cs = ConstraintSystem::<Fq>::new_ref();
+
+        let inp_bytes = to_bytes![Fq::zero(), Fq::from(1u128), Fq::from(2u128)].unwrap();
+
+        let inp_u8 = Vec::<UInt8<Fq>>::new_input(cs.clone(), || Ok(inp_bytes.clone())).unwrap();
+
+        let params = PoseidonParameters::<Fq>::new(rounds, mds);
+        let params_var = PoseidonParametersVar::new_variable(
+            cs.clone(),
+            || Ok(&params),
+            AllocationMode::Constant,
+        );
+
+        let res = PoseidonCRH3::evaluate(&params, &inp_bytes).unwrap();
+        let res_var =
+            <PoseidonCRH3Gadget as CRHGadgetTrait<_, _>>::evaluate(&params_var.unwrap(), &inp_u8)
+                .unwrap();
+        assert_eq!(res, res_var.value().unwrap());
     }
 }
