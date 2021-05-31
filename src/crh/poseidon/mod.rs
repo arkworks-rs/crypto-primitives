@@ -138,7 +138,7 @@ impl<F: PrimeField, P: Rounds> CRH<F, P> {
         Ok(state)
     }
 
-    fn apply_linear_layer(state: &Vec<F>, mds: &Vec<Vec<F>>) -> Vec<F> {
+    fn apply_linear_layer(state: &[F], mds: &[Vec<F>]) -> Vec<F> {
         let mut new_state: Vec<F> = Vec::new();
         for i in 0..state.len() {
             let mut sc = F::zero();

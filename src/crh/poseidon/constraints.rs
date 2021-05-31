@@ -74,7 +74,7 @@ impl<F: PrimeField, P: Rounds> CRHGadget<F, P> {
         Ok(state)
     }
 
-    fn apply_linear_layer(state: &Vec<FpVar<F>>, mds_matrix: &Vec<Vec<FpVar<F>>>) -> Vec<FpVar<F>> {
+    fn apply_linear_layer(state: &[FpVar<F>], mds_matrix: &[Vec<FpVar<F>>]) -> Vec<FpVar<F>> {
         let mut new_state: Vec<FpVar<F>> = Vec::new();
         for i in 0..state.len() {
             let mut sc = FpVar::<F>::zero();
