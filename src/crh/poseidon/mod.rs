@@ -2,6 +2,7 @@ use crate::crh::poseidon::sbox::PoseidonSbox;
 use crate::{Error, Vec, CRH as CRHTrait};
 use ark_ff::fields::PrimeField;
 use ark_ff::BigInteger;
+use ark_ff::ToConstraintField;
 use ark_std::error::Error as ArkError;
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
@@ -179,11 +180,9 @@ impl<F: PrimeField, P: Rounds> CRHTrait for CRH<F, P> {
             }
         }
 
-        let max_size_bytes = F::BigInt::NUM_LIMBS * 8;
-        let f_inputs = input
-            .chunks(max_size_bytes)
-            .map(|chunk| F::read(chunk))
-            .collect::<Result<Vec<_>, _>>()?;
+        let f_inputs: Vec<F> = input
+            .to_field_elements()
+            .ok_or(PoseidonError::InvalidInputs)?;
 
         if f_inputs.len() > P::WIDTH {
             return Err(PoseidonError::InvalidInputs.into());
@@ -232,6 +231,7 @@ impl<F: PrimeField, P: Rounds> TwoToOneCRH for CRH<F, P> {
 mod test {
     use super::*;
     use ark_ed_on_bn254::Fq;
+    use ark_ff::FpParameters;
     use ark_ff::{to_bytes, Zero};
 
     use test_data::{
@@ -260,6 +260,16 @@ mod test {
     type PoseidonCRH3 = CRH<Fq, PoseidonRounds3>;
     type PoseidonCRH5 = CRH<Fq, PoseidonRounds5>;
 
+    pub fn safe_to_bytes<F: PrimeField>(fs: &[F]) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        let max_size = (F::Params::CAPACITY / 8) as usize;
+        fs.iter().for_each(|x| {
+            let f_bytes = to_bytes![x].unwrap();
+            bytes.extend(f_bytes[..max_size].to_vec());
+        });
+        bytes
+    }
+
     #[test]
     fn test_width_3_bn_254() {
         let rounds = get_rounds_3::<Fq>();
@@ -268,7 +278,7 @@ mod test {
 
         let params = PoseidonParameters::<Fq>::new(rounds, mds);
 
-        let input_bytes = to_bytes![Fq::zero(), Fq::from(1u128), Fq::from(2u128)].unwrap();
+        let input_bytes = safe_to_bytes(&[Fq::zero(), Fq::from(1u128), Fq::from(2u128)]);
 
         let poseidon_res = <PoseidonCRH3 as CRHTrait>::evaluate(&params, &input_bytes).unwrap();
         assert_eq!(res[0], poseidon_res);
@@ -282,14 +292,13 @@ mod test {
 
         let params = PoseidonParameters::<Fq>::new(rounds, mds);
 
-        let input_bytes = to_bytes![
+        let input_bytes = safe_to_bytes(&[
             Fq::zero(),
             Fq::from(1u128),
             Fq::from(2u128),
             Fq::from(3u128),
-            Fq::from(4u128)
-        ]
-        .unwrap();
+            Fq::from(4u128),
+        ]);
 
         let poseidon_res = <PoseidonCRH5 as CRHTrait>::evaluate(&params, &input_bytes).unwrap();
         assert_eq!(res[0], poseidon_res);

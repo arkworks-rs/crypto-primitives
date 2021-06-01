@@ -1,10 +1,10 @@
 use super::sbox::constraints::SboxConstraints;
 use super::{PoseidonParameters, Rounds, CRH};
 use crate::crh::constraints::{CRHGadget as CRHGadgetTrait, TwoToOneCRHGadget};
-use ark_ff::BigInteger;
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::uint8::UInt8;
+use ark_r1cs_std::ToConstraintFieldGadget;
 use ark_r1cs_std::{alloc::AllocVar, fields::FieldVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::marker::PhantomData;
@@ -107,11 +107,7 @@ impl<F: PrimeField, P: Rounds> CRHGadgetTrait<CRH<F, P>, F> for CRHGadget<F, P> 
             assert_eq!(m.len(), P::WIDTH);
         }
 
-        let max_size = F::BigInt::NUM_LIMBS * 8;
-        let f_var_inputs = input
-            .chunks(max_size)
-            .map(|chunk| Boolean::le_bits_to_fp_var(chunk.to_bits_le()?.as_slice()))
-            .collect::<Result<Vec<_>, SynthesisError>>()?;
+        let f_var_inputs = input.to_constraint_field()?;
 
         assert_eq!(f_var_inputs.len(), P::WIDTH);
 
@@ -178,10 +174,10 @@ impl<F: PrimeField> AllocVar<PoseidonParameters<F>, F> for PoseidonParametersVar
 mod test {
     use super::*;
     use crate::crh::poseidon::test_data::{get_mds_3, get_rounds_3};
-    use crate::crh::poseidon::PoseidonSbox;
+    use crate::crh::poseidon::{test::safe_to_bytes, PoseidonSbox};
     use crate::crh::CRH as CRHTrait;
     use ark_ed_on_bn254::Fq;
-    use ark_ff::{to_bytes, Zero};
+    use ark_ff::Zero;
     use ark_relations::r1cs::ConstraintSystem;
 
     #[derive(Default, Clone)]
@@ -204,7 +200,7 @@ mod test {
 
         let cs = ConstraintSystem::<Fq>::new_ref();
 
-        let inp_bytes = to_bytes![Fq::zero(), Fq::from(1u128), Fq::from(2u128)].unwrap();
+        let inp_bytes = safe_to_bytes(&[Fq::zero(), Fq::from(1u128), Fq::from(2u128)]);
 
         let inp_u8 = Vec::<UInt8<Fq>>::new_input(cs.clone(), || Ok(inp_bytes.clone())).unwrap();
 
