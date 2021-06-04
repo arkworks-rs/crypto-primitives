@@ -20,6 +20,7 @@ ark-ec = { version = "^0.2.0", default-features = false }
 ark-std = { version = "^0.2.0", default-features = false }
 ark-relations = { version = "^0.2.0", default-features = false }
 ark-ed-on-bn254 = { version = "^0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-serialize = { version = "^0.2.0", default-features = false, features = [ "derive" ] }
 
 blake2 = { version = "0.9", default-features = false }
 digest = "0.9"

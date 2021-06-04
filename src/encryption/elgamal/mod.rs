@@ -103,3 +103,32 @@ where
         Ok(m)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use ark_std::{test_rng, UniformRand};
+
+    use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
+
+    use crate::encryption::elgamal::{ElGamal, Randomness};
+    use crate::encryption::AsymmetricEncryptionScheme;
+
+    #[test]
+    fn test_elgamal_encryption() {
+        let rng = &mut test_rng();
+
+        // setup and key generation
+        let parameters = ElGamal::<JubJub>::setup(rng).unwrap();
+        let (pk, sk) = ElGamal::<JubJub>::keygen(&parameters, rng).unwrap();
+
+        // get a random msg and encryption randomness
+        let msg = JubJub::rand(rng).into();
+        let r = Randomness::rand(rng);
+
+        // encrypt and decrypt the message
+        let cipher = ElGamal::<JubJub>::encrypt(&parameters, &pk, &msg, &r).unwrap();
+        let check_msg = ElGamal::<JubJub>::decrypt(&parameters, &sk, &cipher).unwrap();
+
+        assert_eq!(msg, check_msg);
+    }
+}
