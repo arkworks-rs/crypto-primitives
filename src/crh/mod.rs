@@ -3,6 +3,7 @@ use ark_std::hash::Hash;
 use ark_std::rand::Rng;
 
 pub mod bowe_hopwood;
+pub mod identity;
 pub mod injective_map;
 pub mod pedersen;
 pub mod poseidon;
