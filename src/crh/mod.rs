@@ -11,6 +11,7 @@ use crate::Error;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(feature = "r1cs")]
 pub use constraints::*;
 
@@ -19,7 +20,14 @@ pub use constraints::*;
 pub trait CRH {
     const INPUT_SIZE_BITS: usize;
 
-    type Output: ToBytes + Clone + Eq + core::fmt::Debug + Hash + Default;
+    type Output: ToBytes
+        + Clone
+        + Eq
+        + core::fmt::Debug
+        + Hash
+        + Default
+        + CanonicalSerialize
+        + CanonicalDeserialize;
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
@@ -32,7 +40,14 @@ pub trait TwoToOneCRH {
     /// The bit size of the right input.
     const RIGHT_INPUT_SIZE_BITS: usize;
 
-    type Output: ToBytes + Clone + Eq + core::fmt::Debug + Hash + Default;
+    type Output: ToBytes
+        + Clone
+        + Eq
+        + core::fmt::Debug
+        + Hash
+        + Default
+        + CanonicalSerialize
+        + CanonicalDeserialize;
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
