@@ -9,12 +9,20 @@ use ark_ec::{
     twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
     ProjectiveCurve,
 };
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
 pub trait InjectiveMap<C: ProjectiveCurve> {
-    type Output: ToBytes + Clone + Eq + Hash + Default + Debug;
+    type Output: ToBytes
+        + Clone
+        + Eq
+        + Hash
+        + Default
+        + Debug
+        + CanonicalSerialize
+        + CanonicalDeserialize;
 
     fn injective_map(ge: &C::Affine) -> Result<Self::Output, CryptoError>;
 }
