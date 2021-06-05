@@ -13,10 +13,12 @@ edition = "2018"
 ################################# Dependencies ################################
 
 [dev-dependencies]
-ark-ed-on-bls12-377 = { git = "https://github.com/arkworks-rs/curves/", default-features = false }
+ark-crypto-primitives = { path = "../" }
+ark-ed-on-bls12-377 = { version = "^0.2.0", default-features = false }
+ark-std = { version = "^0.2.0", default-features = false }
+
 blake2 = { version = "0.9", default-features = false }
 criterion = "0.3.1"
-crypto-primitives = { path = "../crypto-primitives" }
 
 ################################# Benchmarks ##################################
 

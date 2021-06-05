@@ -62,7 +62,7 @@ where
         let secret_key: <C as ProjectiveCurve>::ScalarField = C::ScalarField::rand(rng);
 
         // compute secret_key*generator to derive the public key
-        let public_key = pp.generator.mul(secret_key.clone()).into();
+        let public_key = pp.generator.mul(secret_key).into();
 
         Ok((public_key, SecretKey(secret_key)))
     }
@@ -74,10 +74,10 @@ where
         r: &Self::Randomness,
     ) -> Result<Self::Ciphertext, Error> {
         // compute s = r*pk
-        let s = pk.mul(r.0.clone()).into();
+        let s = pk.mul(r.0).into();
 
         // compute c1 = r*generator
-        let c1 = pp.generator.mul(r.0.clone()).into();
+        let c1 = pp.generator.mul(r.0).into();
 
         // compute c2 = m + s
         let c2 = *message + s;
@@ -94,7 +94,7 @@ where
         let c2: <C as ProjectiveCurve>::Affine = ciphertext.1;
 
         // compute s = secret_key * c1
-        let s = c1.mul(sk.0.clone());
+        let s = c1.mul(sk.0);
         let s_inv = -s;
 
         // compute message = c2 - s
