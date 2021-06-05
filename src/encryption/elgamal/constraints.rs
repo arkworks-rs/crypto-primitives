@@ -10,7 +10,7 @@ use ark_ff::{
     fields::{Field, PrimeField},
     to_bytes, Zero,
 };
-use core::{borrow::Borrow, marker::PhantomData};
+use ark_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
 
 pub type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
