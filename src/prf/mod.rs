@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use ark_ff::bytes::{FromBytes, ToBytes};
 use core::{fmt::Debug, hash::Hash};
 
