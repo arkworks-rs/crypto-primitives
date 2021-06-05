@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::Criterion;
 use ark_crypto_primitives::prf::*;
 use ark_std::rand::Rng;
+use criterion::Criterion;
 
 fn blake2s_prf_eval(c: &mut Criterion) {
     let rng = &mut ark_std::test_rng();

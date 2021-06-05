@@ -1,4 +1,5 @@
 #![allow(unused)] // temporary
+#![allow(clippy::needless_range_loop)]
 
 use crate::crh::TwoToOneCRH;
 use crate::CRH;
@@ -45,7 +46,7 @@ impl<P: Config> Path<P> {
     /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
-    fn position_list<'a>(&'a self) -> impl 'a + Iterator<Item = bool> {
+    fn position_list(&'_ self) -> impl '_ + Iterator<Item = bool> {
         (0..self.auth_path.len() + 1)
             .map(move |i| ((self.leaf_index >> i) & 1) != 0)
             .rev()
@@ -340,7 +341,7 @@ impl<P: Config> MerkleTree<P> {
 
         debug_assert_eq!(path_bottom_to_top.len(), self.height - 1);
         let path_top_to_bottom: Vec<_> = path_bottom_to_top.into_iter().rev().collect();
-        return Ok((new_leaf_hash, path_top_to_bottom));
+        Ok((new_leaf_hash, path_top_to_bottom))
     }
 
     /// Update the leaf at `index` to updated leaf.

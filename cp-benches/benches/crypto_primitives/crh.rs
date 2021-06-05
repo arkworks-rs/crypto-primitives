@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate criterion;
 
+use ark_crypto_primitives::crh::{
+    pedersen::{Window, CRH as PedersenCRH},
+    CRH,
+};
 use ark_ed_on_bls12_377::EdwardsProjective as Edwards;
 use criterion::Criterion;
-use ark_crypto_primitives::crh::{CRH, pedersen::{CRH as PedersenCRH, Window}};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct HashWindow;

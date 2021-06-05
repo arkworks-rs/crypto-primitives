@@ -15,35 +15,35 @@ impl PoseidonSbox {
         match self {
             PoseidonSbox::Exponentiation(val) => {
                 match val {
-                    2 => elem.clone() * elem.clone(),
-                    3 => elem.clone() * elem.clone() * elem.clone(),
+                    2 => elem * &elem,
+                    3 => elem * &elem * &elem,
                     4 => {
-                        let sqr = elem.clone() * elem.clone();
-                        sqr.clone() * sqr.clone()
+                        let sqr = elem.square();
+                        sqr * &sqr.clone()
                     }
                     5 => {
-                        let sqr = elem.clone() * elem.clone();
-                        sqr.clone() * sqr.clone() * elem.clone()
+                        let sqr = elem.square();
+                        sqr * &sqr.clone() * &elem
                     }
                     6 => {
-                        let sqr = elem.clone() * elem.clone();
-                        let quad = sqr * sqr;
-                        sqr.clone() * quad
+                        let sqr = elem.square();
+                        let quad = sqr * &sqr;
+                        sqr * &quad
                     }
                     7 => {
-                        let sqr = elem.clone() * elem.clone();
-                        let quad = sqr * sqr;
-                        sqr.clone() * quad * elem.clone()
+                        let sqr = elem.square();
+                        let quad = sqr * &sqr;
+                        sqr * &quad * &elem
                     }
                     17 => {
-                        let sqr = elem.clone() * elem.clone();
-                        let quad = sqr * sqr;
-                        let eighth = quad * quad;
-                        let sixteenth = eighth * eighth;
-                        sixteenth * elem.clone()
+                        let sqr = elem.square();
+                        let quad = sqr * &sqr;
+                        let eighth = quad * &quad;
+                        let sixteenth = eighth * &eighth;
+                        sixteenth * &elem
                     }
                     // default to cubed
-                    _ => elem.clone() * elem.clone() * elem.clone(),
+                    _ => elem * &elem * &elem,
                 }
             }
             PoseidonSbox::Inverse => elem.inverse().unwrap_or(F::zero()),
