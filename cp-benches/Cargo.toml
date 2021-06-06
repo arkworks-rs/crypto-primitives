@@ -1,6 +1,6 @@
 [package]
 name = "cp-benches"
-version = "0.1.0"
+version = "0.3.0"
 authors = [ "arkworks contributors"]
 description = "Benchmarks for cryptographic primitivesthat are used by Zexe"
 repository = "https://github.com/arkworks-rs/crypto-primitives"
@@ -14,8 +14,8 @@ edition = "2018"
 
 [dev-dependencies]
 ark-crypto-primitives = { path = "../" }
-ark-ed-on-bls12-377 = { version = "^0.2.0", default-features = false }
-ark-std = { version = "^0.2.0", default-features = false }
+ark-ed-on-bls12-377 = { version = "^0.3.0", default-features = false }
+ark-std = { version = "^0.3.0", default-features = false }
 
 blake2 = { version = "0.9", default-features = false }
 criterion = "0.3.1"
