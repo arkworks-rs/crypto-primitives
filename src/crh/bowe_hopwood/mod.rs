@@ -1,3 +1,7 @@
+//! The [Bowe-Hopwood-Pedersen] hash is a optimized variant of the Pedersen CRH for
+//! specific Twisted Edwards (TE) curves. See [Section 5.4.17 of the Zcash protocol specification](https://raw.githubusercontent.com/zcash/zips/master/protocol/protocol.pdf#concretepedersenhash) for a formal description of this hash function, specialized for the Jubjub curve.
+//! The implementation in this repository is generic across choice of TE curves.
+
 use crate::{Error, Vec};
 use ark_std::rand::Rng;
 use ark_std::{
