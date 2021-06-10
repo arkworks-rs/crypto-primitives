@@ -111,7 +111,6 @@ mod test {
     use crate::crh::bowe_hopwood;
     use crate::crh::pedersen;
     use crate::{CRHGadget, CRH};
-    use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
