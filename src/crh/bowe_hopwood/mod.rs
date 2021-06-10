@@ -52,7 +52,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
 
 impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
     const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
-    type Output = TEProjective<P>;
+    type Output = P::BaseField;
     type Parameters = Parameters<P>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
@@ -155,7 +155,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
 
         end_timer!(eval_time);
 
-        Ok(result)
+        Ok(result.into_affine().x)
     }
 }
 

@@ -46,7 +46,7 @@ where
     P: TEModelParameters,
     W: Window,
 {
-    type OutputVar = AffineVar<P, F>;
+    type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
@@ -81,7 +81,7 @@ where
             &input_in_bits,
         )?;
 
-        Ok(result)
+        Ok(result.x)
     }
 }
 
@@ -167,8 +167,7 @@ mod test {
 
         println!("number of constraints total: {}", cs.num_constraints());
 
-        let primitive_result = primitive_result.into_affine();
-        assert_eq!(primitive_result, result_var.value().unwrap().into_affine());
+        assert_eq!(primitive_result, result_var.value().unwrap());
         assert!(cs.is_satisfied().unwrap());
     }
 }
