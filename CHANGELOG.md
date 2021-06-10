@@ -3,10 +3,7 @@
 ## Pending
 
 ### Breaking changes
-- [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of Bowe-Hopwood-Pedersen CRH to a single element, in line with the Zcash specification.
-
-- [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of Bowe-Hopwood variant of Pedersen hash function to a single field element.
-
+- [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of the Bowe-Hopwood-Pedersen CRH to a single field element, in line with the Zcash specification.
 ### Features
 
 ### Improvements
