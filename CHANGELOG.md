@@ -2,13 +2,13 @@
 
 ## Pending
 
-Implemented TwoToOneCRH for Bowe-Hopwood CRH
-
 ### Breaking changes
 
 - [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of the Bowe-Hopwood-Pedersen CRH to a single field element, in line with the Zcash specification.
 
 ### Features
+
+- [\#59](https://github.com/arkworks-rs/crypto-primitives/pull/59) Implemented `TwoToOneCRH` for Bowe-Hopwood CRH.
 
 ### Improvements
 
