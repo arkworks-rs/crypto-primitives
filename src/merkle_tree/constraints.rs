@@ -85,7 +85,7 @@ where
     ConstraintF: Field,
 {
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
-    fn calculate_root(
+    pub fn calculate_root(
         &self,
         leaf_hash_params: &LeafH::ParametersVar,
         two_to_one_hash_params: &TwoToOneH::ParametersVar,

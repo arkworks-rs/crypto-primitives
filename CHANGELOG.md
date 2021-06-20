@@ -8,6 +8,8 @@
 
 ### Features
 
+- [\#59](https://github.com/arkworks-rs/crypto-primitives/pull/59) Implemented `TwoToOneCRH` for Bowe-Hopwood CRH.
+
 ### Improvements
 
 ### Bug fixes
