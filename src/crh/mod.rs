@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use ark_ff::bytes::ToBytes;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;

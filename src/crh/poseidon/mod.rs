@@ -49,7 +49,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> Poseidon<F, P> {
         let full_rounds_end = P::FULL_ROUNDS_END;
 
         let mut current_state = input.to_vec();
-        let mut current_state_temp = vec![F::zero().clone(); width];
+        let mut current_state_temp = vec![F::zero(); width];
 
         let mut round_keys_offset = 0;
 
@@ -170,44 +170,21 @@ pub struct CRH<F: PrimeField, P: PoseidonRoundParams<F>> {
     params: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: PoseidonRoundParams<F>> CRH<F, P> {
-    pub fn create_mds<R: Rng>(_rng: &mut R) -> Vec<Vec<F>> {
-        let mds_matrix = Vec::new();
-        mds_matrix
-    }
-
-    pub fn create_round_consts<R: Rng>(_rng: &mut R) -> Vec<F> {
-        let round_consts = Vec::new();
-        round_consts
-    }
-}
-
 impl<F: PrimeField, P: PoseidonRoundParams<F>> CRHTrait for CRH<F, P> {
     const INPUT_SIZE_BITS: usize = 32;
     type Output = F;
     type Parameters = Poseidon<F, P>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
-        // let time = start_timer!(|| format!(
-        //     "Poseidon::Setup: {} {}-bit windows; {{0,1}}^{{{}}} -> C",
-        //     W::NUM_WINDOWS,
-        //     W::WINDOW_SIZE,
-        //     W::NUM_WINDOWS * W::WINDOW_SIZE
-        // ));
-
-        let mds = Self::create_mds(rng);
-        let rc = Self::create_round_consts(rng);
-        Ok(Self::Parameters {
-            params: P::default(),
-            round_keys: rc,
-            mds_matrix: mds,
-        })
+    fn setup<R: Rng>(_rng: &mut R) -> Result<Self::Parameters, Error> {
+        // automatic generation of parameters are not implemented yet
+        // therefore, the developers must specify the parameters themselves
+        unimplemented!()
     }
 
     // https://github.com/arkworks-rs/algebra/blob/master/ff/src/to_field_vec.rs
     fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PoseidonCRH::Eval");
-        let elts: Vec<F> = input.to_field_elements().unwrap_or(Vec::new());
+        let elts: Vec<F> = input.to_field_elements().unwrap_or_default();
         let result = match elts.len() {
             2 => parameters.hash_2(elts[0], elts[1]),
             4 => parameters.hash_4([elts[0], elts[1], elts[2], elts[3]]),
@@ -241,7 +218,7 @@ impl<F: PrimeField, P: PoseidonRoundParams<F>> TwoToOneCRH for CRH<F, P> {
         let chained: Vec<_> = left_input
             .iter()
             .chain(right_input.iter())
-            .map(|x| *x)
+            .copied()
             .collect();
 
         <Self as CRHTrait>::evaluate(parameters, &chained)

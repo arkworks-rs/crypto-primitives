@@ -1,17 +1,17 @@
 #[macro_use]
 extern crate criterion;
 
-use algebra::ed_on_bls12_377::EdwardsProjective as Edwards;
+use ark_crypto_primitives::signature::{schnorr::*, SignatureScheme};
+use ark_ed_on_bls12_377::EdwardsProjective as Edwards;
+use ark_std::rand::Rng;
 use blake2::Blake2s;
 use criterion::Criterion;
-use crypto_primitives::signature::{schnorr::*, SignatureScheme};
-use ark_std::rand::Rng;
 
 type SchnorrEdwards = Schnorr<Edwards, Blake2s>;
 fn schnorr_signature_setup(c: &mut Criterion) {
     c.bench_function("SchnorrEdwards: Setup", move |b| {
         b.iter(|| {
-            let mut rng = &mut rand::thread_rng();
+            let mut rng = &mut ark_std::test_rng();
             SchnorrEdwards::setup(&mut rng).unwrap()
         })
     });
@@ -23,7 +23,7 @@ fn schnorr_signature_keygen(c: &mut Criterion) {
 
     c.bench_function("SchnorrEdwards: KeyGen", move |b| {
         b.iter(|| {
-            let mut rng = &mut rand::thread_rng();
+            let mut rng = &mut ark_std::test_rng();
             SchnorrEdwards::keygen(&parameters, &mut rng).unwrap()
         })
     });
@@ -37,7 +37,7 @@ fn schnorr_signature_sign(c: &mut Criterion) {
 
     c.bench_function("SchnorrEdwards: Sign", move |b| {
         b.iter(|| {
-            let mut rng = &mut rand::thread_rng();
+            let mut rng = &mut ark_std::test_rng();
             SchnorrEdwards::sign(&parameters, &sk, &message, &mut rng).unwrap()
         })
     });

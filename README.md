@@ -16,17 +16,20 @@ This library is released under the MIT License and the Apache v2 License (see [L
 ## Build guide
 
 The library compiles on the `stable` toolchain of the Rust compiler. To install the latest version of Rust, first install `rustup` by following the instructions [here](https://rustup.rs/), or via your platform's package manager. Once `rustup` is installed, install the Rust toolchain by invoking:
+
 ```bash
 rustup install stable
 ```
 
 After that, use `cargo`, the standard Rust build tool, to build the library:
+
 ```bash
 git clone https://github.com/arkworks-rs/crypto-primitives.git
 cargo build --release
 ```
 
 This library comes with unit tests for each of the provided crates. Run the tests with:
+
 ```bash
 cargo test
 ```
@@ -35,8 +38,8 @@ cargo test
 
 This library is licensed under either of the following licenses, at your discretion.
 
- * Apache License Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+* Apache License Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [apache.org license link](http://www.apache.org/licenses/LICENSE-2.0))
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or [opensource.org license link](http://opensource.org/licenses/MIT))
 
 Unless you explicitly state otherwise, any contribution submitted for inclusion in this library by you shall be dual licensed as above (as defined in the Apache v2 License), without any additional terms or conditions.
 

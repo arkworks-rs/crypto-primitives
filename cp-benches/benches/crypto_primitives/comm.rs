@@ -1,9 +1,10 @@
 #[macro_use]
 extern crate criterion;
 
-use algebra::{ed_on_bls12_377::EdwardsProjective as Edwards, UniformRand};
+use ark_crypto_primitives::commitment::{pedersen::*, CommitmentScheme};
+use ark_ed_on_bls12_377::EdwardsProjective as Edwards;
+use ark_std::UniformRand;
 use criterion::Criterion;
-use crypto_primitives::commitment::{pedersen::*, CommitmentScheme};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CommWindow;
@@ -28,7 +29,7 @@ fn pedersen_comm_eval(c: &mut Criterion) {
     let input = vec![5u8; 128];
     c.bench_function("Pedersen Commitment Eval", move |b| {
         b.iter(|| {
-            let rng = &mut rand::thread_rng();
+            let rng = &mut ark_std::test_rng();
             let commitment_randomness = Randomness::rand(rng);
             Commitment::<Edwards, CommWindow>::commit(&parameters, &input, &commitment_randomness)
                 .unwrap()

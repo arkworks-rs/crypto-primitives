@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate criterion;
 
-use algebra::ed_on_bls12_377::EdwardsProjective as Edwards;
+use ark_crypto_primitives::crh::{
+    pedersen::{Window, CRH as PedersenCRH},
+    CRH,
+};
+use ark_ed_on_bls12_377::EdwardsProjective as Edwards;
 use criterion::Criterion;
-use crypto_primitives::crh::{pedersen::*, FixedLengthCRH};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct HashWindow;
@@ -17,17 +20,17 @@ fn pedersen_crh_setup(c: &mut Criterion) {
     c.bench_function("Pedersen CRH Setup", move |b| {
         b.iter(|| {
             let mut rng = &mut ark_std::test_rng();
-            CRH::<Edwards, HashWindow>::setup(&mut rng).unwrap()
+            PedersenCRH::<Edwards, HashWindow>::setup(&mut rng).unwrap()
         })
     });
 }
 
 fn pedersen_crh_eval(c: &mut Criterion) {
     let mut rng = &mut ark_std::test_rng();
-    let parameters = CRH::<Edwards, HashWindow>::setup(&mut rng).unwrap();
+    let parameters = PedersenCRH::<Edwards, HashWindow>::setup(&mut rng).unwrap();
     let input = vec![5u8; 128];
     c.bench_function("Pedersen CRH Eval", move |b| {
-        b.iter(|| CRH::<Edwards, HashWindow>::evaluate(&parameters, &input).unwrap())
+        b.iter(|| PedersenCRH::<Edwards, HashWindow>::evaluate(&parameters, &input).unwrap())
     });
 }
 
