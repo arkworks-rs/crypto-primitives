@@ -55,7 +55,7 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
 
 impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
 
-    type Input = Vec<u8>;
+    type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -84,7 +84,7 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
         }
 
         let mut padded_input = Vec::with_capacity(input.len());
-        let mut input = input.as_slice();
+        let mut input = input;
         // Pad the input if it is not the current length.
         if (input.len() * 8) < W::WINDOW_SIZE * W::NUM_WINDOWS {
             padded_input.extend_from_slice(input);
@@ -126,7 +126,7 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
 
 impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
 
-    type Input = Vec<u8>;
+    type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -160,7 +160,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
             .zip(left_input.iter().chain(right_input.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
-        <Self as CRHTrait>::evaluate(parameters, &buffer)
+        <Self as CRHTrait>::evaluate(parameters, buffer.as_slice())
     }
 }
 

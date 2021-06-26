@@ -3,7 +3,7 @@
 
 use crate::crh::TwoToOneCRH;
 use crate::CRH;
-use ark_ff::ToBytes;
+use ark_ff::{ToBytes, Field};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::vec::Vec;
 use ark_std::hash::Hash;
@@ -19,6 +19,8 @@ use ark_std::borrow::Borrow;
 /// version `TwoHashesToOneHash`, which first converts leaf digest to inner digest.
 /// * `TwoHashesToOneHash`: Convert two inner digests to one inner digest
 pub trait Config where
+    <Self as Config>::LeafDigest: IntoInputRef<<<Self as Config>::TwoLeavesToOneHash as TwoToOneCRH>::Input>,
+    <Self as Config>::InnerDigest: IntoInputRef<<<Self as Config>::TwoHashesToOneHash as TwoToOneCRH>::Input>
 {
     type Leaf: ?Sized; // merkle tree does not store the leaf
     type LeafDigest: ToBytes
@@ -40,9 +42,9 @@ pub trait Config where
     /// leaf -> leaf digest
     type LeafHash: CRH<Input=Self::Leaf, Output=Self::LeafDigest>;
     /// two leaf digest -> inner digest
-    type TwoLeavesToOneHash: TwoToOneCRH<Input=Self::LeafDigest, Output=Self::InnerDigest>;
+    type TwoLeavesToOneHash: TwoToOneCRH<Output=Self::InnerDigest>;
     /// 2 inner digest -> inner digest
-    type TwoHashesToOneHash: TwoToOneCRH<Input=Self::InnerDigest, Output=Self::InnerDigest>;
+    type TwoHashesToOneHash: TwoToOneCRH<Output=Self::InnerDigest>;
 }
 
 pub type Leaf<P> = <P as Config>::Leaf;
@@ -127,7 +129,9 @@ impl<P: Config> Path<P> {
             select_left_right_child(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
 
         let mut curr_path_node =
-            P::TwoLeavesToOneHash::evaluate(&two_leaves_to_one_params, &left_child, &right_child)?;
+            P::TwoLeavesToOneHash::evaluate(&two_leaves_to_one_params,
+                                            left_child.into_input_ref(),
+                                            right_child.into_input_ref())?;
 
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
@@ -136,11 +140,13 @@ impl<P: Config> Path<P> {
         // Check levels between leaf level and root
         for level in (0..self.auth_path.len()).rev() {
             // check if path node at this level is left or right
-            let (left_bytes, right_bytes) =
+            let (left, right) =
                 select_left_right_child(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
             curr_path_node =
-                P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_params, &left_bytes, &right_bytes)?;
+                P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_params,
+                                                left.into_input_ref(),
+                                                right.into_input_ref())?;
             index >>= 1;
         }
 
@@ -259,8 +265,8 @@ impl<P: Config> MerkleTree<P> {
                 // compute hash
                 non_leaf_nodes[current_index] =
                     P::TwoLeavesToOneHash::evaluate(&two_leaves_to_one_param,
-                                                    &leaves_digest[left_leaf_index],
-                                                    &leaves_digest[right_leaf_index])?
+                                                    leaves_digest[left_leaf_index].clone().into_input_ref(),
+                                                    leaves_digest[right_leaf_index].clone().into_input_ref())?
             }
         }
 
@@ -274,8 +280,8 @@ impl<P: Config> MerkleTree<P> {
                 let right_index = right_child(current_index);
                 non_leaf_nodes[current_index] =
                     P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_hash_param,
-                                                    &non_leaf_nodes[left_index],
-                                                    &non_leaf_nodes[right_index])?
+                                                    non_leaf_nodes[left_index].clone().into_input_ref(),
+                                                    non_leaf_nodes[right_index].clone().into_input_ref())?
             }
         }
 
@@ -365,8 +371,8 @@ impl<P: Config> MerkleTree<P> {
         {
             path_bottom_to_top.push(P::TwoLeavesToOneHash::evaluate(
                 &self.two_leaves_to_one_param,
-                leaf_left,
-                leaf_right,
+                leaf_left.clone().into_input_ref(),
+                leaf_right.clone().into_input_ref(),
             )?);
         }
 
@@ -387,8 +393,8 @@ impl<P: Config> MerkleTree<P> {
             };
             let evaluated = P::TwoHashesToOneHash::evaluate(
                 &self.two_hashes_to_one_param,
-                left_child,
-                right_child,
+                left_child.clone().into_input_ref(),
+                right_child.clone().into_input_ref(),
             )?;
             path_bottom_to_top.push(evaluated);
             prev_index = parent(prev_index).unwrap();
@@ -507,6 +513,27 @@ fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
 }
 
+pub trait IntoInputRef<Input: ?Sized>{
+    type RefType: Borrow<Input>;
+    fn into_input_ref(self) -> Self::RefType;
+}
+
+impl IntoInputRef<[u8]> for Vec<u8>{
+    type RefType = Box<[u8]>;
+
+    fn into_input_ref(self) -> Self::RefType {
+        self.into_boxed_slice()
+    }
+}
+
+impl<F: Field> IntoInputRef<F> for F {
+    type RefType = Box<F>;
+
+    fn into_input_ref(self) -> Self::RefType {
+        Box::new(self)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -527,7 +554,7 @@ mod tests {
     }
 
     type H = AsBytesOutputCRH<pedersen::CRH<JubJub, Window4x256>>;
-    type Leaf = Vec<u8>;
+    type Leaf = [u8];
 
     struct JubJubMerkleTreeParams;
 
@@ -554,7 +581,7 @@ mod tests {
             &leaf_crh_params.clone(),
             &two_hashes_to_one_params.clone(),
             &two_hashes_to_one_params.clone(),
-            &leaves,
+            leaves.iter().map(|x|x.as_slice()),
         )
         .unwrap();
         let mut root = tree.root();

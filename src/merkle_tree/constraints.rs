@@ -1,6 +1,6 @@
 use crate::crh::TwoToOneCRHGadget;
 use crate::merkle_tree::Config;
-use crate::{CRHGadget, Path};
+use crate::{CRHGadget, Path, CRH};
 use ark_ff::Field;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::boolean::Boolean;
@@ -11,30 +11,33 @@ use ark_r1cs_std::ToBytesGadget;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::borrow::Borrow;
 use ark_std::vec::Vec;
+pub trait ConfigGadget<P: Config, ConstraintF: Field>{
+    type Leaf: ?Sized;
+    type LeafDigest: AllocVar<P::LeafDigest, ConstraintF>;
+    type InnerDigest: AllocVar<P::InnerDigest, ConstraintF>;
+
+    type LeafHash: CRHGadget<P::LeafHash, ConstraintF, InputVar=Self::Leaf, OutputVar=Self::LeafDigest>;
+    type TwoLeavesToOneHash: TwoToOneCRHGadget<P::TwoLeavesToOneHash, ConstraintF, InputVar=Self::LeafDigest, OutputVar=Self::InnerDigest>;
+    type TwoHashesToOneHash: TwoToOneCRHGadget<P::TwoHashesToOneHash, ConstraintF, InputVar=Self::InnerDigest, OutputVar=Self::InnerDigest>;
+}
+
 /// Represents a merkle tree path gadget.
-pub struct PathVar<P, LeafH, TwoToOneH, ConstraintF>
-where
-    P: Config,
-    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
-    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
-    ConstraintF: Field,
+pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>>
 {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
-    auth_path: Vec<TwoToOneH::OutputVar>,
+    auth_path: Vec<P::InnerDigest>,
     /// The sibling of leaf.
-    leaf_sibling: LeafH::OutputVar,
+    leaf_sibling: P::LeafDigest,
     /// Is this leaf the right child?
     leaf_is_right_child: Boolean<ConstraintF>,
 }
 
-impl<P, LeafH, TwoToOneH, ConstraintF> AllocVar<Path<P>, ConstraintF>
-    for PathVar<P, LeafH, TwoToOneH, ConstraintF>
+impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> AllocVar<Path<P>, ConstraintF>
+    for PathVar<P, ConstraintF, PG>
 where
     P: Config,
-    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
-    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     fn new_variable<T: Borrow<Path<P>>>(
@@ -45,7 +48,7 @@ where
         let ns = cs.into();
         let cs = ns.cs();
         f().and_then(|val| {
-            let leaf_sibling = LeafH::OutputVar::new_variable(
+            let leaf_sibling = PG::LeafDigest::new_variable(
                 ark_relations::ns!(cs, "leaf_sibling"),
                 || Ok(val.borrow().leaf_sibling_hash.clone()),
                 mode,
@@ -80,8 +83,6 @@ where
 impl<P, LeafH, TwoToOneH, ConstraintF> PathVar<P, LeafH, TwoToOneH, ConstraintF>
 where
     P: Config,
-    LeafH: CRHGadget<P::LeafHash, ConstraintF>,
-    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>,
     ConstraintF: Field,
 {
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.

@@ -164,7 +164,7 @@ mod test {
         let (input, input_var) = generate_u8_input(cs.clone(), 128, rng);
 
         let parameters = <TestCRH as CRH>::setup(rng).unwrap();
-        let primitive_result = <TestCRH as CRH>::evaluate(&parameters, &input).unwrap();
+        let primitive_result = <TestCRH as CRH>::evaluate(&parameters, input.as_slice()).unwrap();
 
         let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
             ark_relations::ns!(cs, "CRH Parameters"),
@@ -189,7 +189,7 @@ mod test {
         let (right_input, right_input_var) = generate_u8_input(cs.clone(), 64, rng);
         let parameters = <TestCRH as TwoToOneCRH>::setup(rng).unwrap();
         let primitive_result =
-            <TestCRH as TwoToOneCRH>::evaluate(&parameters, &left_input, &right_input).unwrap();
+            <TestCRH as TwoToOneCRH>::evaluate(&parameters, left_input.as_slice(), right_input.as_slice()).unwrap();
 
         let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
             ark_relations::ns!(cs, "CRH Parameters"),
