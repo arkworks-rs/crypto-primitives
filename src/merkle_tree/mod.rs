@@ -8,7 +8,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, Serializatio
 use ark_std::vec::Vec;
 use ark_std::hash::Hash;
 use ark_std::borrow::Borrow;
-
+use ark_std::boxed::Box;
 // TODO: recover this later
 // #[cfg(feature = "r1cs")]
 // pub mod constraints;
