@@ -11,6 +11,7 @@ use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
+use ark_std::borrow::Borrow;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -31,6 +32,8 @@ pub struct CRH<C: ProjectiveCurve, W: Window> {
 }
 
 impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
+    const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -51,7 +54,8 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
 }
 
 impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
-    const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+
+    type Input = Vec<u8>;
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -67,9 +71,9 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
         Ok(Self::Parameters { generators })
     }
 
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRH::Eval");
-
+        let input = input.borrow();
         if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS {
             panic!(
                 "incorrect input length {:?} for window params {:?}✕{:?}",
@@ -80,7 +84,7 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
         }
 
         let mut padded_input = Vec::with_capacity(input.len());
-        let mut input = input;
+        let mut input = input.as_slice();
         // Pad the input if it is not the current length.
         if (input.len() * 8) < W::WINDOW_SIZE * W::NUM_WINDOWS {
             padded_input.extend_from_slice(input);
@@ -121,8 +125,8 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
 }
 
 impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
-    const LEFT_INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS / 2;
-    const RIGHT_INPUT_SIZE_BITS: usize = Self::LEFT_INPUT_SIZE_BITS;
+
+    type Input = Vec<u8>;
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -133,11 +137,13 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
     /// A simple implementation method: just concat the left input and right input together
     ///
     /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate(
+    fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: T,
+        right_input: T,
     ) -> Result<Self::Output, Error> {
+        let left_input = left_input.borrow();
+        let right_input = right_input.borrow();
         assert_eq!(
             left_input.len(),
             right_input.len(),
@@ -145,9 +151,9 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
         );
         // check overflow
 
-        debug_assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
 
-        let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
+        let mut buffer = vec![0u8; (Self::HALF_INPUT_SIZE_BITS + Self::HALF_INPUT_SIZE_BITS) / 8];
 
         buffer
             .iter_mut()

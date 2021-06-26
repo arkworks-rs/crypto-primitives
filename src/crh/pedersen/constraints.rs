@@ -44,14 +44,12 @@ where
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
+    type InputVar = Vec<UInt8<ConstraintF<C>>>;
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
-    fn evaluate(
-        parameters: &Self::ParametersVar,
-        input: &[UInt8<ConstraintF<C>>],
-    ) -> Result<Self::OutputVar, SynthesisError> {
+    fn evaluate(parameters: &Self::ParametersVar, input: &Self::InputVar) -> Result<Self::OutputVar, SynthesisError> {
         let mut padded_input = input.to_vec();
         // Pad the input if it is not the current length.
         if input.len() * 8 < W::WINDOW_SIZE * W::NUM_WINDOWS {
@@ -60,7 +58,7 @@ where
                 padded_input.push(UInt8::constant(0u8));
             }
         }
-        assert_eq!(padded_input.len() * 8, W::WINDOW_SIZE * W::NUM_WINDOWS);
+        assert_eq!(padded_input.len() * 8, W::WINDOW_SIZE * W::NUM_WINDOWS); 
         assert_eq!(parameters.params.generators.len(), W::NUM_WINDOWS);
 
         // Allocate new variable for the result.
@@ -82,14 +80,15 @@ where
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
+    type InputVar = Vec<UInt8<ConstraintF<C>>>;
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
-        left_input: &[UInt8<ConstraintF<C>>],
-        right_input: &[UInt8<ConstraintF<C>>],
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // assume equality of left and right length
         assert_eq!(left_input.len(), right_input.len());

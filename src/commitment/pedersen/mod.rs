@@ -85,7 +85,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
             input = padded_input.as_slice();
         }
         assert_eq!(parameters.generators.len(), W::NUM_WINDOWS);
-
+        let input = input.to_vec();
         // Invoke Pedersen CRH here, to prevent code duplication.
 
         let crh_parameters = pedersen::Parameters {

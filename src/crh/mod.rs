@@ -3,65 +3,62 @@
 use ark_ff::bytes::ToBytes;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
-
-pub mod bowe_hopwood;
-pub mod injective_map;
+// TODO: uncomment those after refactoring
+// pub mod bowe_hopwood;
+// pub mod injective_map;
 pub mod pedersen;
-pub mod poseidon;
+// pub mod poseidon;
 
 use crate::Error;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
+/// defines some wrappers to convert the CRH's output
+pub mod wrapper;
+
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(feature = "r1cs")]
 pub use constraints::*;
+use ark_std::borrow::Borrow;
 
 /// Interface to CRH. Note that in this release, while all implementations of `CRH` have fixed length,
 /// variable length CRH may also implement this trait in future.
-pub trait CRH {
-    const INPUT_SIZE_BITS: usize;
-
+pub trait CRH
+{
+    type Input: ?Sized;
     type Output: ToBytes
-        + Clone
-        + Eq
-        + core::fmt::Debug
-        + Hash
-        + Default
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+    + Clone
+    + Eq
+    + core::fmt::Debug
+    + Hash
+    + Default
+    + CanonicalSerialize
+    + CanonicalDeserialize;
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error>;
+    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error>;
 }
 
-pub trait TwoToOneCRH {
-    /// The bit size of the left input.
-    const LEFT_INPUT_SIZE_BITS: usize;
-    /// The bit size of the right input.
-    const RIGHT_INPUT_SIZE_BITS: usize;
-
+pub trait TwoToOneCRH
+    where
+{
+    type Input: ?Sized;
     type Output: ToBytes
-        + Clone
-        + Eq
-        + core::fmt::Debug
-        + Hash
-        + Default
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+    + Clone
+    + Eq
+    + core::fmt::Debug
+    + Hash
+    + Default
+    + CanonicalSerialize
+    + CanonicalDeserialize;
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
     /// Evaluates this CRH on the left and right inputs.
-    ///
-    /// # Panics
-    ///
-    /// If `left_input.len() != Self::LEFT_INPUT_SIZE_BITS`, or if
-    /// `right_input.len() != Self::RIGHT_INPUT_SIZE_BITS`, then this method panics.
-    fn evaluate(
+    fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: T,
+        right_input: T,
     ) -> Result<Self::Output, Error>;
 }
