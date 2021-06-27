@@ -526,8 +526,9 @@ impl IntoInputRef<[u8]> for Vec<u8>{
     }
 }
 
-impl<F: Field> IntoInputRef<F> for F {
-    type RefType = Box<F>;
+// identity ref: just box it!
+impl<T> IntoInputRef<T> for T {
+    type RefType = Box<T>;
 
     fn into_input_ref(self) -> Self::RefType {
         Box::new(self)
