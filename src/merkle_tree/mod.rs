@@ -1,14 +1,14 @@
-#![allow(unused)] // temporary
 #![allow(clippy::needless_range_loop)]
+
+/// Defines a trait to chain two types of CRHs.
 
 use crate::crh::TwoToOneCRH;
 use crate::CRH;
-use ark_ff::{ToBytes, Field};
+use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::vec::Vec;
 use ark_std::hash::Hash;
 use ark_std::borrow::Borrow;
-use ark_std::boxed::Box;
 // TODO: recover this later
 // #[cfg(feature = "r1cs")]
 // pub mod constraints;
@@ -18,9 +18,7 @@ use ark_std::boxed::Box;
 /// * `TwoLeavesToOneHash`: Convert two leaf digests to one inner digest. This one can be a wrapped
 /// version `TwoHashesToOneHash`, which first converts leaf digest to inner digest.
 /// * `TwoHashesToOneHash`: Convert two inner digests to one inner digest
-pub trait Config where
-    <Self as Config>::LeafDigest: IntoInputRef<<<Self as Config>::TwoLeavesToOneHash as TwoToOneCRH>::Input>,
-    <Self as Config>::InnerDigest: IntoInputRef<<<Self as Config>::TwoHashesToOneHash as TwoToOneCRH>::Input>
+pub trait Config
 {
     type Leaf: ?Sized; // merkle tree does not store the leaf
     type LeafDigest: ToBytes
@@ -30,7 +28,11 @@ pub trait Config where
     + Hash
     + Default
     + CanonicalSerialize
-    + CanonicalDeserialize;
+    + CanonicalDeserialize
+    + Borrow<<<Self as Config>::TwoLeavesToOneHash as TwoToOneCRH>::Input>;
+    // we require leaf digest is "equal" to input of TwoLeavesToOneHash
+    // note that any type is a borrow of themselves, and Vec<T> is a borrow of [T]
+
     type InnerDigest: ToBytes
     + Clone
     + Eq
@@ -38,7 +40,10 @@ pub trait Config where
     + Hash
     + Default
     + CanonicalSerialize
-    + CanonicalDeserialize;
+    + CanonicalDeserialize
+    + Borrow<<<Self as Config>::TwoHashesToOneHash as TwoToOneCRH>::Input>;
+    // we require inner digest is "equal" to input of TwoLeavesToOneHash
+
     /// leaf -> leaf digest
     type LeafHash: CRH<Input=Self::Leaf, Output=Self::LeafDigest>;
     /// two leaf digest -> inner digest
@@ -80,6 +85,7 @@ impl<P: Config> Path<P> {
     /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
+    #[allow(unused)] // this function is actually used when r1cs feature is on
     fn position_list(&'_ self) -> impl '_ + Iterator<Item = bool> {
         (0..self.auth_path.len() + 1)
             .map(move |i| ((self.leaf_index >> i) & 1) != 0)
@@ -130,8 +136,8 @@ impl<P: Config> Path<P> {
 
         let mut curr_path_node =
             P::TwoLeavesToOneHash::evaluate(&two_leaves_to_one_params,
-                                            left_child.into_input_ref(),
-                                            right_child.into_input_ref())?;
+                                            left_child.borrow(),
+                                            right_child.borrow())?;
 
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
@@ -145,8 +151,8 @@ impl<P: Config> Path<P> {
             // update curr_path_node
             curr_path_node =
                 P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_params,
-                                                left.into_input_ref(),
-                                                right.into_input_ref())?;
+                                                left.borrow(),
+                                                right.borrow())?;
             index >>= 1;
         }
 
@@ -265,8 +271,8 @@ impl<P: Config> MerkleTree<P> {
                 // compute hash
                 non_leaf_nodes[current_index] =
                     P::TwoLeavesToOneHash::evaluate(&two_leaves_to_one_param,
-                                                    leaves_digest[left_leaf_index].clone().into_input_ref(),
-                                                    leaves_digest[right_leaf_index].clone().into_input_ref())?
+                                                    leaves_digest[left_leaf_index].clone().borrow(),
+                                                    leaves_digest[right_leaf_index].clone().borrow())?
             }
         }
 
@@ -280,8 +286,8 @@ impl<P: Config> MerkleTree<P> {
                 let right_index = right_child(current_index);
                 non_leaf_nodes[current_index] =
                     P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_hash_param,
-                                                    non_leaf_nodes[left_index].clone().into_input_ref(),
-                                                    non_leaf_nodes[right_index].clone().into_input_ref())?
+                                                    non_leaf_nodes[left_index].clone().borrow(),
+                                                    non_leaf_nodes[right_index].clone().borrow())?
             }
         }
 
@@ -371,8 +377,8 @@ impl<P: Config> MerkleTree<P> {
         {
             path_bottom_to_top.push(P::TwoLeavesToOneHash::evaluate(
                 &self.two_leaves_to_one_param,
-                leaf_left.clone().into_input_ref(),
-                leaf_right.clone().into_input_ref(),
+                leaf_left.clone().borrow(),
+                leaf_right.clone().borrow(),
             )?);
         }
 
@@ -393,8 +399,8 @@ impl<P: Config> MerkleTree<P> {
             };
             let evaluated = P::TwoHashesToOneHash::evaluate(
                 &self.two_hashes_to_one_param,
-                left_child.clone().into_input_ref(),
-                right_child.clone().into_input_ref(),
+                left_child.clone().borrow(),
+                right_child.clone().borrow(),
             )?;
             path_bottom_to_top.push(evaluated);
             prev_index = parent(prev_index).unwrap();
@@ -513,29 +519,6 @@ fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
 }
 
-pub trait IntoInputRef<Input: ?Sized>{
-    type RefType: Borrow<Input>;
-    fn into_input_ref(self) -> Self::RefType;
-}
-
-impl IntoInputRef<[u8]> for Vec<u8>{
-    type RefType = Box<[u8]>;
-
-    fn into_input_ref(self) -> Self::RefType {
-        self.into_boxed_slice()
-    }
-}
-
-// identity ref: just box it!
-impl<T> IntoInputRef<T> for T {
-    type RefType = Box<T>;
-
-    fn into_input_ref(self) -> Self::RefType {
-        Box::new(self)
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -600,7 +583,7 @@ mod tests {
         // test merkle tree update functionality
         for (i, v) in update_query {
             let v = ark_ff::to_bytes!(v).unwrap();
-            tree.update(*i, &v);
+            tree.update(*i, &v).unwrap();
             leaves[*i] = v.clone();
         }
         // update the root
