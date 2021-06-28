@@ -91,7 +91,7 @@ where
         two_to_one_hash_params: &TwoToOneH::ParametersVar,
         leaf: &impl ToBytesGadget<ConstraintF>,
     ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
-        let leaf_bytes = leaf.to_bytes_unchecked()?;
+        let leaf_bytes = leaf.to_non_unique_bytes()?;
         let claimed_leaf_hash = LeafH::evaluate(leaf_hash_params, &leaf_bytes)?;
         let leaf_sibling_hash = &self.leaf_sibling;
 
@@ -104,11 +104,11 @@ where
         let left_hash = self
             .leaf_is_right_child
             .select(leaf_sibling_hash, &claimed_leaf_hash)?
-            .to_bytes_unchecked()?;
+            .to_non_unique_bytes()?;
         let right_hash = self
             .leaf_is_right_child
             .select(&claimed_leaf_hash, leaf_sibling_hash)?
-            .to_bytes_unchecked()?;
+            .to_non_unique_bytes()?;
 
         let mut curr_hash = TwoToOneH::evaluate(two_to_one_hash_params, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
@@ -122,8 +122,8 @@ where
 
             curr_hash = TwoToOneH::evaluate(
                 two_to_one_hash_params,
-                &left_hash.to_bytes_unchecked()?,
-                &right_hash.to_bytes_unchecked()?,
+                &left_hash.to_non_unique_bytes()?,
+                &right_hash.to_non_unique_bytes()?,
             )?;
         }
 
