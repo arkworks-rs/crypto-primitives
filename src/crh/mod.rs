@@ -63,4 +63,13 @@ pub trait TwoToOneCRH
     ) -> Result<Self::Output, Error>;
 }
 
+pub trait CompressibleTwoToOneCRH: TwoToOneCRH
+    where{
+    fn compress<T: Borrow<Self::Output>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T
+    ) -> Result<Self::Output, Error>;
+}
+
 

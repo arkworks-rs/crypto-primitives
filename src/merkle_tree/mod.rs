@@ -2,7 +2,7 @@
 
 /// Defines a trait to chain two types of CRHs.
 
-use crate::crh::TwoToOneCRH;
+use crate::crh::{TwoToOneCRH, CompressibleTwoToOneCRH};
 use crate::CRH;
 use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
@@ -17,7 +17,7 @@ use ark_std::borrow::Borrow;
 /// * `LeafHash`: Convert leaf to leaf digest
 /// * `TwoLeavesToOneHash`: Convert two leaf digests to one inner digest. This one can be a wrapped
 /// version `TwoHashesToOneHash`, which first converts leaf digest to inner digest.
-/// * `TwoHashesToOneHash`: Convert two inner digests to one inner digest
+/// * `TwoHashesToOneHash`: Compress two inner digests to one inner digest
 pub trait Config
 {
     type Leaf: ?Sized; // merkle tree does not store the leaf
@@ -40,16 +40,14 @@ pub trait Config
     + Hash
     + Default
     + CanonicalSerialize
-    + CanonicalDeserialize
-    + Borrow<<<Self as Config>::TwoHashesToOneHash as TwoToOneCRH>::Input>;
-    // we require inner digest is "equal" to input of TwoLeavesToOneHash
+    + CanonicalDeserialize;
 
     /// leaf -> leaf digest
     type LeafHash: CRH<Input=Self::Leaf, Output=Self::LeafDigest>;
-    /// two leaf digest -> inner digest
+    /// wrapper: two leaf digest -> inner digest
     type TwoLeavesToOneHash: TwoToOneCRH<Output=Self::InnerDigest>;
     /// 2 inner digest -> inner digest
-    type TwoHashesToOneHash: TwoToOneCRH<Output=Self::InnerDigest>;
+    type TwoHashesToOneHash: CompressibleTwoToOneCRH<Output=Self::InnerDigest>;
 }
 
 pub type Leaf<P> = <P as Config>::Leaf;
@@ -150,7 +148,7 @@ impl<P: Config> Path<P> {
                 select_left_right_child(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
             curr_path_node =
-                P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_params,
+                P::TwoHashesToOneHash::compress(&two_hashes_to_one_params,
                                                 left.borrow(),
                                                 right.borrow())?;
             index >>= 1;
@@ -285,7 +283,7 @@ impl<P: Config> MerkleTree<P> {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
                 non_leaf_nodes[current_index] =
-                    P::TwoHashesToOneHash::evaluate(&two_hashes_to_one_hash_param,
+                    P::TwoHashesToOneHash::compress(&two_hashes_to_one_hash_param,
                                                     non_leaf_nodes[left_index].clone().borrow(),
                                                     non_leaf_nodes[right_index].clone().borrow())?
             }
@@ -397,7 +395,7 @@ impl<P: Config> MerkleTree<P> {
                     path_bottom_to_top.last().unwrap(),
                 )
             };
-            let evaluated = P::TwoHashesToOneHash::evaluate(
+            let evaluated = P::TwoHashesToOneHash::compress(
                 &self.two_hashes_to_one_param,
                 left_child.clone().borrow(),
                 right_child.clone().borrow(),
@@ -528,7 +526,7 @@ mod tests {
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::{BigInteger256, ToBytes};
     use ark_std::{test_rng, UniformRand};
-    use crate::crh::wrapper::AsBytesOutputCRH;
+    use crate::crh::wrapper::InputToBytesWrapper;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -537,7 +535,7 @@ mod tests {
         const NUM_WINDOWS: usize = 256;
     }
 
-    type H = AsBytesOutputCRH<pedersen::CRH<JubJub, Window4x256>>;
+    type H = pedersen::CRH<JubJub, Window4x256>;
     type Leaf = [u8];
 
     struct JubJubMerkleTreeParams;
@@ -548,8 +546,7 @@ mod tests {
         type LeafDigest = <H as CRH>::Output;
         type InnerDigest = <H as TwoToOneCRH>::Output;
         type LeafHash = H;
-        // todo: create a byte-output pedersen
-        type TwoLeavesToOneHash = H;
+        type TwoLeavesToOneHash = InputToBytesWrapper<H, <H as TwoToOneCRH>::Output>;
         type TwoHashesToOneHash = H;
     }
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;

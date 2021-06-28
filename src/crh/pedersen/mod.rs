@@ -7,7 +7,8 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
+use crate::crh::{TwoToOneCRH, CRH as CRHTrait, CompressibleTwoToOneCRH};
+use ark_serialize::CanonicalSerialize;
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
@@ -164,6 +165,16 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
     }
 }
 
+impl<C: ProjectiveCurve, W: Window> CompressibleTwoToOneCRH for CRH<C, W> {
+    fn compress<T: Borrow<Self::Output>>(parameters: &Self::Parameters, left_input: T, right_input: T) -> Result<Self::Output, Error> {
+        // convert output to bytes
+        let mut left_input_bytes = Vec::new();
+        left_input.borrow().serialize(&mut left_input_bytes)?;
+        let mut right_input_bytes = Vec::new();
+        right_input.borrow().serialize(&mut right_input_bytes)?;
+        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
+    }
+}
 pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     let mut bits = Vec::with_capacity(bytes.len() * 8);
     for byte in bytes {

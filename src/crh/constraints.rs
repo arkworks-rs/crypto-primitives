@@ -8,7 +8,7 @@ use ark_r1cs_std::prelude::*;
 
 pub trait CRHGadget<H: CRH, ConstraintF: Field>: Sized
 {
-    type InputVar: AllocVar<H::Input, ConstraintF>;
+    type InputVar;
     type OutputVar: EqGadget<ConstraintF>
     + ToBytesGadget<ConstraintF>
     + CondSelectGadget<ConstraintF>

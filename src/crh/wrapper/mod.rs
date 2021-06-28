@@ -6,44 +6,46 @@ use ark_std::borrow::Borrow;
 use ark_std::rand::Rng;
 use crate::crh::TwoToOneCRH;
 use ark_std::vec::Vec;
-pub struct AsBytesOutputCRH<C> {
-    _marker: C
+pub struct InputToBytesWrapper<C, T: CanonicalSerialize> {
+    _marker: (C, T)
 }
 
-impl<C: CRH> CRH for AsBytesOutputCRH<C>
-    where C::Output: CanonicalSerialize
+impl<C: CRH<Input=[u8]>, T: CanonicalSerialize> CRH for InputToBytesWrapper<C, T>
+    where C::Input: CanonicalSerialize
 {
-    type Input = C::Input;
-    type Output = Vec<u8>;
+    type Input = T;
+    type Output = C::Output;
     type Parameters = C::Parameters;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
         C::setup(r)
     }
 
-    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error> {
-        let output = C::evaluate(parameters, input)?;
-        let mut output_bytes = Vec::new();
-        output.serialize(&mut output_bytes)?;
-        Ok(output_bytes)
+    fn evaluate<P: Borrow<Self::Input>>(parameters: &Self::Parameters, input: P) -> Result<Self::Output, Error> {
+        let mut input_bytes = Vec::new();
+        input.borrow().serialize(&mut input_bytes)?;
+        C::evaluate(parameters, input_bytes)
     }
 }
 
-impl<C: TwoToOneCRH> TwoToOneCRH for AsBytesOutputCRH<C>
+impl<C: TwoToOneCRH<Input=[u8]>, T: CanonicalSerialize> TwoToOneCRH for InputToBytesWrapper<C, T>
     where C::Output: CanonicalSerialize
 {
-    type Input = C::Input;
-    type Output = Vec<u8>;
+    type Input = T;
+    type Output = C::Output;
     type Parameters = C::Parameters;
+
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
         C::setup(r)
     }
 
-    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, left_input: T, right_input: T) -> Result<Self::Output, Error> {
-        let output = C::evaluate(parameters, left_input, right_input)?;
-        let mut output_bytes = Vec::new();
-        output.serialize(&mut output_bytes)?;
-        Ok(output_bytes)
+    fn evaluate<P: Borrow<Self::Input>>(parameters: &Self::Parameters, left_input: P, right_input: P) -> Result<Self::Output, Error> {
+        let mut left_input_bytes = Vec::new();
+        left_input.borrow().serialize(&mut left_input_bytes)?;
+
+        let mut right_input_bytes = Vec::new();
+        right_input.borrow().serialize(&mut right_input_bytes)?;
+        C::evaluate(parameters, left_input_bytes, right_input_bytes)
     }
 }
