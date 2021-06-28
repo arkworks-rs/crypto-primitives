@@ -1,4 +1,5 @@
-mod constraints;
+#[cfg(feature = "r1cs")]
+pub mod constraints;
 
 use crate::{CRH, Error};
 use ark_serialize::CanonicalSerialize;

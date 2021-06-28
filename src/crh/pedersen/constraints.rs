@@ -10,8 +10,11 @@ use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::crh::TwoToOneCRHGadget;
+use crate::crh::{TwoToOneCRHGadget, CompressibleTwoToOneCRHGadget, TwoToOneCRH};
 use core::{borrow::Borrow, marker::PhantomData};
+use crate::crh::wrapper::constraints::InputToBytesWrapperGadget;
+use crate::crh::pedersen::AffineInputCRH;
+use std::fmt::Debug;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
@@ -101,6 +104,19 @@ where
     }
 }
 
+impl<C, GG, W> CompressibleTwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>> for CRHGadget<C, GG, W>
+    where
+        C: ProjectiveCurve,
+        GG: CurveVar<C, ConstraintF<C>>,
+        W: Window,
+        for<'a> &'a GG: GroupOpsBounds<'a, C, GG>
+{
+    fn compress(parameters: &Self::ParametersVar, left_input: &Self::OutputVar, right_input: &Self::OutputVar)
+        -> Result<Self::OutputVar, SynthesisError> {
+        <InputToBytesWrapperGadget::<Self, ConstraintF<C>, Self::OutputVar> as TwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>>>::evaluate(parameters, left_input, right_input)
+    }
+}
+
 impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for CRHParametersVar<C, GG>
 where
     C: ProjectiveCurve,
@@ -118,6 +134,23 @@ where
             params,
             _group_g: PhantomData,
         })
+    }
+}
+
+pub struct AffineInputCRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>{
+    _marker: PhantomData<(C, GG, W)>
+}
+
+impl<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window> TwoToOneCRHGadget<AffineInputCRH<C, W>, ConstraintF<C>> for AffineInputCRHGadget<C, GG, W>
+    where
+        for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+{
+    type InputVar = GG;
+    type OutputVar = GG;
+    type ParametersVar = CRHParametersVar<C, GG>;
+
+    fn evaluate(_parameters: &Self::ParametersVar, _left_input: &Self::InputVar,_right_input: &Self::InputVar) -> Result<Self::OutputVar, SynthesisError> {
+        todo!()
     }
 }
 

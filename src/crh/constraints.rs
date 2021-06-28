@@ -45,3 +45,11 @@ pub trait TwoToOneCRHGadget<H: TwoToOneCRH, ConstraintF: Field>: Sized
         right_input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError>;
 }
+
+pub trait CompressibleTwoToOneCRHGadget<H: TwoToOneCRH, ConstraintF: Field>: TwoToOneCRHGadget<H, ConstraintF>{
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, SynthesisError>;
+}

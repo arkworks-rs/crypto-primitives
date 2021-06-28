@@ -1,3 +1,5 @@
+// TODO: fix this constraint (not sure what I am doing wrong here)
+
 use ark_r1cs_std::ToBytesGadget;
 use ark_ff::Field;
 use crate::{CRHGadget, CRH};

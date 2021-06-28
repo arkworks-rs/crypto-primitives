@@ -1,25 +1,42 @@
-use crate::crh::TwoToOneCRHGadget;
+use crate::crh::{TwoToOneCRHGadget, CompressibleTwoToOneCRHGadget};
 use crate::merkle_tree::Config;
-use crate::{CRHGadget, Path, CRH};
+use crate::{CRHGadget, Path};
 use ark_ff::Field;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::boolean::Boolean;
-use ark_r1cs_std::eq::EqGadget;
 #[allow(unused)]
 use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::ToBytesGadget;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::borrow::Borrow;
 use ark_std::vec::Vec;
+use ark_std::fmt::Debug;
+
 pub trait ConfigGadget<P: Config, ConstraintF: Field>{
-    type Leaf: ?Sized;
-    type LeafDigest: AllocVar<P::LeafDigest, ConstraintF>;
-    type InnerDigest: AllocVar<P::InnerDigest, ConstraintF>;
+    type Leaf;
+    type LeafDigest: AllocVar<P::LeafDigest, ConstraintF> + EqGadget<ConstraintF>
+    + ToBytesGadget<ConstraintF>
+    + CondSelectGadget<ConstraintF>
+    + R1CSVar<ConstraintF>
+    + Debug
+    + Clone
+    + Sized;
+    type InnerDigest: AllocVar<P::InnerDigest, ConstraintF> + EqGadget<ConstraintF>
+    + ToBytesGadget<ConstraintF>
+    + CondSelectGadget<ConstraintF>
+    + R1CSVar<ConstraintF>
+    + Debug
+    + Clone
+    + Sized;
 
     type LeafHash: CRHGadget<P::LeafHash, ConstraintF, InputVar=Self::Leaf, OutputVar=Self::LeafDigest>;
     type TwoLeavesToOneHash: TwoToOneCRHGadget<P::TwoLeavesToOneHash, ConstraintF, InputVar=Self::LeafDigest, OutputVar=Self::InnerDigest>;
-    type TwoHashesToOneHash: TwoToOneCRHGadget<P::TwoHashesToOneHash, ConstraintF, InputVar=Self::InnerDigest, OutputVar=Self::InnerDigest>;
+    type TwoHashesToOneHash: CompressibleTwoToOneCRHGadget<P::TwoHashesToOneHash, ConstraintF, OutputVar=Self::InnerDigest>;
 }
+
+type LeafParam<PG, P, ConstraintF> = <<PG as ConfigGadget<P, ConstraintF>>::LeafHash as CRHGadget<<P as Config>::LeafHash, ConstraintF>>::ParametersVar;
+type TwoLeavesToOneParam<PG, P, ConstraintF> = <<PG as ConfigGadget<P, ConstraintF>>::TwoLeavesToOneHash as TwoToOneCRHGadget<<P as Config>::TwoLeavesToOneHash, ConstraintF>>::ParametersVar;
+type TwoHashesToOneParam<PG, P, ConstraintF> = <<PG as ConfigGadget<P, ConstraintF>>::TwoHashesToOneHash as TwoToOneCRHGadget<<P as Config>::TwoHashesToOneHash, ConstraintF>>::ParametersVar;
 
 /// Represents a merkle tree path gadget.
 pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>>
@@ -27,9 +44,9 @@ pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, Constraint
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
-    auth_path: Vec<P::InnerDigest>,
+    auth_path: Vec<PG::InnerDigest>,
     /// The sibling of leaf.
-    leaf_sibling: P::LeafDigest,
+    leaf_sibling: PG::LeafDigest,
     /// Is this leaf the right child?
     leaf_is_right_child: Boolean<ConstraintF>,
 }
@@ -80,20 +97,17 @@ where
     }
 }
 
-impl<P, LeafH, TwoToOneH, ConstraintF> PathVar<P, LeafH, TwoToOneH, ConstraintF>
-where
-    P: Config,
-    ConstraintF: Field,
+impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P, ConstraintF, PG>
 {
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
     pub fn calculate_root(
         &self,
-        leaf_hash_params: &LeafH::ParametersVar,
-        two_to_one_hash_params: &TwoToOneH::ParametersVar,
-        leaf: &impl ToBytesGadget<ConstraintF>,
-    ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
-        let leaf_bytes = leaf.to_bytes()?;
-        let claimed_leaf_hash = LeafH::evaluate(leaf_hash_params, &leaf_bytes)?;
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_leaves_to_one_params: &TwoLeavesToOneParam<PG, P, ConstraintF>,
+        two_hashes_to_one_params: &TwoHashesToOneParam<PG, P, ConstraintF>,
+        leaf: &PG::Leaf,
+    ) -> Result<PG::InnerDigest, SynthesisError> {
+        let claimed_leaf_hash = PG::LeafHash::evaluate(leaf_params, leaf)?;
         let leaf_sibling_hash = &self.leaf_sibling;
 
         // calculate hash for the bottom non_leaf_layer
@@ -104,14 +118,12 @@ where
 
         let left_hash = self
             .leaf_is_right_child
-            .select(leaf_sibling_hash, &claimed_leaf_hash)?
-            .to_bytes()?;
+            .select(leaf_sibling_hash, &claimed_leaf_hash)?;
         let right_hash = self
             .leaf_is_right_child
-            .select(&claimed_leaf_hash, leaf_sibling_hash)?
-            .to_bytes()?;
+            .select(&claimed_leaf_hash, leaf_sibling_hash)?;
 
-        let mut curr_hash = TwoToOneH::evaluate(two_to_one_hash_params, &left_hash, &right_hash)?;
+        let mut curr_hash = PG::TwoLeavesToOneHash::evaluate(two_leaves_to_one_params, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
@@ -121,10 +133,10 @@ where
             let left_hash = bit.select(sibling, &curr_hash)?;
             let right_hash = bit.select(&curr_hash, sibling)?;
 
-            curr_hash = TwoToOneH::evaluate(
-                two_to_one_hash_params,
-                &left_hash.to_bytes()?,
-                &right_hash.to_bytes()?,
+            curr_hash = PG::TwoHashesToOneHash::compress(
+                two_hashes_to_one_params,
+                &left_hash,
+                &right_hash,
             )?;
         }
 
@@ -135,12 +147,13 @@ where
     /// with `leaf` as the leaf, leads to a Merkle tree root equalling `root`.
     pub fn verify_membership(
         &self,
-        leaf_hash_params: &LeafH::ParametersVar,
-        two_to_one_hash_params: &TwoToOneH::ParametersVar,
-        root: &TwoToOneH::OutputVar,
-        leaf: &impl ToBytesGadget<ConstraintF>,
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_leaves_to_one_params: &TwoLeavesToOneParam<PG, P, ConstraintF>,
+        two_hashes_to_one_params: &TwoHashesToOneParam<PG, P, ConstraintF>,
+        leaf: &PG::Leaf,
+        root: &PG::InnerDigest
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
-        let expected_root = self.calculate_root(leaf_hash_params, two_to_one_hash_params, leaf)?;
+        let expected_root = self.calculate_root(leaf_params, two_leaves_to_one_params, two_hashes_to_one_params, leaf)?;
         Ok(expected_root.is_eq(root)?)
     }
 
@@ -148,15 +161,16 @@ where
     /// `self`, and then compute the new root when replacing `old_leaf` by `new_leaf`.
     pub fn update_leaf(
         &self,
-        leaf_hash_params: &LeafH::ParametersVar,
-        two_to_one_hash_params: &TwoToOneH::ParametersVar,
-        old_root: &TwoToOneH::OutputVar,
-        old_leaf: &impl ToBytesGadget<ConstraintF>,
-        new_leaf: &impl ToBytesGadget<ConstraintF>,
-    ) -> Result<TwoToOneH::OutputVar, SynthesisError> {
-        self.verify_membership(leaf_hash_params, two_to_one_hash_params, old_root, old_leaf)?
-            .enforce_equal(&Boolean::TRUE);
-        Ok(self.calculate_root(leaf_hash_params, two_to_one_hash_params, new_leaf)?)
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_leaves_to_one_params: &TwoLeavesToOneParam<PG, P, ConstraintF>,
+        two_hashes_to_one_params: &TwoHashesToOneParam<PG, P, ConstraintF>,
+        old_root: &PG::InnerDigest,
+        old_leaf: &PG::Leaf,
+        new_leaf: &PG::Leaf,
+    ) -> Result<PG::InnerDigest, SynthesisError> {
+        self.verify_membership(leaf_params, two_leaves_to_one_params, two_hashes_to_one_params, old_leaf, old_root)?
+            .enforce_equal(&Boolean::TRUE)?;
+        Ok(self.calculate_root(leaf_params, two_leaves_to_one_params, two_hashes_to_one_params, new_leaf)?)
     }
 
     /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
@@ -164,16 +178,18 @@ where
     /// Return a boolean indicating whether expected new root equals `new_root`.
     pub fn update_and_check(
         &self,
-        leaf_hash_params: &LeafH::ParametersVar,
-        two_to_one_hash_params: &TwoToOneH::ParametersVar,
-        old_root: &TwoToOneH::OutputVar,
-        new_root: &TwoToOneH::OutputVar,
-        old_leaf: &impl ToBytesGadget<ConstraintF>,
-        new_leaf: &impl ToBytesGadget<ConstraintF>,
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_leaves_to_one_params: &TwoLeavesToOneParam<PG, P, ConstraintF>,
+        two_hashes_to_one_params: &TwoHashesToOneParam<PG, P, ConstraintF>,
+        old_root: &PG::InnerDigest,
+        new_root: &PG::InnerDigest,
+        old_leaf: &PG::Leaf,
+        new_leaf: &PG::Leaf,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         let actual_new_root = self.update_leaf(
-            leaf_hash_params,
-            two_to_one_hash_params,
+            leaf_params,
+            two_leaves_to_one_params,
+            two_hashes_to_one_params,
             old_root,
             old_leaf,
             new_leaf,
@@ -184,7 +200,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget};
+    use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget, CompressibleTwoToOneCRHGadget};
 
     use crate::merkle_tree::Config;
     use crate::{CRHGadget, MerkleTree, PathVar, CRH};
@@ -193,6 +209,11 @@ mod tests {
     use ark_r1cs_std::prelude::*;
     #[allow(unused)]
     use ark_relations::r1cs::ConstraintSystem;
+    use ark_ff::Field;
+    use crate::crh::wrapper::InputToBytesWrapper;
+    use crate::merkle_tree::constraints::ConfigGadget;
+    use crate::crh::wrapper::constraints::InputToBytesWrapperGadget;
+    use crate::crh::pedersen::AffineInputCRH;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -202,13 +223,33 @@ mod tests {
     }
 
     type H = pedersen::CRH<JubJub, Window4x256>;
+    type HWrapper = pedersen::AffineInputCRH<JubJub, Window4x256>;
     type HG = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window4x256>;
+    type HGWrapper = pedersen::constraints::AffineInputCRHGadget<JubJub, EdwardsVar, Window4x256>;
+    type Leaf = [u8];
+    type LeafVar<ConstraintF: Field> = Vec<UInt8<ConstraintF>>;
 
     struct JubJubMerkleTreeParams;
 
-    impl Config for JubJubMerkleTreeParams {
+    impl Config for JubJubMerkleTreeParams{
+        type Leaf = Leaf;
+
+        type LeafDigest = <H as CRH>::Output;
+        type InnerDigest = <H as TwoToOneCRH>::Output;
         type LeafHash = H;
-        type TwoToOneHash = H;
+        type TwoLeavesToOneHash = HWrapper;
+        type TwoHashesToOneHash = H;
+    }
+
+    type ConstraintF = Fq;
+    struct JubJubMerkleTreeParamsVar;
+    impl ConfigGadget<JubJubMerkleTreeParams, ConstraintF> for JubJubMerkleTreeParamsVar {
+        type Leaf = LeafVar<ConstraintF>;
+        type LeafDigest = <HG as CRHGadget<H, ConstraintF>>::OutputVar;
+        type InnerDigest = <HG as TwoToOneCRHGadget<H, ConstraintF>>::OutputVar;
+        type LeafHash = HG;
+        type TwoLeavesToOneHash = HGWrapper;
+        type TwoHashesToOneHash = HG;
     }
 
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;

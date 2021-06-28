@@ -8,11 +8,13 @@ use ark_std::{
 use rayon::prelude::*;
 
 use crate::crh::{TwoToOneCRH, CRH as CRHTrait, CompressibleTwoToOneCRH};
-use ark_serialize::CanonicalSerialize;
 use ark_ec::ProjectiveCurve;
-use ark_ff::{Field, ToConstraintField};
+use ark_ff::{Field, ToConstraintField, ToBytes};
 use ark_std::cfg_chunks;
 use ark_std::borrow::Borrow;
+use crate::crh::wrapper::InputToBytesWrapper;
+use std::hash::Hash;
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -168,11 +170,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
 impl<C: ProjectiveCurve, W: Window> CompressibleTwoToOneCRH for CRH<C, W> {
     fn compress<T: Borrow<Self::Output>>(parameters: &Self::Parameters, left_input: T, right_input: T) -> Result<Self::Output, Error> {
         // convert output to bytes
-        let mut left_input_bytes = Vec::new();
-        left_input.borrow().serialize(&mut left_input_bytes)?;
-        let mut right_input_bytes = Vec::new();
-        right_input.borrow().serialize(&mut right_input_bytes)?;
-        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
+        <InputToBytesWrapper::<Self, Self::Output> as TwoToOneCRH>::evaluate(parameters, left_input, right_input)
     }
 }
 pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
@@ -204,3 +202,24 @@ impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>>
         Some(Vec::new())
     }
 }
+
+/// Wrapper for Pedersen, which takes output as an input
+pub struct AffineInputCRH<C: ProjectiveCurve, W: Window>{
+    _marker: PhantomData<(C, W)>
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for AffineInputCRH<C, W> {
+    type Input = Self::Output;
+    type Output = <CRH<C, W> as CRHTrait>::Output;
+    type Parameters = <CRH<C, W> as CRHTrait>::Parameters;
+
+    fn setup<R: Rng>(_r: &mut R) -> Result<Self::Parameters, Error> {
+        todo!()
+    }
+
+    fn evaluate<T: Borrow<Self::Input>>(_parameters: &Self::Parameters, _left_input: T, _right_input: T) -> Result<Self::Output, Error> {
+        todo!()
+    }
+}
+
+

@@ -10,8 +10,8 @@ use ark_std::vec::Vec;
 use ark_std::hash::Hash;
 use ark_std::borrow::Borrow;
 // TODO: recover this later
-// #[cfg(feature = "r1cs")]
-// pub mod constraints;
+#[cfg(feature = "r1cs")]
+pub mod constraints;
 
 /// Merkle tree have three types of hashes.
 /// * `LeafHash`: Convert leaf to leaf digest
