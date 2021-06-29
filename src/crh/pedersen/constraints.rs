@@ -88,7 +88,7 @@ where
     type ParametersVar = CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
-    fn evaluate(
+    fn compress(
         parameters: &Self::ParametersVar,
         left_input: &Self::InputVar,
         right_input: &Self::InputVar,
@@ -149,7 +149,7 @@ impl<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window> TwoToOneCRH
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
-    fn evaluate(_parameters: &Self::ParametersVar, _left_input: &Self::InputVar,_right_input: &Self::InputVar) -> Result<Self::OutputVar, SynthesisError> {
+    fn compress(_parameters: &Self::ParametersVar, _left_input: &Self::InputVar, _right_input: &Self::InputVar) -> Result<Self::OutputVar, SynthesisError> {
         todo!()
     }
 }

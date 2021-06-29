@@ -14,7 +14,7 @@ use ark_std::fmt::Debug;
 
 pub trait ConfigGadget<P: Config, ConstraintF: Field>{
     type Leaf;
-    type LeafDigest: AllocVar<P::LeafDigest, ConstraintF> + EqGadget<ConstraintF>
+    type LeafDigest: AllocVar<P::InnerDigest, ConstraintF> + EqGadget<ConstraintF>
     + ToBytesGadget<ConstraintF>
     + CondSelectGadget<ConstraintF>
     + R1CSVar<ConstraintF>
@@ -31,7 +31,7 @@ pub trait ConfigGadget<P: Config, ConstraintF: Field>{
 
     type LeafHash: CRHGadget<P::LeafHash, ConstraintF, InputVar=Self::Leaf, OutputVar=Self::LeafDigest>;
     type TwoLeavesToOneHash: TwoToOneCRHGadget<P::TwoLeavesToOneHash, ConstraintF, InputVar=Self::LeafDigest, OutputVar=Self::InnerDigest>;
-    type TwoHashesToOneHash: CompressibleTwoToOneCRHGadget<P::TwoHashesToOneHash, ConstraintF, OutputVar=Self::InnerDigest>;
+    type TwoHashesToOneHash: CompressibleTwoToOneCRHGadget<P::TwoToOneHash, ConstraintF, OutputVar=Self::InnerDigest>;
 }
 
 type LeafParam<PG, P, ConstraintF> = <<PG as ConfigGadget<P, ConstraintF>>::LeafHash as CRHGadget<<P as Config>::LeafHash, ConstraintF>>::ParametersVar;
@@ -123,7 +123,7 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
             .leaf_is_right_child
             .select(&claimed_leaf_hash, leaf_sibling_hash)?;
 
-        let mut curr_hash = PG::TwoLeavesToOneHash::evaluate(two_leaves_to_one_params, &left_hash, &right_hash)?;
+        let mut curr_hash = PG::TwoLeavesToOneHash::compress(two_leaves_to_one_params, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
@@ -234,11 +234,11 @@ mod tests {
     impl Config for JubJubMerkleTreeParams{
         type Leaf = Leaf;
 
-        type LeafDigest = <H as CRH>::Output;
+        type InnerDigest = <H as CRH>::Output;
         type InnerDigest = <H as TwoToOneCRH>::Output;
         type LeafHash = H;
         type TwoLeavesToOneHash = HWrapper;
-        type TwoHashesToOneHash = H;
+        type TwoToOneHash = H;
     }
 
     type ConstraintF = Fq;

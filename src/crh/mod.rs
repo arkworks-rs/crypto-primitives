@@ -13,8 +13,6 @@ use crate::Error;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
-/// defines some wrappers to convert the CRH's output
-pub mod wrapper;
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(feature = "r1cs")]
@@ -40,10 +38,10 @@ pub trait CRH
     fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error>;
 }
 
+/// CRH used by merkle tree inner hash. Merkle tree will convert leaf output to bytes first.
 pub trait TwoToOneCRH
     where
 {
-    type Input: ?Sized;
     type Output: ToBytes
     + Clone
     + Eq
@@ -55,16 +53,7 @@ pub trait TwoToOneCRH
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    /// Evaluates this CRH on the left and right inputs.
-    fn evaluate<T: Borrow<Self::Input>>(
-        parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
-    ) -> Result<Self::Output, Error>;
-}
 
-pub trait CompressibleTwoToOneCRH: TwoToOneCRH
-    where{
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
         left_input: T,

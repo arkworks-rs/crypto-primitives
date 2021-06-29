@@ -7,14 +7,11 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::{TwoToOneCRH, CRH as CRHTrait, CompressibleTwoToOneCRH};
+use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
 use ark_ec::ProjectiveCurve;
-use ark_ff::{Field, ToConstraintField, ToBytes};
+use ark_ff::{Field, ToConstraintField};
 use ark_std::cfg_chunks;
 use ark_std::borrow::Borrow;
-use crate::crh::wrapper::InputToBytesWrapper;
-use std::hash::Hash;
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -57,8 +54,8 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
 }
 
 impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
-
     type Input = [u8];
+
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -129,7 +126,6 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
 
 impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
 
-    type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -140,39 +136,33 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
     /// A simple implementation method: just concat the left input and right input together
     ///
     /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate<T: Borrow<Self::Input>>(
+    fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
         left_input: T,
         right_input: T,
     ) -> Result<Self::Output, Error> {
-        let left_input = left_input.borrow();
-        let right_input = right_input.borrow();
+        let left_input_bytes = ark_ff::to_bytes!(left_input.borrow())?;
+        let right_input_bytes = ark_ff::to_bytes!(right_input.borrow())?;
         assert_eq!(
-            left_input.len(),
-            right_input.len(),
+            left_input_bytes.len(),
+            right_input_bytes.len(),
             "left and right input should be of equal length"
         );
         // check overflow
 
-        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
+        debug_assert!(left_input_bytes.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
 
         let mut buffer = vec![0u8; (Self::HALF_INPUT_SIZE_BITS + Self::HALF_INPUT_SIZE_BITS) / 8];
 
         buffer
             .iter_mut()
-            .zip(left_input.iter().chain(right_input.iter()))
+            .zip(left_input_bytes.iter().chain(right_input_bytes.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
         <Self as CRHTrait>::evaluate(parameters, buffer.as_slice())
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CompressibleTwoToOneCRH for CRH<C, W> {
-    fn compress<T: Borrow<Self::Output>>(parameters: &Self::Parameters, left_input: T, right_input: T) -> Result<Self::Output, Error> {
-        // convert output to bytes
-        <InputToBytesWrapper::<Self, Self::Output> as TwoToOneCRH>::evaluate(parameters, left_input, right_input)
-    }
-}
 pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     let mut bits = Vec::with_capacity(bytes.len() * 8);
     for byte in bytes {
@@ -200,25 +190,6 @@ impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>>
     #[inline]
     fn to_field_elements(&self) -> Option<Vec<ConstraintF>> {
         Some(Vec::new())
-    }
-}
-
-/// Wrapper for Pedersen, which takes output as an input
-pub struct AffineInputCRH<C: ProjectiveCurve, W: Window>{
-    _marker: PhantomData<(C, W)>
-}
-
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for AffineInputCRH<C, W> {
-    type Input = Self::Output;
-    type Output = <CRH<C, W> as CRHTrait>::Output;
-    type Parameters = <CRH<C, W> as CRHTrait>::Parameters;
-
-    fn setup<R: Rng>(_r: &mut R) -> Result<Self::Parameters, Error> {
-        todo!()
-    }
-
-    fn evaluate<T: Borrow<Self::Input>>(_parameters: &Self::Parameters, _left_input: T, _right_input: T) -> Result<Self::Output, Error> {
-        todo!()
     }
 }
 
