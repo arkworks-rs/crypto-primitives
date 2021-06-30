@@ -91,7 +91,8 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
         let crh_parameters = pedersen::Parameters {
             generators: parameters.generators.clone(),
         };
-        let mut result: C = pedersen::CRH::<C, W>::evaluate(&crh_parameters, input.as_slice())?.into();
+        let mut result: C =
+            pedersen::CRH::<C, W>::evaluate(&crh_parameters, input.as_slice())?.into();
         let randomize_time = start_timer!(|| "Randomize");
 
         // Compute h^r.

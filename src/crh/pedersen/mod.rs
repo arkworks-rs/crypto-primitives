@@ -10,8 +10,8 @@ use rayon::prelude::*;
 use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
-use ark_std::cfg_chunks;
 use ark_std::borrow::Borrow;
+use ark_std::cfg_chunks;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -71,7 +71,10 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
         Ok(Self::Parameters { generators })
     }
 
-    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        input: T,
+    ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRH::Eval");
         let input = input.borrow();
         if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS {
@@ -125,7 +128,6 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
 }
 
 impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
-
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -192,5 +194,3 @@ impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>>
         Some(Vec::new())
     }
 }
-
-

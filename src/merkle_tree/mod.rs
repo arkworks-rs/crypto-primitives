@@ -1,16 +1,15 @@
 #![allow(clippy::needless_range_loop)]
 
 /// Defines a trait to chain two types of CRHs.
-
 use crate::crh::TwoToOneCRH;
 use crate::CRH;
 use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
-use ark_std::vec::Vec;
-use ark_std::hash::Hash;
 use ark_std::borrow::Borrow;
+use ark_std::hash::Hash;
 #[allow(unused)]
 use ark_std::marker::PhantomData;
+use ark_std::vec::Vec;
 
 // TODO: recover this later
 #[cfg(feature = "r1cs")]
@@ -21,26 +20,24 @@ pub trait DigestConverter<From, To> {
     fn convert(item: From) -> To;
 }
 
-pub struct IdentityDigestConverter<T>{
-    _type: PhantomData<T>
+pub struct IdentityDigestConverter<T> {
+    _type: PhantomData<T>,
 }
 
-impl<T> DigestConverter<T, T> for IdentityDigestConverter<T>{
+impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
     fn convert(item: T) -> T {
         item
     }
 }
-
 
 /// Merkle tree have three types of hashes.
 /// * `LeafHash`: Convert leaf to leaf digest
 /// * `TwoLeavesToOneHash`: Convert two leaf digests to one inner digest. This one can be a wrapped
 /// version `TwoHashesToOneHash`, which first converts leaf digest to inner digest.
 /// * `TwoHashesToOneHash`: Compress two inner digests to one inner digest
-pub trait Config
-{
+pub trait Config {
     type Leaf: ?Sized; // merkle tree does not store the leaf
-    // leaf layer
+                       // leaf layer
     type LeafDigest: ToBytes
         + Clone
         + Eq
@@ -53,13 +50,13 @@ pub trait Config
     type LeafInnerDigestConverter: DigestConverter<Self::LeafDigest, Self::InnerDigest>;
     // inner layer
     type InnerDigest: ToBytes
-    + Clone
-    + Eq
-    + core::fmt::Debug
-    + Hash
-    + Default
-    + CanonicalSerialize
-    + CanonicalDeserialize;
+        + Clone
+        + Eq
+        + core::fmt::Debug
+        + Hash
+        + Default
+        + CanonicalSerialize
+        + CanonicalDeserialize;
 
     // Tom's Note: in the future, if we want different hash function, we can simply add more
     // types of digest here and specify a digest converter. Same for constraints.
@@ -67,9 +64,9 @@ pub trait Config
     /// leaf -> leaf digest
     /// If leaf hash digest and inner hash digest are different, we can create a new
     /// leaf hash which wraps the original leaf hash and convert its output to `Digest`.
-    type LeafHash: CRH<Input=Self::Leaf, Output=Self::LeafDigest>;
+    type LeafHash: CRH<Input = Self::Leaf, Output = Self::LeafDigest>;
     /// 2 inner digest -> inner digest
-    type TwoToOneHash: TwoToOneCRH<Output=Self::InnerDigest>;
+    type TwoToOneHash: TwoToOneCRH<Output = Self::InnerDigest>;
 }
 
 pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
@@ -122,8 +119,7 @@ impl<P: Config> Path<P> {
         leaf: &P::Leaf,
     ) -> Result<bool, crate::Error> {
         // calculate leaf hash
-        let claimed_leaf_hash =
-            P::LeafHash::evaluate(&leaf_hash_params, leaf)?;
+        let claimed_leaf_hash = P::LeafHash::evaluate(&leaf_hash_params, leaf)?;
         // check hash along the path from bottom to root
         let (left_child, right_child) =
             select_left_right_child(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
@@ -133,9 +129,7 @@ impl<P: Config> Path<P> {
         let right_child = P::LeafInnerDigestConverter::convert(right_child);
 
         let mut curr_path_node =
-            P::TwoToOneHash::compress(&two_to_one_params,
-                                      &left_child,
-                                      &right_child)?;
+            P::TwoToOneHash::compress(&two_to_one_params, &left_child, &right_child)?;
 
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
@@ -147,10 +141,7 @@ impl<P: Config> Path<P> {
             let (left, right) =
                 select_left_right_child(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
-            curr_path_node =
-                P::TwoToOneHash::compress(&two_to_one_params,
-                                          &left,
-                                          &right)?;
+            curr_path_node = P::TwoToOneHash::compress(&two_to_one_params, &left, &right)?;
             index >>= 1;
         }
 
@@ -214,7 +205,6 @@ impl<P: Config> MerkleTree<P> {
         two_to_one_hash_param: &TwoToOneParam<P>,
         height: usize,
     ) -> Result<Self, crate::Error> {
-        
         // use empty leaf digest
         let leaves_digest = vec![P::LeafDigest::default(); 1 << (height - 1)];
         // todo: create a function called new_with_leaf_digest (and use empty leaf digest)
@@ -225,27 +215,23 @@ impl<P: Config> MerkleTree<P> {
     pub fn new<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: impl IntoIterator<Item=L>,
+        leaves: impl IntoIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
-
         let mut leaves_digests = Vec::new();
 
         // compute and store hash values for each leaf
         for leaf in leaves.into_iter() {
             leaves_digests.push(P::LeafHash::evaluate(leaf_hash_param, leaf)?)
-        };
+        }
 
-        Self::new_with_leaf_digest(
-            leaf_hash_param,
-            two_to_one_hash_param,
-            leaves_digests
-        )
-
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digests)
     }
 
-    pub fn new_with_leaf_digest(leaf_hash_param: &LeafParam<P>,
-                                two_to_one_hash_param: &TwoToOneParam<P>,
-                                leaves_digest: Vec<P::LeafDigest>) -> Result<Self, crate::Error>{
+    pub fn new_with_leaf_digest(
+        leaf_hash_param: &LeafParam<P>,
+        two_to_one_hash_param: &TwoToOneParam<P>,
+        leaves_digest: Vec<P::LeafDigest>,
+    ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaves_digest.len();
         assert!(
             leaf_nodes_size.is_power_of_two(),
@@ -281,10 +267,11 @@ impl<P: Config> MerkleTree<P> {
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
-                non_leaf_nodes[current_index] =
-                    P::TwoToOneHash::compress(&two_to_one_hash_param,
-                                                       P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone()),
-                                                       P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone()))?
+                non_leaf_nodes[current_index] = P::TwoToOneHash::compress(
+                    &two_to_one_hash_param,
+                    P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone()),
+                    P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone()),
+                )?
             }
         }
 
@@ -296,24 +283,21 @@ impl<P: Config> MerkleTree<P> {
             for current_index in start_index..upper_bound {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
-                non_leaf_nodes[current_index] =
-                    P::TwoToOneHash::compress(&two_to_one_hash_param,
-                                              non_leaf_nodes[left_index].clone(),
-                                              non_leaf_nodes[right_index].clone())?
+                non_leaf_nodes[current_index] = P::TwoToOneHash::compress(
+                    &two_to_one_hash_param,
+                    non_leaf_nodes[left_index].clone(),
+                    non_leaf_nodes[right_index].clone(),
+                )?
             }
         }
 
-        Ok(
-            MerkleTree{
-                leaf_nodes: leaves_digest,
-                non_leaf_nodes,
-                height: tree_height,
-                leaf_hash_param: leaf_hash_param.clone(),
-                two_to_one_hash_param: two_to_one_hash_param.clone()
-            }
-        )
-
-
+        Ok(MerkleTree {
+            leaf_nodes: leaves_digest,
+            non_leaf_nodes,
+            height: tree_height,
+            leaf_hash_param: leaf_hash_param.clone(),
+            two_to_one_hash_param: two_to_one_hash_param.clone(),
+        })
     }
 
     /// Returns the root of the Merkle tree.
@@ -372,8 +356,7 @@ impl<P: Config> MerkleTree<P> {
         new_leaf: T,
     ) -> Result<(P::LeafDigest, Vec<P::InnerDigest>), crate::Error> {
         // calculate the hash of leaf
-        let new_leaf_hash: P::LeafDigest =
-            P::LeafHash::evaluate(&self.leaf_hash_param, new_leaf)?;
+        let new_leaf_hash: P::LeafDigest = P::LeafHash::evaluate(&self.leaf_hash_param, new_leaf)?;
 
         // calculate leaf sibling hash and locate its position (left or right)
         let (leaf_left, leaf_right) = if index & 1 == 0 {
@@ -408,11 +391,8 @@ impl<P: Config> MerkleTree<P> {
                     path_bottom_to_top.last().unwrap(),
                 )
             };
-            let evaluated = P::TwoToOneHash::compress(
-                &self.two_to_one_hash_param,
-                left_child,
-                right_child,
-            )?;
+            let evaluated =
+                P::TwoToOneHash::compress(&self.two_to_one_hash_param, left_child, right_child)?;
             path_bottom_to_top.push(evaluated);
             prev_index = parent(prev_index).unwrap();
         }
@@ -530,121 +510,115 @@ fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::{
-//         crh::{pedersen, *},
-//         merkle_tree::*,
-//     };
-//     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-//     use ark_ff::{BigInteger256, ToBytes};
-//     use ark_std::{test_rng, UniformRand};
-//     use crate::crh::wrapper::InputToBytesWrapper;
-//
-//     #[derive(Clone)]
-//     pub(super) struct Window4x256;
-//     impl pedersen::Window for Window4x256 {
-//         const WINDOW_SIZE: usize = 4;
-//         const NUM_WINDOWS: usize = 256;
-//     }
-//
-//     type H = pedersen::CRH<JubJub, Window4x256>;
-//     type Leaf = [u8];
-//
-//     struct JubJubMerkleTreeParams;
-//
-//     impl Config for JubJubMerkleTreeParams {
-//         type Leaf = Leaf;
-//
-//         type InnerDigest = <H as CRH>::Output;
-//         type InnerDigest = <H as TwoToOneCRH>::Output;
-//         type LeafHash = H;
-//         type TwoLeavesToOneHash = InputToBytesWrapper<H, <H as TwoToOneCRH>::Output>;
-//         type TwoToOneHash = H;
-//     }
-//     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
-//
-//     /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
-//     fn merkle_tree_test<L: ToBytes>(leaves: &[L], update_query: &[(usize, L)]) -> () {
-//         let mut rng = ark_std::test_rng();
-//         let mut leaves: Vec<_> = leaves.iter().map(|leaf|ark_ff::to_bytes!(leaf).unwrap()).collect();
-//         let leaf_crh_params = <H as CRH>::setup(&mut rng).unwrap();
-//         let two_leaves_to_one_params = <H as TwoToOneCRH>::setup(&mut rng).unwrap();
-//         let two_hashes_to_one_params = two_leaves_to_one_params.clone();
-//         let mut tree = JubJubMerkleTree::new(
-//             &leaf_crh_params.clone(),
-//             &two_hashes_to_one_params.clone(),
-//             &two_hashes_to_one_params.clone(),
-//             leaves.iter().map(|x|x.as_slice()),
-//         )
-//         .unwrap();
-//         let mut root = tree.root();
-//         // test merkle tree functionality without update
-//         for (i, leaf) in leaves.iter().enumerate() {
-//             let proof = tree.generate_proof(i).unwrap();
-//             assert!(proof
-//                 .verify(&leaf_crh_params,
-//                         &two_leaves_to_one_params,
-//                         &two_hashes_to_one_params,
-//                         &root, &leaf)
-//                 .unwrap());
-//         }
-//
-//         // test merkle tree update functionality
-//         for (i, v) in update_query {
-//             let v = ark_ff::to_bytes!(v).unwrap();
-//             tree.update(*i, &v).unwrap();
-//             leaves[*i] = v.clone();
-//         }
-//         // update the root
-//         root = tree.root();
-//         // verify again
-//         for (i, leaf) in leaves.iter().enumerate() {
-//             let proof = tree.generate_proof(i).unwrap();
-//             assert!(proof
-//                 .verify(&leaf_crh_params,
-//                         &two_leaves_to_one_params,
-//                         &two_hashes_to_one_params,
-//                         &root, &leaf)
-//                 .unwrap());
-//         }
-//     }
-//
-//     #[test]
-//     fn good_root_test() {
-//         let mut rng = test_rng();
-//
-//         let mut leaves = Vec::new();
-//         for _ in 0..2u8 {
-//             leaves.push(BigInteger256::rand(&mut rng));
-//         }
-//         merkle_tree_test(
-//             &leaves,
-//             &vec![
-//                 (0, BigInteger256::rand(&mut rng)),
-//                 (1, BigInteger256::rand(&mut rng)),
-//             ],
-//         );
-//
-//         let mut leaves = Vec::new();
-//         for _ in 0..4u8 {
-//             leaves.push(BigInteger256::rand(&mut rng));
-//         }
-//         merkle_tree_test(&leaves, &vec![(3, BigInteger256::rand(&mut rng))]);
-//
-//         let mut leaves = Vec::new();
-//         for _ in 0..128u8 {
-//             leaves.push(BigInteger256::rand(&mut rng));
-//         }
-//         merkle_tree_test(
-//             &leaves,
-//             &vec![
-//                 (2, BigInteger256::rand(&mut rng)),
-//                 (3, BigInteger256::rand(&mut rng)),
-//                 (5, BigInteger256::rand(&mut rng)),
-//                 (111, BigInteger256::rand(&mut rng)),
-//                 (127, BigInteger256::rand(&mut rng)),
-//             ],
-//         );
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use crate::{
+        crh::{pedersen, *},
+        merkle_tree::*,
+    };
+    use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
+    use ark_ff::{BigInteger256, ToBytes};
+    use ark_std::{test_rng, UniformRand};
+
+    #[derive(Clone)]
+    pub(super) struct Window4x256;
+    impl pedersen::Window for Window4x256 {
+        const WINDOW_SIZE: usize = 4;
+        const NUM_WINDOWS: usize = 256;
+    }
+
+    type H = pedersen::CRH<JubJub, Window4x256>;
+
+    struct JubJubMerkleTreeParams;
+
+    impl Config for JubJubMerkleTreeParams {
+        type Leaf = [u8];
+
+        type LeafDigest = <H as CRH>::Output;
+        type LeafInnerDigestConverter = IdentityDigestConverter<Self::LeafDigest>;
+        type InnerDigest = <H as TwoToOneCRH>::Output;
+
+        type LeafHash = H;
+        type TwoToOneHash = H;
+    }
+    type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
+
+    /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
+    fn merkle_tree_test<L: ToBytes>(leaves: &[L], update_query: &[(usize, L)]) -> () {
+        let mut rng = ark_std::test_rng();
+        let mut leaves: Vec<_> = leaves
+            .iter()
+            .map(|leaf| ark_ff::to_bytes!(leaf).unwrap())
+            .collect();
+        let leaf_crh_params = <H as CRH>::setup(&mut rng).unwrap();
+        let two_to_one_params = <H as TwoToOneCRH>::setup(&mut rng).unwrap().clone();
+        let mut tree = JubJubMerkleTree::new(
+            &leaf_crh_params.clone(),
+            &two_to_one_params.clone(),
+            leaves.iter().map(|x| x.as_slice()),
+        )
+        .unwrap();
+        let mut root = tree.root();
+        // test merkle tree functionality without update
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, &leaf)
+                .unwrap());
+        }
+
+        // test merkle tree update functionality
+        for (i, v) in update_query {
+            let v = ark_ff::to_bytes!(v).unwrap();
+            tree.update(*i, &v).unwrap();
+            leaves[*i] = v.clone();
+        }
+        // update the root
+        root = tree.root();
+        // verify again
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, &leaf)
+                .unwrap());
+        }
+    }
+
+    #[test]
+    fn good_root_test() {
+        let mut rng = test_rng();
+
+        let mut leaves = Vec::new();
+        for _ in 0..2u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
+        }
+        merkle_tree_test(
+            &leaves,
+            &vec![
+                (0, BigInteger256::rand(&mut rng)),
+                (1, BigInteger256::rand(&mut rng)),
+            ],
+        );
+
+        let mut leaves = Vec::new();
+        for _ in 0..4u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
+        }
+        merkle_tree_test(&leaves, &vec![(3, BigInteger256::rand(&mut rng))]);
+
+        let mut leaves = Vec::new();
+        for _ in 0..128u8 {
+            leaves.push(BigInteger256::rand(&mut rng));
+        }
+        merkle_tree_test(
+            &leaves,
+            &vec![
+                (2, BigInteger256::rand(&mut rng)),
+                (3, BigInteger256::rand(&mut rng)),
+                (5, BigInteger256::rand(&mut rng)),
+                (111, BigInteger256::rand(&mut rng)),
+                (127, BigInteger256::rand(&mut rng)),
+            ],
+        );
+    }
+}

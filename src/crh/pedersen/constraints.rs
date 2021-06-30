@@ -10,11 +10,8 @@ use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::crh::{TwoToOneCRHGadget, CompressibleTwoToOneCRHGadget, TwoToOneCRH};
+use crate::crh::TwoToOneCRHGadget;
 use core::{borrow::Borrow, marker::PhantomData};
-use crate::crh::wrapper::constraints::InputToBytesWrapperGadget;
-use crate::crh::pedersen::AffineInputCRH;
-use std::fmt::Debug;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
@@ -52,7 +49,10 @@ where
     type ParametersVar = CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
-    fn evaluate(parameters: &Self::ParametersVar, input: &Self::InputVar) -> Result<Self::OutputVar, SynthesisError> {
+    fn evaluate(
+        parameters: &Self::ParametersVar,
+        input: &Self::InputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
         let mut padded_input = input.to_vec();
         // Pad the input if it is not the current length.
         if input.len() * 8 < W::WINDOW_SIZE * W::NUM_WINDOWS {
@@ -61,7 +61,7 @@ where
                 padded_input.push(UInt8::constant(0u8));
             }
         }
-        assert_eq!(padded_input.len() * 8, W::WINDOW_SIZE * W::NUM_WINDOWS); 
+        assert_eq!(padded_input.len() * 8, W::WINDOW_SIZE * W::NUM_WINDOWS);
         assert_eq!(parameters.params.generators.len(), W::NUM_WINDOWS);
 
         // Allocate new variable for the result.
@@ -83,16 +83,18 @@ where
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
-    type InputVar = Vec<UInt8<ConstraintF<C>>>;
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn compress(
         parameters: &Self::ParametersVar,
-        left_input: &Self::InputVar,
-        right_input: &Self::InputVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
+        // convert output to bytes
+        let left_input = left_input.to_bytes()?;
+        let right_input = right_input.to_bytes()?;
         // assume equality of left and right length
         assert_eq!(left_input.len(), right_input.len());
         let chained_input: Vec<_> = left_input
@@ -101,19 +103,6 @@ where
             .chain(right_input.to_vec().into_iter())
             .collect();
         <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
-    }
-}
-
-impl<C, GG, W> CompressibleTwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>> for CRHGadget<C, GG, W>
-    where
-        C: ProjectiveCurve,
-        GG: CurveVar<C, ConstraintF<C>>,
-        W: Window,
-        for<'a> &'a GG: GroupOpsBounds<'a, C, GG>
-{
-    fn compress(parameters: &Self::ParametersVar, left_input: &Self::OutputVar, right_input: &Self::OutputVar)
-        -> Result<Self::OutputVar, SynthesisError> {
-        <InputToBytesWrapperGadget::<Self, ConstraintF<C>, Self::OutputVar> as TwoToOneCRHGadget<CRH<C, W>, ConstraintF<C>>>::evaluate(parameters, left_input, right_input)
     }
 }
 
@@ -137,31 +126,15 @@ where
     }
 }
 
-pub struct AffineInputCRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>{
-    _marker: PhantomData<(C, GG, W)>
-}
-
-impl<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window> TwoToOneCRHGadget<AffineInputCRH<C, W>, ConstraintF<C>> for AffineInputCRHGadget<C, GG, W>
-    where
-        for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    type InputVar = GG;
-    type OutputVar = GG;
-    type ParametersVar = CRHParametersVar<C, GG>;
-
-    fn compress(_parameters: &Self::ParametersVar, _left_input: &Self::InputVar, _right_input: &Self::InputVar) -> Result<Self::OutputVar, SynthesisError> {
-        todo!()
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::crh::{pedersen, CRHGadget, TwoToOneCRH, TwoToOneCRHGadget, CRH};
+    use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::rand::Rng;
-    use ark_std::test_rng;
+    use ark_std::{test_rng, UniformRand};
 
     type TestCRH = pedersen::CRH<JubJub, Window>;
     type TestCRHGadget = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window>;
@@ -187,6 +160,15 @@ mod test {
             input_bytes.push(UInt8::new_witness(cs.clone(), || Ok(byte)).unwrap());
         }
         (input, input_bytes)
+    }
+
+    fn generate_affine<R: Rng>(
+        cs: ConstraintSystemRef<Fr>,
+        rng: &mut R,
+    ) -> (<JubJub as ProjectiveCurve>::Affine, EdwardsVar) {
+        let val = <JubJub as ProjectiveCurve>::Affine::rand(rng);
+        let val_var = EdwardsVar::new_witness(cs.clone(), || Ok(val.clone())).unwrap();
+        (val, val_var)
     }
 
     #[test]
@@ -218,11 +200,10 @@ mod test {
         let rng = &mut test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
 
-        let (left_input, left_input_var) = generate_u8_input(cs.clone(), 64, rng);
-        let (right_input, right_input_var) = generate_u8_input(cs.clone(), 64, rng);
+        let (left_input, left_input_var) = generate_affine(cs.clone(), rng);
+        let (right_input, right_input_var) = generate_affine(cs.clone(), rng);
         let parameters = <TestCRH as TwoToOneCRH>::setup(rng).unwrap();
-        let primitive_result =
-            <TestCRH as TwoToOneCRH>::evaluate(&parameters, left_input.as_slice(), right_input.as_slice()).unwrap();
+        let primitive_result = TestCRH::compress(&parameters, left_input, right_input).unwrap();
 
         let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
             ark_relations::ns!(cs, "CRH Parameters"),
@@ -230,12 +211,8 @@ mod test {
         )
         .unwrap();
 
-        let result_var = <TestCRHGadget as TwoToOneCRHGadget<_, _>>::evaluate(
-            &parameters_var,
-            &left_input_var,
-            &right_input_var,
-        )
-        .unwrap();
+        let result_var =
+            TestCRHGadget::compress(&parameters_var, &left_input_var, &right_input_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
