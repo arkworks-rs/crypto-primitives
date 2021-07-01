@@ -5,7 +5,7 @@ use ark_std::hash::Hash;
 use ark_std::rand::Rng;
 // TODO: uncomment those after refactoring
 // pub mod bowe_hopwood;
-// pub mod injective_map;
+pub mod injective_map;
 pub mod pedersen;
 // pub mod poseidon;
 

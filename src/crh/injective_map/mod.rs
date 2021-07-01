@@ -10,6 +10,7 @@ use ark_ec::{
     ProjectiveCurve,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use std::borrow::Borrow;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -59,7 +60,7 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
         params
     }
 
-    fn evaluate(parameters: &Self::Parameters, input: &Self::Input) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
         let result = I::injective_map(&<pedersen::CRH<C, W> as CRH>::evaluate(parameters, input)?)?;
         end_timer!(eval_time);
@@ -70,6 +71,8 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
 impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
     for PedersenCRHCompressor<C, I, W>
 {
+    type Input = <pedersen::CRH<C, W> as TwoToOneCRH>::Input;
+
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
@@ -77,18 +80,29 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
         <pedersen::CRH<C, W> as TwoToOneCRH>::setup(r)
     }
 
-    fn compress(
-        parameters: &Self::Parameters,
-        left_input: &Self::Output,
-        right_input: &Self::Output,
-    ) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, left_input: T, right_input: T) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
-        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::compress(
+        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::evaluate(
             parameters,
             left_input,
             right_input,
         )?)?;
         end_timer!(eval_time);
         Ok(result)
+    }
+
+    fn compress<T: Borrow<Self::Output>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error> {
+        // convert output to input
+        let left_input = left_input.borrow();
+        let right_input = right_input.borrow();
+        let mut left_input_bytes = Vec::with_capacity(left_input.serialized_size());
+        left_input.serialize_unchecked(&mut left_input_bytes)?;
+        let mut right_input_bytes = Vec::with_capacity(right_input.serialized_size());
+        right_input.serialize_unchecked(&mut right_input_bytes)?;
+        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
     }
 }
