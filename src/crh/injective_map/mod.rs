@@ -47,7 +47,8 @@ pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pede
 impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
     for PedersenCRHCompressor<C, I, W>
 {
-    const INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::INPUT_SIZE_BITS;
+    type Input = <pedersen::CRH<C, W> as CRH>::Input;
+
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
@@ -58,7 +59,7 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
         params
     }
 
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
+    fn evaluate(parameters: &Self::Parameters, input: &Self::Input) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
         let result = I::injective_map(&<pedersen::CRH<C, W> as CRH>::evaluate(parameters, input)?)?;
         end_timer!(eval_time);
@@ -69,8 +70,6 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
 impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
     for PedersenCRHCompressor<C, I, W>
 {
-    const LEFT_INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::LEFT_INPUT_SIZE_BITS;
-    const RIGHT_INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::RIGHT_INPUT_SIZE_BITS;
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
@@ -78,16 +77,13 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
         <pedersen::CRH<C, W> as TwoToOneCRH>::setup(r)
     }
 
-    /// A simple implementation method: just concat the left input and right input together
-    ///
-    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate(
+    fn compress(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: &Self::Output,
+        right_input: &Self::Output,
     ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
-        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::evaluate(
+        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::compress(
             parameters,
             left_input,
             right_input,

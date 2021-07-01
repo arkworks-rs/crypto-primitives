@@ -2,31 +2,48 @@
 
 /// Defines a trait to chain two types of CRHs.
 use crate::crh::TwoToOneCRH;
-use crate::CRH;
+use crate::{Error, CRH};
 use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
-#[allow(unused)]
-use ark_std::marker::PhantomData;
 use ark_std::vec::Vec;
 
 // TODO: recover this later
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-/// Convert the digest in different layers.
-pub trait DigestConverter<From, To> {
-    fn convert(item: From) -> To;
+/// Convert the hash digest in different layers by converting previous layer's output to
+/// `TargetType`, which is a `Borrow` to next layer's input.
+pub trait DigestConverter<From, To: ?Sized> {
+    type TargetType: Borrow<To>;
+    fn convert(item: From) -> Result<Self::TargetType, Error>;
 }
 
+/// A trivial converter where digest of previous layer's hash is the same as next layer's input.
 pub struct IdentityDigestConverter<T> {
-    _type: PhantomData<T>,
+    _prev_layer_digest: T,
 }
 
 impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
-    fn convert(item: T) -> T {
-        item
+    type TargetType = T;
+    fn convert(item: T) -> Result<T, Error> {
+        Ok(item)
+    }
+}
+
+/// Convert previous layer's digest to bytes and use bytes as input for next layer's digest.
+/// TODO: `ToBytes` trait will be deprecated in future versions.
+pub struct ByteDigestConverter<T: CanonicalSerialize + ToBytes> {
+    _prev_layer_digest: T,
+}
+
+impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestConverter<T> {
+    type TargetType = Vec<u8>;
+
+    fn convert(item: T) -> Result<Self::TargetType, Error> {
+        // TODO: In some tests, `serialize` is not consistent with constraints. Try fix those.
+        Ok(ark_ff::to_bytes!(item)?)
     }
 }
 
@@ -47,7 +64,10 @@ pub trait Config {
         + CanonicalSerialize
         + CanonicalDeserialize;
     // transition between leaf layer to inner layer
-    type LeafInnerDigestConverter: DigestConverter<Self::LeafDigest, Self::InnerDigest>;
+    type LeafInnerDigestConverter: DigestConverter<
+        Self::LeafDigest,
+        <Self::TwoToOneHash as TwoToOneCRH>::Input,
+    >;
     // inner layer
     type InnerDigest: ToBytes
         + Clone
@@ -125,11 +145,11 @@ impl<P: Config> Path<P> {
             select_left_right_child(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
 
         // leaf layer to inner layer conversion
-        let left_child = P::LeafInnerDigestConverter::convert(left_child);
-        let right_child = P::LeafInnerDigestConverter::convert(right_child);
+        let left_child = P::LeafInnerDigestConverter::convert(left_child)?;
+        let right_child = P::LeafInnerDigestConverter::convert(right_child)?;
 
         let mut curr_path_node =
-            P::TwoToOneHash::compress(&two_to_one_params, &left_child, &right_child)?;
+            P::TwoToOneHash::evaluate(&two_to_one_params, left_child, right_child)?;
 
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
@@ -267,10 +287,10 @@ impl<P: Config> MerkleTree<P> {
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
-                non_leaf_nodes[current_index] = P::TwoToOneHash::compress(
+                non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate(
                     &two_to_one_hash_param,
-                    P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone()),
-                    P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone()),
+                    P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone())?,
+                    P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone())?,
                 )?
             }
         }
@@ -369,10 +389,10 @@ impl<P: Config> MerkleTree<P> {
         // calculate the updated hash at bottom non-leaf-level
         let mut path_bottom_to_top = Vec::with_capacity(self.height - 1);
         {
-            path_bottom_to_top.push(P::TwoToOneHash::compress(
+            path_bottom_to_top.push(P::TwoToOneHash::evaluate(
                 &self.two_to_one_hash_param,
-                P::LeafInnerDigestConverter::convert(leaf_left.clone()),
-                P::LeafInnerDigestConverter::convert(leaf_right.clone()),
+                P::LeafInnerDigestConverter::convert(leaf_left.clone())?,
+                P::LeafInnerDigestConverter::convert(leaf_right.clone())?,
             )?);
         }
 
@@ -535,7 +555,7 @@ mod tests {
         type Leaf = [u8];
 
         type LeafDigest = <H as CRH>::Output;
-        type LeafInnerDigestConverter = IdentityDigestConverter<Self::LeafDigest>;
+        type LeafInnerDigestConverter = ByteDigestConverter<Self::LeafDigest>;
         type InnerDigest = <H as TwoToOneCRH>::Output;
 
         type LeafHash = H;

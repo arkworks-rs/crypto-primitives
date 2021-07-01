@@ -25,6 +25,7 @@ pub trait CRHGadget<H: CRH, ConstraintF: Field>: Sized {
 }
 
 pub trait TwoToOneCRHGadget<H: TwoToOneCRH, ConstraintF: Field>: Sized {
+    type InputVar;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
@@ -35,6 +36,12 @@ pub trait TwoToOneCRHGadget<H: TwoToOneCRH, ConstraintF: Field>: Sized {
         + Sized;
 
     type ParametersVar: AllocVar<H::Parameters, ConstraintF> + Clone;
+
+    fn evaluate(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
+    ) -> Result<Self::OutputVar, SynthesisError>;
 
     fn compress(
         parameters: &Self::ParametersVar,

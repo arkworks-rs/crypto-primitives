@@ -22,6 +22,19 @@ impl<T> DigestVarConverter<T, T> for IdentityDigestConverter<T> {
     }
 }
 
+pub struct BytesVarDigestConverter<T: ToBytesGadget<ConstraintF>, ConstraintF: Field> {
+    _prev_layer_digest: T,
+    _constraint_field: ConstraintF,
+}
+
+impl<T: ToBytesGadget<ConstraintF>, ConstraintF: Field>
+    DigestVarConverter<T, Vec<UInt8<ConstraintF>>> for BytesVarDigestConverter<T, ConstraintF>
+{
+    fn convert(from: T) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+        from.to_bytes()
+    }
+}
+
 pub trait ConfigGadget<P: Config, ConstraintF: Field> {
     type Leaf;
     type LeafDigest: AllocVar<P::LeafDigest, ConstraintF>
@@ -32,7 +45,10 @@ pub trait ConfigGadget<P: Config, ConstraintF: Field> {
         + Debug
         + Clone
         + Sized;
-    type LeafInnerConverter: DigestVarConverter<Self::LeafDigest, Self::InnerDigest>;
+    type LeafInnerConverter: DigestVarConverter<
+        Self::LeafDigest,
+        <Self::TwoToOneHash as TwoToOneCRHGadget<P::TwoToOneHash, ConstraintF>>::InputVar,
+    >;
     type InnerDigest: AllocVar<P::InnerDigest, ConstraintF>
         + EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
@@ -152,7 +168,7 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
         let left_hash = PG::LeafInnerConverter::convert(left_hash)?;
         let right_hash = PG::LeafInnerConverter::convert(right_hash)?;
 
-        let mut curr_hash = PG::TwoToOneHash::compress(two_to_one_params, &left_hash, &right_hash)?;
+        let mut curr_hash = PG::TwoToOneHash::evaluate(two_to_one_params, &left_hash, &right_hash)?;
         // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
@@ -218,8 +234,8 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
 mod tests {
     use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget};
 
-    use crate::merkle_tree::constraints::ConfigGadget;
-    use crate::merkle_tree::{Config, IdentityDigestConverter};
+    use crate::merkle_tree::constraints::{BytesVarDigestConverter, ConfigGadget};
+    use crate::merkle_tree::{ByteDigestConverter, Config};
     use crate::{CRHGadget, MerkleTree, PathVar, CRH};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
     use ark_ff::Field;
@@ -244,7 +260,7 @@ mod tests {
     impl Config for JubJubMerkleTreeParams {
         type Leaf = [u8];
         type LeafDigest = <H as CRH>::Output;
-        type LeafInnerDigestConverter = IdentityDigestConverter<Self::LeafDigest>;
+        type LeafInnerDigestConverter = ByteDigestConverter<Self::LeafDigest>;
 
         type InnerDigest = <H as CRH>::Output;
         type LeafHash = H;
@@ -256,7 +272,7 @@ mod tests {
     impl ConfigGadget<JubJubMerkleTreeParams, ConstraintF> for JubJubMerkleTreeParamsVar {
         type Leaf = LeafVar<ConstraintF>;
         type LeafDigest = <HG as CRHGadget<H, ConstraintF>>::OutputVar;
-        type LeafInnerConverter = IdentityDigestConverter<Self::LeafDigest>;
+        type LeafInnerConverter = BytesVarDigestConverter<Self::LeafDigest, ConstraintF>;
         type InnerDigest = <HG as TwoToOneCRHGadget<H, ConstraintF>>::OutputVar;
         type LeafHash = HG;
         type TwoToOneHash = HG;

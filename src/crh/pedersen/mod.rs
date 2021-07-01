@@ -128,11 +128,38 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
 }
 
 impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
+    type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
         <Self as CRHTrait>::setup(r)
+    }
+
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error> {
+        let left_input = left_input.borrow();
+        let right_input = right_input.borrow();
+        assert_eq!(
+            left_input.len(),
+            right_input.len(),
+            "left and right input should be of equal length"
+        );
+        // check overflow
+
+        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
+
+        let mut buffer = vec![0u8; (Self::HALF_INPUT_SIZE_BITS + Self::HALF_INPUT_SIZE_BITS) / 8];
+
+        buffer
+            .iter_mut()
+            .zip(left_input.iter().chain(right_input.iter()))
+            .for_each(|(b, l_b)| *b = *l_b);
+
+        <Self as CRHTrait>::evaluate(parameters, buffer.as_slice())
     }
 
     /// A simple implementation method: just concat the left input and right input together
@@ -145,23 +172,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
     ) -> Result<Self::Output, Error> {
         let left_input_bytes = ark_ff::to_bytes!(left_input.borrow())?;
         let right_input_bytes = ark_ff::to_bytes!(right_input.borrow())?;
-        assert_eq!(
-            left_input_bytes.len(),
-            right_input_bytes.len(),
-            "left and right input should be of equal length"
-        );
-        // check overflow
-
-        debug_assert!(left_input_bytes.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
-
-        let mut buffer = vec![0u8; (Self::HALF_INPUT_SIZE_BITS + Self::HALF_INPUT_SIZE_BITS) / 8];
-
-        buffer
-            .iter_mut()
-            .zip(left_input_bytes.iter().chain(right_input_bytes.iter()))
-            .for_each(|(b, l_b)| *b = *l_b);
-
-        <Self as CRHTrait>::evaluate(parameters, buffer.as_slice())
+        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
     }
 }
 

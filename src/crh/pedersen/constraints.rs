@@ -83,8 +83,24 @@ where
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
+    type InputVar = Vec<UInt8<ConstraintF<C>>>;
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
+
+    fn evaluate(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        // assume equality of left and right length
+        assert_eq!(left_input.len(), right_input.len());
+        let chained_input: Vec<_> = left_input
+            .to_vec()
+            .into_iter()
+            .chain(right_input.to_vec().into_iter())
+            .collect();
+        <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
+    }
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn compress(
@@ -95,14 +111,7 @@ where
         // convert output to bytes
         let left_input = left_input.to_bytes()?;
         let right_input = right_input.to_bytes()?;
-        // assume equality of left and right length
-        assert_eq!(left_input.len(), right_input.len());
-        let chained_input: Vec<_> = left_input
-            .to_vec()
-            .into_iter()
-            .chain(right_input.to_vec().into_iter())
-            .collect();
-        <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
+        <Self as TwoToOneCRHGadget<_, _>>::evaluate(parameters, &left_input, &right_input)
     }
 }
 

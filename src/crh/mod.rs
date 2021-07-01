@@ -42,6 +42,9 @@ pub trait CRH {
 
 /// CRH used by merkle tree inner hash. Merkle tree will convert leaf output to bytes first.
 pub trait TwoToOneCRH {
+    /// Raw Input type of TwoToOneCRH
+    type Input: ?Sized;
+    /// Raw Output type of TwoToOneCRH
     type Output: ToBytes
         + Clone
         + Eq
@@ -53,6 +56,12 @@ pub trait TwoToOneCRH {
     type Parameters: Clone + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
+
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error>;
 
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
