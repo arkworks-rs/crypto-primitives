@@ -60,7 +60,10 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
         params
     }
 
-    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, input: T) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        input: T,
+    ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
         let result = I::injective_map(&<pedersen::CRH<C, W> as CRH>::evaluate(parameters, input)?)?;
         end_timer!(eval_time);
@@ -80,7 +83,11 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
         <pedersen::CRH<C, W> as TwoToOneCRH>::setup(r)
     }
 
-    fn evaluate<T: Borrow<Self::Input>>(parameters: &Self::Parameters, left_input: T, right_input: T) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
         let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::evaluate(
             parameters,

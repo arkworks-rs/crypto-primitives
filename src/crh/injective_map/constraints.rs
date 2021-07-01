@@ -1,7 +1,13 @@
 use core::{fmt::Debug, marker::PhantomData};
 
-use crate::crh::{constraints, injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor}, pedersen::{constraints as ped_constraints, Window}, TwoToOneCRHGadget};
+use crate::crh::{
+    constraints,
+    injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
+    pedersen::{constraints as ped_constraints, Window},
+    TwoToOneCRHGadget,
+};
 
+use crate::CRHGadget;
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::GroupProjective as TEProjective,
@@ -14,7 +20,6 @@ use ark_r1cs_std::{
     prelude::*,
 };
 use ark_relations::r1cs::SynthesisError;
-use crate::CRHGadget;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
@@ -89,7 +94,8 @@ where
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let result = <ped_constraints::CRHGadget::<C, GG, W> as CRHGadget<_, _>>::evaluate(parameters, input)?;
+        let result =
+            <ped_constraints::CRHGadget<C, GG, W> as CRHGadget<_, _>>::evaluate(parameters, input)?;
         IG::evaluate(&result)
     }
 }
@@ -117,15 +123,25 @@ where
     ) -> Result<Self::OutputVar, SynthesisError> {
         // assume equality of left and right length
         assert_eq!(left_input.len(), right_input.len());
-        let result =
-            <ped_constraints::CRHGadget::<C, GG, W> as TwoToOneCRHGadget<_, _>>::evaluate(parameters, left_input, right_input)?;
+        let result = <ped_constraints::CRHGadget<C, GG, W> as TwoToOneCRHGadget<_, _>>::evaluate(
+            parameters,
+            left_input,
+            right_input,
+        )?;
         IG::evaluate(&result)
     }
 
-    fn compress(parameters: &Self::ParametersVar, left_input: &Self::OutputVar, right_input: &Self::OutputVar) -> Result<Self::OutputVar, SynthesisError> {
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
         let left_input_bytes = left_input.to_non_unique_bytes()?;
         let right_input_bytes = right_input.to_non_unique_bytes()?;
-        <Self as TwoToOneCRHGadget<_, _>>::evaluate(parameters, &left_input_bytes, &right_input_bytes) 
-
+        <Self as TwoToOneCRHGadget<_, _>>::evaluate(
+            parameters,
+            &left_input_bytes,
+            &right_input_bytes,
+        )
     }
 }
