@@ -238,7 +238,6 @@ mod tests {
     use crate::merkle_tree::{ByteDigestConverter, Config};
     use crate::{CRHGadget, MerkleTree, PathVar, CRH};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
-    use ark_ff::Field;
     #[allow(unused)]
     use ark_r1cs_std::prelude::*;
     #[allow(unused)]
@@ -253,7 +252,7 @@ mod tests {
 
     type H = pedersen::CRH<JubJub, Window4x256>;
     type HG = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window4x256>;
-    type LeafVar<ConstraintF: Field> = Vec<UInt8<ConstraintF>>;
+    type LeafVar<ConstraintF> = Vec<UInt8<ConstraintF>>;
 
     struct JubJubMerkleTreeParams;
 
