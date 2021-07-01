@@ -1,11 +1,11 @@
-use core::{fmt::Debug, marker::PhantomData};
-
 use crate::crh::{
     constraints,
     injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
     pedersen::{constraints as ped_constraints, Window},
     TwoToOneCRHGadget,
 };
+use ark_std::vec::Vec;
+use core::{fmt::Debug, marker::PhantomData};
 
 use crate::CRHGadget;
 use ark_ec::{

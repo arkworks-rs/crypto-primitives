@@ -10,8 +10,8 @@ use ark_ec::{
     ProjectiveCurve,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use std::borrow::Borrow;
-
+use ark_std::borrow::Borrow;
+use ark_std::vec::Vec;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
