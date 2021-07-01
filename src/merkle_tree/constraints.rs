@@ -31,7 +31,7 @@ impl<T: ToBytesGadget<ConstraintF>, ConstraintF: Field>
     DigestVarConverter<T, Vec<UInt8<ConstraintF>>> for BytesVarDigestConverter<T, ConstraintF>
 {
     fn convert(from: T) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
-        from.to_bytes()
+        from.to_non_unique_bytes()
     }
 }
 

@@ -43,7 +43,10 @@ impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestCon
 
     fn convert(item: T) -> Result<Self::TargetType, Error> {
         // TODO: In some tests, `serialize` is not consistent with constraints. Try fix those.
-        Ok(ark_ff::to_bytes!(item)?)
+        // Ok(ark_ff::to_bytes!(item)?)
+        let mut bytes = Vec::with_capacity(item.serialized_size());
+        item.serialize_unchecked(&mut bytes)?;
+        Ok(bytes)
     }
 }
 
