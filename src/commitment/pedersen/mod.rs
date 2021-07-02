@@ -1,4 +1,4 @@
-use crate::{Error, Vec};
+use crate::{CRHScheme, Error, Vec};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
 use ark_std::io::{Result as IoResult, Write};
@@ -8,8 +8,8 @@ use ark_std::UniformRand;
 
 use super::CommitmentScheme;
 
+use crate::crh::pedersen;
 pub use crate::crh::pedersen::Window;
-use crate::crh::{pedersen, CRH};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

@@ -27,7 +27,7 @@ pub mod snark;
 
 pub use self::{
     commitment::CommitmentScheme,
-    crh::CRH,
+    crh::CRHScheme,
     merkle_tree::{MerkleTree, Path},
     prf::PRF,
     signature::SignatureScheme,
@@ -36,7 +36,7 @@ pub use self::{
 
 #[cfg(feature = "r1cs")]
 pub use self::{
-    commitment::CommitmentGadget, crh::CRHGadget, merkle_tree::constraints::PathVar,
+    commitment::CommitmentGadget, crh::CRHSchemeGadget, merkle_tree::constraints::PathVar,
     prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
 };
 

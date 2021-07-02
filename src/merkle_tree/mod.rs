@@ -1,8 +1,8 @@
 #![allow(clippy::needless_range_loop)]
 
 /// Defines a trait to chain two types of CRHs.
-use crate::crh::TwoToOneCRH;
-use crate::{Error, CRH};
+use crate::crh::TwoToOneCRHScheme;
+use crate::{CRHScheme, Error};
 use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::borrow::Borrow;
@@ -69,7 +69,7 @@ pub trait Config {
     // transition between leaf layer to inner layer
     type LeafInnerDigestConverter: DigestConverter<
         Self::LeafDigest,
-        <Self::TwoToOneHash as TwoToOneCRH>::Input,
+        <Self::TwoToOneHash as TwoToOneCRHScheme>::Input,
     >;
     // inner layer
     type InnerDigest: ToBytes
@@ -87,13 +87,13 @@ pub trait Config {
     /// leaf -> leaf digest
     /// If leaf hash digest and inner hash digest are different, we can create a new
     /// leaf hash which wraps the original leaf hash and convert its output to `Digest`.
-    type LeafHash: CRH<Input = Self::Leaf, Output = Self::LeafDigest>;
+    type LeafHash: CRHScheme<Input = Self::Leaf, Output = Self::LeafDigest>;
     /// 2 inner digest -> inner digest
-    type TwoToOneHash: TwoToOneCRH<Output = Self::InnerDigest>;
+    type TwoToOneHash: TwoToOneCRHScheme<Output = Self::InnerDigest>;
 }
 
-pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
-pub type LeafParam<P> = <<P as Config>::LeafHash as CRH>::Parameters;
+pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRHScheme>::Parameters;
+pub type LeafParam<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
 
 /// Stores the hashes of a particular path (in order) from root to leaf.
 /// For example:
@@ -550,19 +550,20 @@ mod tests {
         const NUM_WINDOWS: usize = 256;
     }
 
-    type H = pedersen::CRH<JubJub, Window4x256>;
+    type LeafH = pedersen::CRH<JubJub, Window4x256>;
+    type CompressH = pedersen::TwoToOneCRH<JubJub, Window4x256>;
 
     struct JubJubMerkleTreeParams;
 
     impl Config for JubJubMerkleTreeParams {
         type Leaf = [u8];
 
-        type LeafDigest = <H as CRH>::Output;
+        type LeafDigest = <LeafH as CRHScheme>::Output;
         type LeafInnerDigestConverter = ByteDigestConverter<Self::LeafDigest>;
-        type InnerDigest = <H as TwoToOneCRH>::Output;
+        type InnerDigest = <CompressH as TwoToOneCRHScheme>::Output;
 
-        type LeafHash = H;
-        type TwoToOneHash = H;
+        type LeafHash = LeafH;
+        type TwoToOneHash = CompressH;
     }
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
@@ -573,8 +574,10 @@ mod tests {
             .iter()
             .map(|leaf| ark_ff::to_bytes!(leaf).unwrap())
             .collect();
-        let leaf_crh_params = <H as CRH>::setup(&mut rng).unwrap();
-        let two_to_one_params = <H as TwoToOneCRH>::setup(&mut rng).unwrap().clone();
+        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
+            .unwrap()
+            .clone();
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),

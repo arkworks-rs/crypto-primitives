@@ -7,7 +7,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
+use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_std::borrow::Borrow;
@@ -33,7 +33,6 @@ pub struct CRH<C: ProjectiveCurve, W: Window> {
 
 impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
-    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -53,9 +52,8 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRHScheme for CRH<C, W> {
     type Input = [u8];
-
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -127,13 +125,30 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
+pub struct TwoToOneCRH<C: ProjectiveCurve, W: Window> {
+    group: PhantomData<C>,
+    window: PhantomData<W>,
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRH<C, W> {
+    pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
+        CRH::<C, W>::create_generators(rng)
+    }
+
+    pub fn generator_powers<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<C> {
+        CRH::<C, W>::generator_powers(num_powers, rng)
+    }
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
     type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
-        <Self as CRHTrait>::setup(r)
+        CRH::<C, W>::setup(r)
     }
 
     fn evaluate<T: Borrow<Self::Input>>(
@@ -159,7 +174,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
             .zip(left_input.iter().chain(right_input.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
-        <Self as CRHTrait>::evaluate(parameters, buffer.as_slice())
+        CRH::<C, W>::evaluate(parameters, buffer.as_slice())
     }
 
     /// A simple implementation method: just concat the left input and right input together
@@ -172,7 +187,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
     ) -> Result<Self::Output, Error> {
         let left_input_bytes = ark_ff::to_bytes!(left_input.borrow())?;
         let right_input_bytes = ark_ff::to_bytes!(right_input.borrow())?;
-        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
+        Self::evaluate(parameters, left_input_bytes, right_input_bytes)
     }
 }
 

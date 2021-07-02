@@ -12,7 +12,7 @@ use ark_std::{
 use rayon::prelude::*;
 
 use super::pedersen;
-use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
+use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
@@ -39,8 +39,6 @@ pub struct CRH<P: TEModelParameters, W: pedersen::Window> {
 }
 
 impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
-    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
-    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         let mut generators = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -58,7 +56,20 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
+pub struct TwoToOneCRH<P: TEModelParameters, W: pedersen::Window> {
+    group: PhantomData<P>,
+    window: PhantomData<W>,
+}
+
+impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH<P, W> {
+    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
+    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
+        CRH::<P, W>::create_generators(rng)
+    }
+}
+
+impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -172,14 +183,14 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
     type Parameters = Parameters<P>;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
-        <Self as CRHTrait>::setup(r)
+        CRH::<P, W>::setup(r)
     }
 
     /// A simple implementation method: just concat the left input and right input together
@@ -209,7 +220,7 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
             .zip(left_input.iter().chain(right_input.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
-        <Self as CRHTrait>::evaluate(parameters, buffer)
+        CRH::<P, W>::evaluate(parameters, buffer)
     }
 
     fn compress<T: Borrow<Self::Output>>(
@@ -226,7 +237,7 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
         right_input
             .borrow()
             .serialize_unchecked(&mut right_input_bytes)?;
-        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
+        Self::evaluate(parameters, left_input_bytes, right_input_bytes)
     }
 }
 
@@ -244,7 +255,7 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 mod test {
     use crate::{
         crh::{bowe_hopwood, pedersen::Window},
-        CRH,
+        CRHScheme,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_std::test_rng;
@@ -259,9 +270,8 @@ mod test {
         }
 
         let rng = &mut test_rng();
-        let params = <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::setup(rng).unwrap();
-        let _ =
-            <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::evaluate(&params, [1, 2, 3])
-                .unwrap();
+        let params = bowe_hopwood::CRH::<EdwardsParameters, TestWindow>::setup(rng).unwrap();
+        let _ = bowe_hopwood::CRH::<EdwardsParameters, TestWindow>::evaluate(&params, [1, 2, 3])
+            .unwrap();
     }
 }

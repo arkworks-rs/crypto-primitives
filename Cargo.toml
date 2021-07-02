@@ -20,6 +20,7 @@ ark-ec = { version = "^0.3.0", default-features = false }
 ark-std = { version = "^0.3.0", default-features = false }
 ark-relations = { version = "^0.3.0", default-features = false }
 ark-serialize = { version = "^0.3.0", default-features = false, features = [ "derive" ] }
+ark-sponge = { version = "^0.3.0", default-features = false }
 
 blake2 = { version = "0.9", default-features = false }
 digest = "0.9"
@@ -38,7 +39,7 @@ default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
 print-trace = [ "ark-std/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
-r1cs = [ "ark-r1cs-std", "tracing", "ark-nonnative-field" ]
+r1cs = [ "ark-r1cs-std", "tracing", "ark-nonnative-field", "ark-sponge/r1cs" ]
 
 [dev-dependencies]
 ark-ed-on-bls12-381 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }

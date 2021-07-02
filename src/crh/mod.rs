@@ -6,10 +6,7 @@ use ark_std::rand::Rng;
 pub mod bowe_hopwood;
 pub mod injective_map;
 pub mod pedersen;
-
-// TODO: Current Poseidon Build has bug, and is going to be refactored.
-// TODO: Uncomment me after refactoring Poseidon.
-// pub mod poseidon;
+pub mod poseidon;
 
 use crate::Error;
 
@@ -23,7 +20,7 @@ pub use constraints::*;
 
 /// Interface to CRH. Note that in this release, while all implementations of `CRH` have fixed length,
 /// variable length CRH may also implement this trait in future.
-pub trait CRH {
+pub trait CRHScheme {
     type Input: ?Sized;
     type Output: ToBytes
         + Clone
@@ -33,7 +30,7 @@ pub trait CRH {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize;
-    type Parameters: Clone + Default;
+    type Parameters: Clone;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
     fn evaluate<T: Borrow<Self::Input>>(
@@ -43,7 +40,7 @@ pub trait CRH {
 }
 
 /// CRH used by merkle tree inner hash. Merkle tree will convert leaf output to bytes first.
-pub trait TwoToOneCRH {
+pub trait TwoToOneCRHScheme {
     /// Raw Input type of TwoToOneCRH
     type Input: ?Sized;
     /// Raw Output type of TwoToOneCRH
@@ -55,7 +52,7 @@ pub trait TwoToOneCRH {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize;
-    type Parameters: Clone + Default;
+    type Parameters: Clone;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
 
