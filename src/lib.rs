@@ -15,6 +15,7 @@ extern crate ark_std;
 extern crate derivative;
 
 pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
+mod macros;
 
 pub mod commitment;
 pub mod crh;

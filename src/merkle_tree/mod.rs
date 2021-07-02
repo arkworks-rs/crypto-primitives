@@ -43,10 +43,7 @@ impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestCon
 
     fn convert(item: T) -> Result<Self::TargetType, Error> {
         // TODO: In some tests, `serialize` is not consistent with constraints. Try fix those.
-        // Ok(ark_ff::to_bytes!(item)?)
-        let mut bytes = Vec::with_capacity(item.serialized_size());
-        item.serialize_unchecked(&mut bytes)?;
-        Ok(bytes)
+        Ok(crate::to_unchecked_bytes!(item)?)
     }
 }
 
@@ -540,7 +537,7 @@ mod tests {
         merkle_tree::*,
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_ff::{BigInteger256, ToBytes};
+    use ark_ff::BigInteger256;
     use ark_std::{test_rng, UniformRand};
 
     #[derive(Clone)]
@@ -568,11 +565,11 @@ mod tests {
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
 
     /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
-    fn merkle_tree_test<L: ToBytes>(leaves: &[L], update_query: &[(usize, L)]) -> () {
+    fn merkle_tree_test<L: CanonicalSerialize>(leaves: &[L], update_query: &[(usize, L)]) -> () {
         let mut rng = ark_std::test_rng();
         let mut leaves: Vec<_> = leaves
             .iter()
-            .map(|leaf| ark_ff::to_bytes!(leaf).unwrap())
+            .map(|leaf| crate::to_unchecked_bytes!(leaf).unwrap())
             .collect();
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
@@ -595,7 +592,7 @@ mod tests {
 
         // test merkle tree update functionality
         for (i, v) in update_query {
-            let v = ark_ff::to_bytes!(v).unwrap();
+            let v = crate::to_unchecked_bytes!(v).unwrap();
             tree.update(*i, &v).unwrap();
             leaves[*i] = v.clone();
         }

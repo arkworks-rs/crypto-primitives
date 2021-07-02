@@ -10,6 +10,7 @@ use rayon::prelude::*;
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
+use ark_serialize::CanonicalSerialize;
 use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
 
@@ -185,9 +186,11 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
         left_input: T,
         right_input: T,
     ) -> Result<Self::Output, Error> {
-        let left_input_bytes = ark_ff::to_bytes!(left_input.borrow())?;
-        let right_input_bytes = ark_ff::to_bytes!(right_input.borrow())?;
-        Self::evaluate(parameters, left_input_bytes, right_input_bytes)
+        Self::evaluate(
+            parameters,
+            crate::to_unchecked_bytes!(left_input)?,
+            crate::to_unchecked_bytes!(right_input)?,
+        )
     }
 }
 
