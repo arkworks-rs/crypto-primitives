@@ -3,10 +3,12 @@
 use ark_ff::bytes::ToBytes;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
-// TODO: uncomment those after refactoring
 pub mod bowe_hopwood;
 pub mod injective_map;
 pub mod pedersen;
+
+// TODO: Current Poseidon Build has bug, and is going to be refactored.
+// TODO: Uncomment me after refactoring Poseidon.
 // pub mod poseidon;
 
 use crate::Error;

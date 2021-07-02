@@ -18,9 +18,9 @@ use ark_ec::{
 };
 use ark_ff::{biginteger::BigInteger, fields::PrimeField};
 use ark_serialize::CanonicalSerialize;
+use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
 use ark_std::UniformRand;
-use ark_std::borrow::Borrow;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
