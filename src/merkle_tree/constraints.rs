@@ -36,7 +36,7 @@ impl<T: ToBytesGadget<ConstraintF>, ConstraintF: Field>
 }
 
 pub trait ConfigGadget<P: Config, ConstraintF: Field> {
-    type Leaf;
+    type Leaf: Debug;
     type LeafDigest: AllocVar<P::LeafDigest, ConstraintF>
         + EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
@@ -83,6 +83,7 @@ type TwoToOneParam<PG, P, ConstraintF> =
     >>::ParametersVar;
 
 /// Represents a merkle tree path gadget.
+#[derive(Debug)]
 pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
@@ -100,6 +101,7 @@ where
     P: Config,
     ConstraintF: Field,
 {
+    #[tracing::instrument(target = "r1cs", skip(cs, f))]
     fn new_variable<T: Borrow<Path<P>>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -142,6 +144,7 @@ where
 
 impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P, ConstraintF, PG> {
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
+    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn calculate_root(
         &self,
         leaf_params: &LeafParam<PG, P, ConstraintF>,
@@ -186,46 +189,49 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
 
     /// Check that hashing a Merkle tree path according to `self`, and
     /// with `leaf` as the leaf, leads to a Merkle tree root equalling `root`.
+    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn verify_membership(
         &self,
-        leaf_param: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_param: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
         root: &PG::InnerDigest,
         leaf: &PG::Leaf,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
-        let expected_root = self.calculate_root(leaf_param, two_to_one_param, leaf)?;
+        let expected_root = self.calculate_root(leaf_params, two_to_one_params, leaf)?;
         Ok(expected_root.is_eq(root)?)
     }
 
     /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
     /// `self`, and then compute the new root when replacing `old_leaf` by `new_leaf`.
+    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn update_leaf(
         &self,
-        leaf_param: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_param: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
         old_root: &PG::InnerDigest,
         old_leaf: &PG::Leaf,
         new_leaf: &PG::Leaf,
     ) -> Result<PG::InnerDigest, SynthesisError> {
-        self.verify_membership(leaf_param, two_to_one_param, old_root, old_leaf)?
+        self.verify_membership(leaf_params, two_to_one_params, old_root, old_leaf)?
             .enforce_equal(&Boolean::TRUE)?;
-        Ok(self.calculate_root(leaf_param, two_to_one_param, new_leaf)?)
+        Ok(self.calculate_root(leaf_params, two_to_one_params, new_leaf)?)
     }
 
     /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
     /// `self`, and then compute the expected new root when replacing `old_leaf` by `new_leaf`.
     /// Return a boolean indicating whether expected new root equals `new_root`.
+    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn update_and_check(
         &self,
-        leaf_param: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_param: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, ConstraintF>,
+        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
         old_root: &PG::InnerDigest,
         new_root: &PG::InnerDigest,
         old_leaf: &PG::Leaf,
         new_leaf: &PG::Leaf,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         let actual_new_root =
-            self.update_leaf(leaf_param, two_to_one_param, old_root, old_leaf, new_leaf)?;
+            self.update_leaf(leaf_params, two_to_one_params, old_root, old_leaf, new_leaf)?;
         Ok(actual_new_root.is_eq(&new_root)?)
     }
 }

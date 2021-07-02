@@ -87,6 +87,7 @@ where
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
+    #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &Self::InputVar,
