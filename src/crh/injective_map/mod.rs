@@ -104,12 +104,10 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
         right_input: T,
     ) -> Result<Self::Output, Error> {
         // convert output to input
-        let left_input = left_input.borrow();
-        let right_input = right_input.borrow();
-        let mut left_input_bytes = Vec::with_capacity(left_input.serialized_size());
-        left_input.serialize_unchecked(&mut left_input_bytes)?;
-        let mut right_input_bytes = Vec::with_capacity(right_input.serialized_size());
-        right_input.serialize_unchecked(&mut right_input_bytes)?;
-        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
+        <Self as TwoToOneCRH>::evaluate(
+            parameters,
+            crate::to_unchecked_bytes!(left_input)?,
+            crate::to_unchecked_bytes!(right_input)?,
+        )
     }
 }

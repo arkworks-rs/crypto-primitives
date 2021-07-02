@@ -217,16 +217,11 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
         left_input: T,
         right_input: T,
     ) -> Result<Self::Output, Error> {
-        // convert input to bytes
-        let mut left_input_bytes = Vec::new();
-        left_input
-            .borrow()
-            .serialize_unchecked(&mut left_input_bytes)?;
-        let mut right_input_bytes = Vec::new();
-        right_input
-            .borrow()
-            .serialize_unchecked(&mut right_input_bytes)?;
-        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
+        <Self as TwoToOneCRH>::evaluate(
+            parameters,
+            crate::to_unchecked_bytes!(left_input)?,
+            crate::to_unchecked_bytes!(right_input)?,
+        )
     }
 }
 
