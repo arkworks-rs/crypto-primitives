@@ -32,7 +32,7 @@ pub struct CRH<C: ProjectiveCurve, W: Window> {
 }
 
 impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
-    const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+    pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();

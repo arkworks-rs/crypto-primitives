@@ -17,8 +17,10 @@ use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
 use ark_ff::{biginteger::BigInteger, fields::PrimeField};
+use ark_serialize::CanonicalSerialize;
 use ark_std::cfg_chunks;
 use ark_std::UniformRand;
+use std::borrow::Borrow;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -37,6 +39,8 @@ pub struct CRH<P: TEModelParameters, W: pedersen::Window> {
 }
 
 impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
+    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
+    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         let mut generators = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -55,7 +59,8 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
 }
 
 impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
-    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
+    type Input = [u8];
+
     type Output = P::BaseField;
     type Parameters = Parameters<P>;
 
@@ -92,7 +97,11 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
         Ok(Self::Parameters { generators })
     }
 
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        input: T,
+    ) -> Result<Self::Output, Error> {
+        let input = input.borrow();
         let eval_time = start_timer!(|| "BoweHopwoodPedersenCRH::Eval");
 
         if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS * CHUNK_SIZE {
@@ -164,8 +173,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
 }
 
 impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
-    const LEFT_INPUT_SIZE_BITS: usize = <Self as CRHTrait>::INPUT_SIZE_BITS / 2;
-    const RIGHT_INPUT_SIZE_BITS: usize = Self::LEFT_INPUT_SIZE_BITS;
+    type Input = [u8];
 
     type Output = P::BaseField;
     type Parameters = Parameters<P>;
@@ -177,11 +185,13 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
     /// A simple implementation method: just concat the left input and right input together
     ///
     /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate(
+    fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: T,
+        right_input: T,
     ) -> Result<Self::Output, Error> {
+        let left_input = left_input.borrow();
+        let right_input = right_input.borrow();
         assert_eq!(
             left_input.len(),
             right_input.len(),
@@ -189,16 +199,34 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH for CRH<P, W> {
         );
         // check overflow
 
-        debug_assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
+        debug_assert!(right_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
 
-        let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
+        let mut buffer = vec![0u8; Self::INPUT_SIZE_BITS / 8];
 
         buffer
             .iter_mut()
             .zip(left_input.iter().chain(right_input.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
-        <Self as CRHTrait>::evaluate(parameters, &buffer)
+        <Self as CRHTrait>::evaluate(parameters, buffer)
+    }
+
+    fn compress<T: Borrow<Self::Output>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error> {
+        // convert input to bytes
+        let mut left_input_bytes = Vec::new();
+        left_input
+            .borrow()
+            .serialize_unchecked(&mut left_input_bytes)?;
+        let mut right_input_bytes = Vec::new();
+        right_input
+            .borrow()
+            .serialize_unchecked(&mut right_input_bytes)?;
+        <Self as TwoToOneCRH>::evaluate(parameters, left_input_bytes, right_input_bytes)
     }
 }
 
@@ -232,10 +260,8 @@ mod test {
 
         let rng = &mut test_rng();
         let params = <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::setup(rng).unwrap();
-        let _ = <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::evaluate(
-            &params,
-            &[1, 2, 3],
-        )
-        .unwrap();
+        let _ =
+            <bowe_hopwood::CRH<EdwardsParameters, TestWindow> as CRH>::evaluate(&params, [1, 2, 3])
+                .unwrap();
     }
 }

@@ -4,7 +4,7 @@ use crate::{
     crh::{
         bowe_hopwood::{Parameters, CHUNK_SIZE, CRH},
         pedersen::{self, Window},
-        CRHGadget as CRHGadgetTrait, TwoToOneCRHGadget, CRH as CRHTrait,
+        CRHGadget as CRHGadgetTrait, TwoToOneCRHGadget,
     },
     Vec,
 };
@@ -48,13 +48,15 @@ where
     P: TEModelParameters,
     W: Window,
 {
+    type InputVar = Vec<UInt8<ConstraintF<P>>>;
+
     type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
     fn evaluate(
         parameters: &Self::ParametersVar,
-        input: &[UInt8<ConstraintF<P>>],
+        input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // Pad the input if it is not the current length.
         let mut input_in_bits: Vec<Boolean<_>> = input
@@ -96,14 +98,15 @@ where
     P: TEModelParameters,
     W: Window,
 {
+    type InputVar = Vec<UInt8<ConstraintF<P>>>;
     type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
-        left_input: &[UInt8<ConstraintF<P>>],
-        right_input: &[UInt8<ConstraintF<P>>],
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         let input_size_bytes = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS / 8;
 
@@ -120,6 +123,20 @@ where
             .chain(iter::repeat(UInt8::constant(0u8)).take(num_trailing_zeros))
             .collect();
         <Self as CRHGadgetTrait<_, _>>::evaluate(parameters, &chained_input)
+    }
+
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        let left_input_bytes = left_input.to_bytes()?;
+        let right_input_bytes = right_input.to_bytes()?;
+        <Self as TwoToOneCRHGadget<_, _>>::evaluate(
+            parameters,
+            &left_input_bytes,
+            &right_input_bytes,
+        )
     }
 }
 
@@ -189,7 +206,7 @@ mod test {
         println!("number of constraints for input: {}", cs.num_constraints());
 
         let parameters = <TestCRH as CRH>::setup(rng).unwrap();
-        let primitive_result = <TestCRH as CRH>::evaluate(&parameters, &input).unwrap();
+        let primitive_result = <TestCRH as CRH>::evaluate(&parameters, input.as_slice()).unwrap();
 
         let parameters_var = <TestCRHGadget as CRHGadget<TestCRH, Fr>>::ParametersVar::new_witness(
             ark_relations::ns!(cs, "parameters_var"),
@@ -221,8 +238,12 @@ mod test {
         let (left_input, left_input_var) = generate_u8_input(cs.clone(), 31, rng);
         let (right_input, right_input_var) = generate_u8_input(cs.clone(), 31, rng);
         let parameters = <TestCRH as TwoToOneCRH>::setup(rng).unwrap();
-        let primitive_result =
-            <TestCRH as TwoToOneCRH>::evaluate(&parameters, &left_input, &right_input).unwrap();
+        let primitive_result = <TestCRH as TwoToOneCRH>::evaluate(
+            &parameters,
+            left_input.as_slice(),
+            right_input.as_slice(),
+        )
+        .unwrap();
 
         let parameters_var = <TestCRHGadget as CRHGadget<TestCRH, Fr>>::ParametersVar::new_witness(
             ark_relations::ns!(cs, "parameters_var"),
