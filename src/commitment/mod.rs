@@ -4,9 +4,8 @@ use ark_std::{fmt::Debug, hash::Hash};
 
 use ark_ff::bytes::ToBytes;
 
-// TODO: uncomment those after refactoring
 pub mod blake2s;
-// pub mod injective_map;
+pub mod injective_map;
 pub mod pedersen;
 
 #[cfg(feature = "r1cs")]

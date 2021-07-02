@@ -2,7 +2,7 @@ use crate::crh::poseidon::{TwoToOneCRH, CRH};
 use crate::crh::{
     CRHSchemeGadget as CRHGadgetTrait, TwoToOneCRHSchemeGadget as TwoToOneCRHGadgetTrait,
 };
-use crate::CRHScheme;
+use crate::{CRHScheme, Vec};
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
 use ark_r1cs_std::fields::fp::FpVar;

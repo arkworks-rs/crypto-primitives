@@ -1,11 +1,12 @@
 use crate::crh::TwoToOneCRHScheme;
+use crate::Vec;
 use crate::{CRHScheme, Error};
 use ark_ff::PrimeField;
 use ark_sponge::poseidon::{PoseidonParameters, PoseidonSponge};
 use ark_sponge::{Absorb, CryptographicSponge};
 use ark_std::borrow::Borrow;
+use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
-use std::marker::PhantomData;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
