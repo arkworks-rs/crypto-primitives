@@ -7,10 +7,12 @@
 - [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of the Bowe-Hopwood-Pedersen CRH to a single field element, in line with the Zcash specification.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) For byte based CRHs, `CRHGadget::evaluate` takes `&Vec<UInt8>` instead of `[UInt8]`.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle Tree Config requires a user-defined converter to turn leaf hash output to inner hash output. 
+- [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Rename the CRH trait as `CRHScheme` and the CRHGadget trait to `CRHSchemeGadget`.
+- [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Use `ark-sponge` to instantiate Poseidon.
 
 ### Features
 
-- [\#59](https://github.com/arkworks-rs/crypto-primitives/pull/59) Implemented `TwoToOneCRH` for Bowe-Hopwood CRH.
+- [\#59](https://github.com/arkworks-rs/crypto-primitives/pull/59) Implemented `TwoToOneCRHScheme` for Bowe-Hopwood CRH.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle tree no longer requires hashes to input and output bytes. Leaf can be raw input of CRH such as field elements. 
 
 ### Improvements
