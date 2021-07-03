@@ -3,7 +3,7 @@ extern crate criterion;
 
 use ark_crypto_primitives::crh::{
     pedersen::{Window, CRH as PedersenCRH},
-    CRH,
+    CRHScheme,
 };
 use ark_ed_on_bls12_377::EdwardsProjective as Edwards;
 use criterion::Criterion;
@@ -30,7 +30,7 @@ fn pedersen_crh_eval(c: &mut Criterion) {
     let parameters = PedersenCRH::<Edwards, HashWindow>::setup(&mut rng).unwrap();
     let input = vec![5u8; 128];
     c.bench_function("Pedersen CRH Eval", move |b| {
-        b.iter(|| PedersenCRH::<Edwards, HashWindow>::evaluate(&parameters, &input).unwrap())
+        b.iter(|| PedersenCRH::<Edwards, HashWindow>::evaluate(&parameters, input.clone()).unwrap())
     });
 }
 
