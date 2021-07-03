@@ -236,6 +236,7 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     }
 }
 
+/// TODO: move this to `merkle_tree/tests` module
 #[cfg(test)]
 mod tests {
     use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
@@ -311,7 +312,12 @@ mod tests {
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.generate_proof(i).unwrap();
             assert!(proof
-                .verify(&leaf_crh_params, &two_to_one_crh_params, &root, &leaf)
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_crh_params,
+                    &root,
+                    leaf.as_slice()
+                )
                 .unwrap());
 
             // Allocate Merkle Tree Root

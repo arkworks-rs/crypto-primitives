@@ -1,5 +1,4 @@
 use crate::crh::TwoToOneCRHScheme;
-use crate::Vec;
 use crate::{CRHScheme, Error};
 use ark_ff::PrimeField;
 use ark_sponge::poseidon::{PoseidonParameters, PoseidonSponge};
@@ -16,7 +15,7 @@ pub struct CRH<F: PrimeField + Absorb> {
 }
 
 impl<F: PrimeField + Absorb> CRHScheme for CRH<F> {
-    type Input = Vec<F>;
+    type Input = [F];
     type Output = F;
     type Parameters = PoseidonParameters<F>;
 
