@@ -49,7 +49,7 @@ where
     P: TEModelParameters,
     W: Window,
 {
-    type InputVar = Vec<UInt8<ConstraintF<P>>>;
+    type InputVar = [UInt8<ConstraintF<P>>];
 
     type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
@@ -109,7 +109,7 @@ where
     P: TEModelParameters,
     W: Window,
 {
-    type InputVar = Vec<UInt8<ConstraintF<P>>>;
+    type InputVar = [UInt8<ConstraintF<P>>];
     type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
 

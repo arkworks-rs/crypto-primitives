@@ -45,7 +45,7 @@ where
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
-    type InputVar = Vec<UInt8<ConstraintF<C>>>;
+    type InputVar = [UInt8<ConstraintF<C>>];
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
@@ -97,7 +97,7 @@ where
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
-    type InputVar = Vec<UInt8<ConstraintF<C>>>;
+    type InputVar = [UInt8<ConstraintF<C>>];
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 

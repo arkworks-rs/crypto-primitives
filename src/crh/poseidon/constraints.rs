@@ -25,7 +25,7 @@ pub struct CRHGadget<F: PrimeField + Absorb> {
 }
 
 impl<F: PrimeField + Absorb> CRHGadgetTrait<CRH<F>, F> for CRHGadget<F> {
-    type InputVar = Vec<FpVar<F>>;
+    type InputVar = [FpVar<F>];
     type OutputVar = FpVar<F>;
     type ParametersVar = CRHParametersVar<F>;
 
@@ -45,7 +45,7 @@ impl<F: PrimeField + Absorb> CRHGadgetTrait<CRH<F>, F> for CRHGadget<F> {
             ))
         } else {
             let mut sponge = PoseidonSpongeVar::new(cs, &parameters.parameters);
-            sponge.absorb(input)?;
+            sponge.absorb(&input)?;
             let res = sponge.squeeze_field_elements(1)?;
             Ok(res[0].clone())
         }

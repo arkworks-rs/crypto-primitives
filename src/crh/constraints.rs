@@ -7,7 +7,7 @@ use ark_relations::r1cs::SynthesisError;
 use ark_r1cs_std::prelude::*;
 
 pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
-    type InputVar;
+    type InputVar: ?Sized;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
@@ -25,7 +25,7 @@ pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
 }
 
 pub trait TwoToOneCRHSchemeGadget<H: TwoToOneCRHScheme, ConstraintF: Field>: Sized {
-    type InputVar;
+    type InputVar: ?Sized;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>

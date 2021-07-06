@@ -4,7 +4,6 @@ use crate::crh::{
     pedersen::{constraints as ped_constraints, Window},
     TwoToOneCRHSchemeGadget,
 };
-use ark_std::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData};
 
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
@@ -85,7 +84,7 @@ where
     IG: InjectiveMapGadget<C, I, GG>,
     W: Window,
 {
-    type InputVar = Vec<UInt8<ConstraintF<C>>>;
+    type InputVar = [UInt8<ConstraintF<C>>];
 
     type OutputVar = IG::OutputVar;
     type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
@@ -130,7 +129,7 @@ where
     IG: InjectiveMapGadget<C, I, GG>,
     W: Window,
 {
-    type InputVar = Vec<UInt8<ConstraintF<C>>>;
+    type InputVar = [UInt8<ConstraintF<C>>];
 
     type OutputVar = IG::OutputVar;
     type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
