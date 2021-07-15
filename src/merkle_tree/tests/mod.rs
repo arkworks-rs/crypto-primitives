@@ -125,7 +125,7 @@ mod field_mt_tests {
     use crate::MerkleTree;
     use ark_std::{test_rng, One, UniformRand};
 
-    type F = ark_ed_on_bn254::Fr;
+    type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;
 

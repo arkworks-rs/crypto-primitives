@@ -2,10 +2,9 @@ use ark_sponge::poseidon::PoseidonParameters;
 use ark_std::str::FromStr;
 use ark_std::{One, Zero};
 
-// TODO: is this altbn128?
-type F = ark_ed_on_bn254::Fr;
+type F = ark_ed_on_bls12_381::Fr;
 
-pub(crate) fn poseidon_parameters() -> PoseidonParameters<ark_ed_on_bn254::Fr> {
+pub(crate) fn poseidon_parameters() -> PoseidonParameters<ark_ed_on_bls12_381::Fr> {
     let full_rounds = 8;
     let partial_rounds = 29;
     let alpha = 17;

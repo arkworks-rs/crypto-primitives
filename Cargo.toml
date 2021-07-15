@@ -46,4 +46,3 @@ ark-ed-on-bls12-381 = { version = "^0.3.0", default-features = false, features =
 ark-bls12-377 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt4-298 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
-ark-ed-on-bn254 = {version = "^0.3.0", default-features = false, features = [ "r1cs" ]}
