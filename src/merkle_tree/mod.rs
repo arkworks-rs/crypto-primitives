@@ -229,7 +229,6 @@ impl<P: Config> MerkleTree<P> {
     ) -> Result<Self, crate::Error> {
         // use empty leaf digest
         let leaves_digest = vec![P::LeafDigest::default(); 1 << (height - 1)];
-        // todo: create a function called new_with_leaf_digest (and use empty leaf digest)
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
@@ -334,7 +333,6 @@ impl<P: Config> MerkleTree<P> {
 
     /// Returns the authentication path from leaf at `index` to root.
     pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
-        // TODO: refactor this
         // gather basic tree information
         let tree_height = tree_height(self.leaf_nodes.len());
 
