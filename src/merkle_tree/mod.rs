@@ -12,7 +12,6 @@ use ark_std::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-// TODO: recover this later
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
