@@ -7,9 +7,11 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::{TwoToOneCRH, CRH as CRHTrait};
+use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
+use ark_serialize::CanonicalSerialize;
+use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
 
 #[cfg(feature = "r1cs")]
@@ -31,6 +33,7 @@ pub struct CRH<C: ProjectiveCurve, W: Window> {
 }
 
 impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
+    pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -50,8 +53,8 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
-    const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+impl<C: ProjectiveCurve, W: Window> CRHScheme for CRH<C, W> {
+    type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
@@ -67,9 +70,12 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
         Ok(Self::Parameters { generators })
     }
 
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        input: T,
+    ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRH::Eval");
-
+        let input = input.borrow();
         if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS {
             panic!(
                 "incorrect input length {:?} for window params {:?}✕{:?}",
@@ -120,24 +126,39 @@ impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
-    const LEFT_INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS / 2;
-    const RIGHT_INPUT_SIZE_BITS: usize = Self::LEFT_INPUT_SIZE_BITS;
+pub struct TwoToOneCRH<C: ProjectiveCurve, W: Window> {
+    group: PhantomData<C>,
+    window: PhantomData<W>,
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRH<C, W> {
+    pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
+        CRH::<C, W>::create_generators(rng)
+    }
+
+    pub fn generator_powers<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<C> {
+        CRH::<C, W>::generator_powers(num_powers, rng)
+    }
+}
+
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
+    type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
-        <Self as CRHTrait>::setup(r)
+        CRH::<C, W>::setup(r)
     }
 
-    /// A simple implementation method: just concat the left input and right input together
-    ///
-    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate(
+    fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: T,
+        right_input: T,
     ) -> Result<Self::Output, Error> {
+        let left_input = left_input.borrow();
+        let right_input = right_input.borrow();
         assert_eq!(
             left_input.len(),
             right_input.len(),
@@ -145,16 +166,31 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH for CRH<C, W> {
         );
         // check overflow
 
-        debug_assert!(left_input.len() * 8 <= Self::LEFT_INPUT_SIZE_BITS);
+        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
 
-        let mut buffer = vec![0u8; (Self::LEFT_INPUT_SIZE_BITS + Self::RIGHT_INPUT_SIZE_BITS) / 8];
+        let mut buffer = vec![0u8; (Self::HALF_INPUT_SIZE_BITS + Self::HALF_INPUT_SIZE_BITS) / 8];
 
         buffer
             .iter_mut()
             .zip(left_input.iter().chain(right_input.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
-        <Self as CRHTrait>::evaluate(parameters, &buffer)
+        CRH::<C, W>::evaluate(parameters, buffer.as_slice())
+    }
+
+    /// A simple implementation method: just concat the left input and right input together
+    ///
+    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
+    fn compress<T: Borrow<Self::Output>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error> {
+        Self::evaluate(
+            parameters,
+            crate::to_unchecked_bytes!(left_input)?,
+            crate::to_unchecked_bytes!(right_input)?,
+        )
     }
 }
 

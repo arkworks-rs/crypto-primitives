@@ -3,14 +3,15 @@ use ark_ff::bytes::ToBytes;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
-use super::{pedersen, TwoToOneCRH, CRH};
+use super::{pedersen, CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
     ProjectiveCurve,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-
+use ark_std::borrow::Borrow;
+use ark_std::vec::Vec;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
@@ -41,58 +42,80 @@ impl<P: TEModelParameters> InjectiveMap<TEProjective<P>> for TECompressor {
 pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
-    _crh: pedersen::CRH<C, W>,
+    _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
+impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
     for PedersenCRHCompressor<C, I, W>
 {
-    const INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::INPUT_SIZE_BITS;
+    type Input = <pedersen::CRH<C, W> as CRHScheme>::Input;
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         let time = start_timer!(|| format!("PedersenCRHCompressor::Setup"));
-        let params = <pedersen::CRH<C, W> as CRH>::setup(rng);
+        let params = pedersen::CRH::<C, W>::setup(rng);
         end_timer!(time);
         params
     }
 
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        input: T,
+    ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
-        let result = I::injective_map(&<pedersen::CRH<C, W> as CRH>::evaluate(parameters, input)?)?;
+        let result = I::injective_map(&pedersen::CRH::<C, W>::evaluate(parameters, input)?)?;
         end_timer!(eval_time);
         Ok(result)
     }
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
-    for PedersenCRHCompressor<C, I, W>
+pub struct PedersenTwoToOneCRHCompressor<
+    C: ProjectiveCurve,
+    I: InjectiveMap<C>,
+    W: pedersen::Window,
+> {
+    _group: PhantomData<C>,
+    _compressor: PhantomData<I>,
+    _window: PhantomData<W>,
+}
+
+impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHScheme
+    for PedersenTwoToOneCRHCompressor<C, I, W>
 {
-    const LEFT_INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::LEFT_INPUT_SIZE_BITS;
-    const RIGHT_INPUT_SIZE_BITS: usize = pedersen::CRH::<C, W>::RIGHT_INPUT_SIZE_BITS;
+    type Input = <pedersen::TwoToOneCRH<C, W> as TwoToOneCRHScheme>::Input;
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error> {
-        <pedersen::CRH<C, W> as TwoToOneCRH>::setup(r)
+        pedersen::TwoToOneCRH::<C, W>::setup(r)
     }
 
-    /// A simple implementation method: just concat the left input and right input together
-    ///
-    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
-    fn evaluate(
+    fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: T,
+        right_input: T,
     ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
-        let result = I::injective_map(&<pedersen::CRH<C, W> as TwoToOneCRH>::evaluate(
+        let result = I::injective_map(&pedersen::TwoToOneCRH::<C, W>::evaluate(
             parameters,
             left_input,
             right_input,
         )?)?;
         end_timer!(eval_time);
         Ok(result)
+    }
+
+    fn compress<T: Borrow<Self::Output>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error> {
+        // convert output to input
+        Self::evaluate(
+            parameters,
+            crate::to_unchecked_bytes!(left_input)?,
+            crate::to_unchecked_bytes!(right_input)?,
+        )
     }
 }

@@ -1,11 +1,13 @@
-use core::{fmt::Debug, marker::PhantomData};
-
 use crate::crh::{
     constraints,
     injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
     pedersen::{constraints as ped_constraints, Window},
+    TwoToOneCRHSchemeGadget,
 };
+use core::{fmt::Debug, marker::PhantomData};
 
+use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
+use crate::CRHSchemeGadget;
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::GroupProjective as TEProjective,
@@ -72,7 +74,7 @@ where
     _crh: ped_constraints::CRHGadget<C, GG, W>,
 }
 
-impl<C, I, GG, IG, W> constraints::CRHGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
+impl<C, I, GG, IG, W> constraints::CRHSchemeGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
     for PedersenCRHCompressorGadget<C, I, W, GG, IG>
 where
     C: ProjectiveCurve,
@@ -82,21 +84,43 @@ where
     IG: InjectiveMapGadget<C, I, GG>,
     W: Window,
 {
+    type InputVar = [UInt8<ConstraintF<C>>];
+
     type OutputVar = IG::OutputVar;
     type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
     fn evaluate(
         parameters: &Self::ParametersVar,
-        input: &[UInt8<ConstraintF<C>>],
+        input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let result = ped_constraints::CRHGadget::<C, GG, W>::evaluate(parameters, input)?;
+        let result = <ped_constraints::CRHGadget<C, GG, W> as CRHSchemeGadget<_, _>>::evaluate(
+            parameters, input,
+        )?;
         IG::evaluate(&result)
     }
 }
 
-impl<C, I, GG, IG, W> constraints::TwoToOneCRHGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
-    for PedersenCRHCompressorGadget<C, I, W, GG, IG>
+pub struct PedersenTwoToOneCRHCompressorGadget<C, I, W, GG, IG>
+where
+    C: ProjectiveCurve,
+    I: InjectiveMap<C>,
+    W: Window,
+    GG: CurveVar<C, ConstraintF<C>>,
+    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    IG: InjectiveMapGadget<C, I, GG>,
+{
+    #[doc(hidden)]
+    _compressor: PhantomData<I>,
+    #[doc(hidden)]
+    _compressor_gadget: PhantomData<IG>,
+    #[doc(hidden)]
+    _crh: ped_constraints::CRHGadget<C, GG, W>,
+}
+
+impl<C, I, GG, IG, W>
+    constraints::TwoToOneCRHSchemeGadget<PedersenTwoToOneCRHCompressor<C, I, W>, ConstraintF<C>>
+    for PedersenTwoToOneCRHCompressorGadget<C, I, W, GG, IG>
 where
     C: ProjectiveCurve,
     I: InjectiveMap<C>,
@@ -105,19 +129,38 @@ where
     IG: InjectiveMapGadget<C, I, GG>,
     W: Window,
 {
+    type InputVar = [UInt8<ConstraintF<C>>];
+
     type OutputVar = IG::OutputVar;
     type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
-        left_input: &[UInt8<ConstraintF<C>>],
-        right_input: &[UInt8<ConstraintF<C>>],
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // assume equality of left and right length
         assert_eq!(left_input.len(), right_input.len());
-        let result =
-            ped_constraints::CRHGadget::<C, GG, W>::evaluate(parameters, left_input, right_input)?;
+        let result = ped_constraints::TwoToOneCRHGadget::<C, GG, W>::evaluate(
+            parameters,
+            left_input,
+            right_input,
+        )?;
         IG::evaluate(&result)
+    }
+
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        let left_input_bytes = left_input.to_non_unique_bytes()?;
+        let right_input_bytes = right_input.to_non_unique_bytes()?;
+        <Self as TwoToOneCRHSchemeGadget<_, _>>::evaluate(
+            parameters,
+            &left_input_bytes,
+            &right_input_bytes,
+        )
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Error, Vec};
+use crate::{CRHScheme, Error, Vec};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
 use ark_std::io::{Result as IoResult, Write};
@@ -8,8 +8,8 @@ use ark_std::UniformRand;
 
 use super::CommitmentScheme;
 
+use crate::crh::pedersen;
 pub use crate::crh::pedersen::Window;
-use crate::crh::{pedersen, CRH};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -85,13 +85,14 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
             input = padded_input.as_slice();
         }
         assert_eq!(parameters.generators.len(), W::NUM_WINDOWS);
-
+        let input = input.to_vec();
         // Invoke Pedersen CRH here, to prevent code duplication.
 
         let crh_parameters = pedersen::Parameters {
             generators: parameters.generators.clone(),
         };
-        let mut result: C = pedersen::CRH::<C, W>::evaluate(&crh_parameters, &input)?.into();
+        let mut result: C =
+            pedersen::CRH::<C, W>::evaluate(&crh_parameters, input.as_slice())?.into();
         let randomize_time = start_timer!(|| "Randomize");
 
         // Compute h^r.

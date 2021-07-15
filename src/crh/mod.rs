@@ -3,7 +3,6 @@
 use ark_ff::bytes::ToBytes;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
-
 pub mod bowe_hopwood;
 pub mod injective_map;
 pub mod pedersen;
@@ -13,15 +12,16 @@ use crate::Error;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
+
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::borrow::Borrow;
 #[cfg(feature = "r1cs")]
 pub use constraints::*;
 
 /// Interface to CRH. Note that in this release, while all implementations of `CRH` have fixed length,
 /// variable length CRH may also implement this trait in future.
-pub trait CRH {
-    const INPUT_SIZE_BITS: usize;
-
+pub trait CRHScheme {
+    type Input: ?Sized;
     type Output: ToBytes
         + Clone
         + Eq
@@ -30,18 +30,20 @@ pub trait CRH {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize;
-    type Parameters: Clone + Default;
+    type Parameters: Clone;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error>;
+    fn evaluate<T: Borrow<Self::Input>>(
+        parameters: &Self::Parameters,
+        input: T,
+    ) -> Result<Self::Output, Error>;
 }
 
-pub trait TwoToOneCRH {
-    /// The bit size of the left input.
-    const LEFT_INPUT_SIZE_BITS: usize;
-    /// The bit size of the right input.
-    const RIGHT_INPUT_SIZE_BITS: usize;
-
+/// CRH used by merkle tree inner hash. Merkle tree will convert leaf output to bytes first.
+pub trait TwoToOneCRHScheme {
+    /// Raw Input type of TwoToOneCRH
+    type Input: ?Sized;
+    /// Raw Output type of TwoToOneCRH
     type Output: ToBytes
         + Clone
         + Eq
@@ -50,18 +52,19 @@ pub trait TwoToOneCRH {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize;
-    type Parameters: Clone + Default;
+    type Parameters: Clone;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
-    /// Evaluates this CRH on the left and right inputs.
-    ///
-    /// # Panics
-    ///
-    /// If `left_input.len() != Self::LEFT_INPUT_SIZE_BITS`, or if
-    /// `right_input.len() != Self::RIGHT_INPUT_SIZE_BITS`, then this method panics.
-    fn evaluate(
+
+    fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: &[u8],
-        right_input: &[u8],
+        left_input: T,
+        right_input: T,
+    ) -> Result<Self::Output, Error>;
+
+    fn compress<T: Borrow<Self::Output>>(
+        parameters: &Self::Parameters,
+        left_input: T,
+        right_input: T,
     ) -> Result<Self::Output, Error>;
 }
