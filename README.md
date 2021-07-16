@@ -1,7 +1,7 @@
 <h1 align="center">ark-crypto-primitives</h1>
 
 <p align="center">
-    <img src="https://github.com/arkworks-rs/crypto-primitives/workflows/CI/badge.svg?branch=master">
+    <img src="https://github.com/arkworks-rs/crypto-primitives/actions/workflows/ci.yml/badge.svg">
     <a href="https://github.com/arkworks-rs/crypto-primitives/blob/master/LICENSE-APACHE"><img src="https://img.shields.io/badge/license-APACHE-blue.svg"></a>
     <a href="https://github.com/arkworks-rs/crypto-primitives/blob/master/LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
     <a href="https://deps.rs/repo/github/arkworks-rs/crypto-primitives"><img src="https://deps.rs/repo/github/arkworks-rs/crypto-primitives/status.svg"></a>
