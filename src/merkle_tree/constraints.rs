@@ -88,7 +88,8 @@ type TwoToOneParam<PG, P, ConstraintF> =
     >>::ParametersVar;
 
 /// Represents a merkle tree path gadget.
-#[derive(Debug)]
+#[derive(Debug, Derivative)]
+#[derivative(Clone(bound = "P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>"))]
 pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
@@ -98,20 +99,6 @@ pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, Constraint
     leaf_sibling: PG::LeafDigest,
     /// Is this leaf the right child?
     leaf_is_right_child: Boolean<ConstraintF>,
-}
-
-// we add `Clone` trait manually because `derive` will add unnecessary trait bound on `P` and `PG`
-impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> Clone
-    for PathVar<P, ConstraintF, PG>
-{
-    fn clone(&self) -> Self {
-        Self {
-            path: self.path.clone(),
-            auth_path: self.auth_path.clone(),
-            leaf_sibling: self.leaf_sibling.clone(),
-            leaf_is_right_child: self.leaf_is_right_child.clone(),
-        }
-    }
 }
 
 impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> AllocVar<Path<P>, ConstraintF>
