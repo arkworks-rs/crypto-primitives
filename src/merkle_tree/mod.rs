@@ -106,23 +106,14 @@ pub type LeafParam<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
 ///    [I] J
 /// ```
 ///  Suppose we want to prove I, then `leaf_sibling_hash` is J, `auth_path` is `[C,D]`
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Derivative,CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(Clone(bound = "P: Config"))]
 pub struct Path<P: Config> {
     pub leaf_sibling_hash: P::LeafDigest,
     /// The sibling of path node ordered from higher layer to lower layer (does not include root node).
     pub auth_path: Vec<P::InnerDigest>,
     /// stores the leaf index of the node
     pub leaf_index: usize,
-}
-
-impl<P: Config> Clone for Path<P> {
-    fn clone(&self) -> Self {
-        Self {
-            leaf_sibling_hash: self.leaf_sibling_hash.clone(),
-            auth_path: self.auth_path.clone(),
-            leaf_index: self.leaf_index,
-        }
-    }
 }
 
 impl<P: Config> Path<P> {
