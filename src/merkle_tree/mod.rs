@@ -115,6 +115,7 @@ pub struct Path<P: Config> {
     pub leaf_index: usize,
 }
 
+// we add `Clone` trait manually because `derive` will add unnecessary trait bound on `P`
 impl<P: Config> Clone for Path<P> {
     fn clone(&self) -> Self {
         Self {
