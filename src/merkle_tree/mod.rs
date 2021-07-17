@@ -106,7 +106,8 @@ pub type LeafParam<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
 ///    [I] J
 /// ```
 ///  Suppose we want to prove I, then `leaf_sibling_hash` is J, `auth_path` is `[C,D]`
-#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(Clone(bound = "P: Config"))]
 pub struct Path<P: Config> {
     pub leaf_sibling_hash: P::LeafDigest,
     /// The sibling of path node ordered from higher layer to lower layer (does not include root node).
