@@ -156,9 +156,10 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     pub fn set_leaf_position(&mut self, leaf_index: Vec<Boolean<ConstraintF>>) {
         // convert leaf_index to path:
         // first remove the element (which represent a leaf), pad it to appropriate length
-        // and reverse it to become big endian
+        // and reverse it to become big endian.
+        // Also, set `leaf_is_right_child` accordingly.
         let mut path = leaf_index;
-        let _ = path.remove(0);
+        let leaf_is_right_child = path.remove(0);
         // pad the path
         if path.len() < self.auth_path.len() {
             path.extend((0..self.auth_path.len() - path.len()).map(|_| Boolean::constant(false)))
@@ -166,6 +167,7 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
         path.truncate(self.auth_path.len());
         path.reverse();
         self.path = path;
+        self.leaf_is_right_child = leaf_is_right_child;
     }
 
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
