@@ -355,7 +355,7 @@ mod field_mt_tests {
             println!("constraints from path: {}", constraints_from_path);
             assert!(cs.is_satisfied().unwrap());
 
-            // specify the source of index
+            // try replace the path index
             let leaf_pos = UInt32::new_witness(cs.clone(), || Ok(i as u32))
                 .unwrap()
                 .to_bits_le();
