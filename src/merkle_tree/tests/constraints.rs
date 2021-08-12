@@ -246,6 +246,7 @@ mod field_mt_tests {
     use crate::{CRHSchemeGadget, MerkleTree, PathVar};
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::fields::fp::FpVar;
+    use ark_r1cs_std::uint32::UInt32;
     use ark_r1cs_std::R1CSVar;
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::{test_rng, One, UniformRand};
@@ -341,7 +342,7 @@ mod field_mt_tests {
             println!("constraints from leaf: {}", constraints_from_leaf);
 
             // Allocate MT Path
-            let cw = PathVar::<FieldMTConfig, F, FieldMTConfigVar>::new_witness(
+            let mut cw = PathVar::<FieldMTConfig, F, FieldMTConfigVar>::new_witness(
                 ark_relations::ns!(cs, "new_witness"),
                 || Ok(&proof),
             )
@@ -353,6 +354,12 @@ mod field_mt_tests {
                 - constraints_from_leaf;
             println!("constraints from path: {}", constraints_from_path);
             assert!(cs.is_satisfied().unwrap());
+
+            // specify the source of index
+            let leaf_pos = UInt32::new_witness(cs.clone(), || Ok(i as u32))
+                .unwrap()
+                .to_bits_le();
+            cw.set_leaf_position(leaf_pos);
 
             assert!(cw
                 .verify_membership(

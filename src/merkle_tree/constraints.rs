@@ -149,6 +149,25 @@ where
 }
 
 impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P, ConstraintF, PG> {
+    /// Set the leaf index of the path to a given value. Verifier can use function before calling `verify`
+    /// to check the correctness leaf position.
+    /// * `leaf_index`: leaf index encoded in little-endian format
+    #[tracing::instrument(target = "r1cs", skip(self))]
+    pub fn set_leaf_position(&mut self, leaf_index: Vec<Boolean<ConstraintF>>) {
+        // convert leaf_index to path:
+        // first remove the element (which represent a leaf), pad it to appropriate length
+        // and reverse it to become big endian
+        let mut path = leaf_index;
+        let _ = path.remove(0);
+        // pad the path
+        if path.len() < self.auth_path.len() {
+            path.extend((0..self.auth_path.len() - path.len()).map(|_| Boolean::constant(false)))
+        }
+        path.truncate(self.auth_path.len());
+        path.reverse();
+        self.path = path;
+    }
+
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn calculate_root(
