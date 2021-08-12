@@ -359,7 +359,13 @@ mod field_mt_tests {
             let leaf_pos = UInt32::new_witness(cs.clone(), || Ok(i as u32))
                 .unwrap()
                 .to_bits_le();
-            cw.set_leaf_position(leaf_pos);
+            cw.set_leaf_position(leaf_pos.clone());
+
+            // check if get_leaf_position is correct
+            let expected_leaf_pos = leaf_pos.value().unwrap();
+            let mut actual_leaf_pos = cw.get_leaf_position().value().unwrap();
+            actual_leaf_pos.extend((0..(32 - actual_leaf_pos.len())).map(|_| false));
+            assert_eq!(expected_leaf_pos, actual_leaf_pos);
 
             assert!(cw
                 .verify_membership(

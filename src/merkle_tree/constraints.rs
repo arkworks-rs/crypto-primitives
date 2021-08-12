@@ -170,6 +170,13 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
         self.leaf_is_right_child = leaf_is_right_child;
     }
 
+    /// Return the leaf position index in little-endian form.
+    pub fn get_leaf_position(&self) -> Vec<Boolean<ConstraintF>> {
+        ark_std::iter::once(self.leaf_is_right_child.clone())
+            .chain(self.path.clone().into_iter().rev())
+            .collect()
+    }
+
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn calculate_root(
