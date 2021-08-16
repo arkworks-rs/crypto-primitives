@@ -1,138 +1,86 @@
 use crate::crh::{
     constraints,
     injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
-    pedersen::{constraints as ped_constraints, Window},
+    pedersen::{self, constraints as ped_constraints, Window},
     TwoToOneCRHSchemeGadget,
 };
-use core::{fmt::Debug, marker::PhantomData};
+use core::fmt::Debug;
 
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
-use crate::CRHSchemeGadget;
 use ark_ec::{
-    models::{ModelParameters, TEModelParameters},
-    twisted_edwards_extended::GroupProjective as TEProjective,
-    ProjectiveCurve,
+    models::TEModelParameters, twisted_edwards_extended::GroupProjective as TEProjective,
+    ModelParameters, ProjectiveCurve,
 };
 use ark_ff::fields::{Field, PrimeField, SquareRootField};
-use ark_r1cs_std::{
-    fields::fp::FpVar,
-    groups::{curves::twisted_edwards::AffineVar as TEVar, CurveVar},
-    prelude::*,
-};
+use ark_r1cs_std::{groups::curves::twisted_edwards::AffineVar as TEVar, prelude::*};
 use ark_relations::r1cs::SynthesisError;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
-pub trait InjectiveMapGadget<
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    GG: CurveVar<C, ConstraintF<C>>,
-> where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
+pub trait InjectiveMapGadget<C: CurveWithVar<ConstraintF<C>>>: InjectiveMap<C> {
     type OutputVar: EqGadget<ConstraintF<C>>
         + ToBytesGadget<ConstraintF<C>>
         + CondSelectGadget<ConstraintF<C>>
-        + AllocVar<I::Output, ConstraintF<C>>
-        + R1CSVar<ConstraintF<C>, Value = I::Output>
+        + AllocVar<Self::Output, ConstraintF<C>>
+        + R1CSVar<ConstraintF<C>, Value = Self::Output>
         + Debug
         + Clone
         + Sized;
 
-    fn evaluate(ge: &GG) -> Result<Self::OutputVar, SynthesisError>;
+    fn evaluate(ge: &C::Var) -> Result<Self::OutputVar, SynthesisError>;
 }
 
-pub struct TECompressorGadget;
+type BFVar<P> = <<P as ModelParameters>::BaseField as FieldWithVar>::Var;
 
-impl<F, P> InjectiveMapGadget<TEProjective<P>, TECompressor, TEVar<P, FpVar<F>>>
-    for TECompressorGadget
+impl<P> InjectiveMapGadget<TEProjective<P>> for TECompressor
 where
-    F: PrimeField + SquareRootField,
-    P: TEModelParameters + ModelParameters<BaseField = F>,
+    P: TEModelParameters,
+    BFVar<P>:
+        TwoBitLookupGadget<<P::BaseField as Field>::BasePrimeField, TableConstant = P::BaseField>,
+    for<'a> &'a BFVar<P>: FieldOpsBounds<'a, P::BaseField, BFVar<P>>,
+    P::BaseField: FieldWithVar + PrimeField + SquareRootField,
 {
-    type OutputVar = FpVar<F>;
+    type OutputVar = BFVar<P>;
 
-    fn evaluate(ge: &TEVar<P, FpVar<F>>) -> Result<Self::OutputVar, SynthesisError> {
+    fn evaluate(ge: &TEVar<P>) -> Result<Self::OutputVar, SynthesisError> {
         Ok(ge.x.clone())
     }
 }
 
-pub struct PedersenCRHCompressorGadget<C, I, W, GG, IG>
+impl<C, I, W> constraints::CRHSchemeGadget<ConstraintF<C>> for PedersenCRHCompressor<C, I, W>
 where
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    W: Window,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-    IG: InjectiveMapGadget<C, I, GG>,
-{
-    #[doc(hidden)]
-    _compressor: PhantomData<I>,
-    #[doc(hidden)]
-    _compressor_gadget: PhantomData<IG>,
-    #[doc(hidden)]
-    _crh: ped_constraints::CRHGadget<C, GG, W>,
-}
-
-impl<C, I, GG, IG, W> constraints::CRHSchemeGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
-    for PedersenCRHCompressorGadget<C, I, W, GG, IG>
-where
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-    IG: InjectiveMapGadget<C, I, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
+    for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
+    I: InjectiveMapGadget<C>,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<C>>];
 
-    type OutputVar = IG::OutputVar;
-    type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
+    type OutputVar = I::OutputVar;
+    type ParametersVar = ped_constraints::CRHParametersVar<C>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let result = <ped_constraints::CRHGadget<C, GG, W> as CRHSchemeGadget<_, _>>::evaluate(
-            parameters, input,
-        )?;
-        IG::evaluate(&result)
+        let result = pedersen::CRH::<C, W>::evaluate(parameters, input)?;
+        I::evaluate(&result)
     }
 }
 
-pub struct PedersenTwoToOneCRHCompressorGadget<C, I, W, GG, IG>
+impl<C, I, W> constraints::TwoToOneCRHSchemeGadget<ConstraintF<C>>
+    for PedersenTwoToOneCRHCompressor<C, I, W>
 where
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    W: Window,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-    IG: InjectiveMapGadget<C, I, GG>,
-{
-    #[doc(hidden)]
-    _compressor: PhantomData<I>,
-    #[doc(hidden)]
-    _compressor_gadget: PhantomData<IG>,
-    #[doc(hidden)]
-    _crh: ped_constraints::CRHGadget<C, GG, W>,
-}
-
-impl<C, I, GG, IG, W>
-    constraints::TwoToOneCRHSchemeGadget<PedersenTwoToOneCRHCompressor<C, I, W>, ConstraintF<C>>
-    for PedersenTwoToOneCRHCompressorGadget<C, I, W, GG, IG>
-where
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-    IG: InjectiveMapGadget<C, I, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
+    I: InjectiveMapGadget<C>,
+    for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<C>>];
 
-    type OutputVar = IG::OutputVar;
-    type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
+    type OutputVar = I::OutputVar;
+    type ParametersVar = ped_constraints::CRHParametersVar<C>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
     fn evaluate(
@@ -142,12 +90,8 @@ where
     ) -> Result<Self::OutputVar, SynthesisError> {
         // assume equality of left and right length
         assert_eq!(left_input.len(), right_input.len());
-        let result = ped_constraints::TwoToOneCRHGadget::<C, GG, W>::evaluate(
-            parameters,
-            left_input,
-            right_input,
-        )?;
-        IG::evaluate(&result)
+        let result = pedersen::TwoToOneCRH::<C, W>::evaluate(parameters, left_input, right_input)?;
+        I::evaluate(&result)
     }
 
     fn compress(
@@ -157,7 +101,7 @@ where
     ) -> Result<Self::OutputVar, SynthesisError> {
         let left_input_bytes = left_input.to_non_unique_bytes()?;
         let right_input_bytes = right_input.to_non_unique_bytes()?;
-        <Self as TwoToOneCRHSchemeGadget<_, _>>::evaluate(
+        <Self as TwoToOneCRHSchemeGadget<_>>::evaluate(
             parameters,
             &left_input_bytes,
             &right_input_bytes,

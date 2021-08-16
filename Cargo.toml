@@ -28,8 +28,6 @@ digest = "0.9"
 ark-r1cs-std = { version = "^0.3.0", optional = true, default-features = false }
 ark-snark = { version = "^0.3.0", default-features = false }
 
-ark-nonnative-field = { version = "^0.3.0", optional = true, default-features = false }
-
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
 tracing = { version = "0.1", default-features = false, features = [ "attributes" ], optional = true }
@@ -39,10 +37,14 @@ default = ["std"]
 std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
 print-trace = [ "ark-std/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
-r1cs = [ "ark-r1cs-std", "tracing", "ark-nonnative-field", "ark-sponge/r1cs" ]
+r1cs = [ "ark-r1cs-std", "tracing", "ark-sponge/r1cs" ]
 
 [dev-dependencies]
 ark-ed-on-bls12-381 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
 ark-bls12-377 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt4-298 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
+
+[patch.crates-io]
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", branch = "reduce-generics", optional = true, default-features = false }
+ark-sponge = { git = "https://github.com/arkworks-rs/sponge", branch = "reduce-generics", default-features = false }

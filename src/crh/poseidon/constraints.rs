@@ -13,18 +13,13 @@ use ark_sponge::poseidon::constraints::PoseidonSpongeVar;
 use ark_sponge::poseidon::PoseidonParameters;
 use ark_sponge::Absorb;
 use ark_std::borrow::Borrow;
-use ark_std::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct CRHParametersVar<F: PrimeField + Absorb> {
     pub parameters: PoseidonParameters<F>,
 }
 
-pub struct CRHGadget<F: PrimeField + Absorb> {
-    field_phantom: PhantomData<F>,
-}
-
-impl<F: PrimeField + Absorb> CRHGadgetTrait<CRH<F>, F> for CRHGadget<F> {
+impl<F: PrimeField + Absorb> CRHGadgetTrait<F> for CRH<F> {
     type InputVar = [FpVar<F>];
     type OutputVar = FpVar<F>;
     type ParametersVar = CRHParametersVar<F>;
@@ -36,12 +31,9 @@ impl<F: PrimeField + Absorb> CRHGadgetTrait<CRH<F>, F> for CRHGadget<F> {
         let cs = input.cs();
 
         if cs.is_none() {
-            let mut constant_input = Vec::new();
-            for var in input.iter() {
-                constant_input.push(var.value()?);
-            }
+            let input = input.iter().map(|f| f.value().unwrap()).collect::<Vec<F>>();
             Ok(FpVar::Constant(
-                CRH::<F>::evaluate(&parameters.parameters, constant_input).unwrap(),
+                <CRH<F> as CRHScheme>::evaluate(&parameters.parameters, input).unwrap(),
             ))
         } else {
             let mut sponge = PoseidonSpongeVar::new(cs, &parameters.parameters);
@@ -52,11 +44,7 @@ impl<F: PrimeField + Absorb> CRHGadgetTrait<CRH<F>, F> for CRHGadget<F> {
     }
 }
 
-pub struct TwoToOneCRHGadget<F: PrimeField + Absorb> {
-    field_phantom: PhantomData<F>,
-}
-
-impl<F: PrimeField + Absorb> TwoToOneCRHGadgetTrait<TwoToOneCRH<F>, F> for TwoToOneCRHGadget<F> {
+impl<F: PrimeField + Absorb> TwoToOneCRHGadgetTrait<F> for TwoToOneCRH<F> {
     type InputVar = FpVar<F>;
     type OutputVar = FpVar<F>;
     type ParametersVar = CRHParametersVar<F>;
@@ -78,7 +66,7 @@ impl<F: PrimeField + Absorb> TwoToOneCRHGadgetTrait<TwoToOneCRH<F>, F> for TwoTo
 
         if cs.is_none() {
             Ok(FpVar::Constant(
-                CRH::<F>::evaluate(
+                <CRH<F> as CRHScheme>::evaluate(
                     &parameters.parameters,
                     vec![left_input.value()?, right_input.value()?],
                 )
@@ -110,7 +98,7 @@ impl<F: PrimeField + Absorb> AllocVar<PoseidonParameters<F>, F> for CRHParameter
 
 #[cfg(test)]
 mod test {
-    use crate::crh::poseidon::constraints::{CRHGadget, CRHParametersVar, TwoToOneCRHGadget};
+    use crate::crh::poseidon::constraints::CRHParametersVar;
     use crate::crh::poseidon::{TwoToOneCRH, CRH};
     use crate::crh::{TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
     use crate::{CRHScheme, CRHSchemeGadget};
@@ -174,9 +162,9 @@ mod test {
         }
 
         let params_g = CRHParametersVar::<Fr>::new_witness(cs, || Ok(params)).unwrap();
-        let crh_a_g = CRHGadget::<Fr>::evaluate(&params_g, &test_a_g).unwrap();
-        let crh_b_g = CRHGadget::<Fr>::evaluate(&params_g, &test_b_g).unwrap();
-        let crh_g = TwoToOneCRHGadget::<Fr>::compress(&params_g, &crh_a_g, &crh_b_g).unwrap();
+        let crh_a_g = CRH::<Fr>::evaluate(&params_g, &test_a_g).unwrap();
+        let crh_b_g = CRH::<Fr>::evaluate(&params_g, &test_b_g).unwrap();
+        let crh_g = TwoToOneCRH::<Fr>::compress(&params_g, &crh_a_g, &crh_b_g).unwrap();
 
         assert_eq!(crh_a, crh_a_g.value().unwrap());
         assert_eq!(crh_b, crh_b_g.value().unwrap());

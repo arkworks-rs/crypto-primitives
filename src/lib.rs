@@ -24,21 +24,23 @@ pub mod merkle_tree;
 pub mod encryption;
 pub mod prf;
 pub mod signature;
-pub mod snark;
+// pub mod snark;
 
 pub use self::{
     commitment::CommitmentScheme,
     crh::CRHScheme,
-    merkle_tree::{MerkleTree, Path},
+    // merkle_tree::{MerkleTree, Path},
     prf::PRF,
     signature::SignatureScheme,
-    snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK},
+    // snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK},
 };
 
 #[cfg(feature = "r1cs")]
 pub use self::{
-    commitment::CommitmentGadget, crh::CRHSchemeGadget, merkle_tree::constraints::PathVar,
-    prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
+    commitment::CommitmentGadget,
+    crh::CRHSchemeGadget, //merkle_tree::constraints::PathVar,
+    prf::PRFGadget,
+    signature::SigRandomizePkGadget, //snark::SNARKGadget,
 };
 
 pub type Error = Box<dyn ark_std::error::Error>;

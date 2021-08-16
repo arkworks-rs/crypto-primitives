@@ -6,17 +6,17 @@ use ark_relations::r1cs::SynthesisError;
 
 use ark_r1cs_std::prelude::*;
 
-pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
+pub trait CRHSchemeGadget<ConstraintF: Field>: CRHScheme {
     type InputVar: ?Sized;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
-        + AllocVar<H::Output, ConstraintF>
+        + AllocVar<Self::Output, ConstraintF>
         + R1CSVar<ConstraintF>
         + Debug
         + Clone
         + Sized;
-    type ParametersVar: AllocVar<H::Parameters, ConstraintF> + Clone;
+    type ParametersVar: AllocVar<Self::Parameters, ConstraintF> + Clone;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
@@ -24,18 +24,18 @@ pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
     ) -> Result<Self::OutputVar, SynthesisError>;
 }
 
-pub trait TwoToOneCRHSchemeGadget<H: TwoToOneCRHScheme, ConstraintF: Field>: Sized {
+pub trait TwoToOneCRHSchemeGadget<ConstraintF: Field>: TwoToOneCRHScheme {
     type InputVar: ?Sized;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
-        + AllocVar<H::Output, ConstraintF>
+        + AllocVar<Self::Output, ConstraintF>
         + R1CSVar<ConstraintF>
         + Debug
         + Clone
         + Sized;
 
-    type ParametersVar: AllocVar<H::Parameters, ConstraintF> + Clone;
+    type ParametersVar: AllocVar<Self::Parameters, ConstraintF> + Clone;
 
     fn evaluate(
         parameters: &Self::ParametersVar,

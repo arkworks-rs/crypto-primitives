@@ -2,7 +2,7 @@ use core::{borrow::Borrow, iter, marker::PhantomData};
 
 use crate::{
     crh::{
-        bowe_hopwood::{Parameters, CHUNK_SIZE},
+        bowe_hopwood::{Parameters, TwoToOneCRH, CHUNK_SIZE, CRH},
         pedersen::{self, Window},
         CRHSchemeGadget, TwoToOneCRHSchemeGadget,
     },
@@ -17,7 +17,6 @@ use ark_r1cs_std::{
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::crh::bowe_hopwood::{TwoToOneCRH, CRH};
 use ark_r1cs_std::bits::boolean::Boolean;
 
 type ConstraintF<P> = <<P as ModelParameters>::BaseField as Field>::BasePrimeField;
@@ -30,28 +29,22 @@ pub struct ParametersVar<P: TEModelParameters, W: Window> {
     _window: PhantomData<W>,
 }
 
-pub struct CRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
-where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-{
-    #[doc(hidden)]
-    _params: PhantomData<P>,
-    #[doc(hidden)]
-    _base_field: PhantomData<F>,
-}
+type BF<P> = <P as ModelParameters>::BaseField;
+type BFVar<P> = <BF<P> as FieldWithVar>::Var;
 
-impl<P, F, W> CRHSchemeGadget<CRH<P, W>, ConstraintF<P>> for CRHGadget<P, F>
+impl<P, W> CRHSchemeGadget<ConstraintF<P>> for CRH<P, W>
 where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-    F: FieldVar<P::BaseField, ConstraintF<P>>,
-    F: TwoBitLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>
-        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>,
+    BF<P>: FieldWithVar,
+    BFVar<P>: TwoBitLookupGadget<ConstraintF<P>, TableConstant = BF<P>>
+        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = BF<P>>,
+
+    for<'a> &'a BFVar<P>: FieldOpsBounds<'a, BF<P>, BFVar<P>>,
     P: TEModelParameters,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<P>>];
 
-    type OutputVar = F;
+    type OutputVar = BFVar<P>;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
@@ -90,27 +83,18 @@ where
     }
 }
 
-pub struct TwoToOneCRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+impl<P, W> TwoToOneCRHSchemeGadget<ConstraintF<P>> for TwoToOneCRH<P, W>
 where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-{
-    #[doc(hidden)]
-    _params: PhantomData<P>,
-    #[doc(hidden)]
-    _base_field: PhantomData<F>,
-}
+    BF<P>: FieldWithVar,
+    BFVar<P>: TwoBitLookupGadget<ConstraintF<P>, TableConstant = BF<P>>
+        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = BF<P>>,
 
-impl<P, F, W> TwoToOneCRHSchemeGadget<TwoToOneCRH<P, W>, ConstraintF<P>> for TwoToOneCRHGadget<P, F>
-where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-    F: FieldVar<P::BaseField, ConstraintF<P>>,
-    F: TwoBitLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>
-        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>,
+    for<'a> &'a BFVar<P>: FieldOpsBounds<'a, BF<P>, BFVar<P>>,
     P: TEModelParameters,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<P>>];
-    type OutputVar = F;
+    type OutputVar = BFVar<P>;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
@@ -133,7 +117,7 @@ where
             .chain(right_input.to_vec().into_iter())
             .chain(iter::repeat(UInt8::constant(0u8)).take(num_trailing_zeros))
             .collect();
-        CRHGadget::<P, F>::evaluate(parameters, &chained_input)
+        CRH::<P, W>::evaluate(parameters, &chained_input)
     }
 
     fn compress(
@@ -179,11 +163,8 @@ mod test {
     use ark_std::test_rng;
 
     type TestCRH = bowe_hopwood::CRH<EdwardsParameters, Window>;
-    type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsParameters, FqVar>;
 
     type TestTwoToOneCRH = bowe_hopwood::TwoToOneCRH<EdwardsParameters, Window>;
-    type TestTwoToOneCRHGadget =
-        bowe_hopwood::constraints::TwoToOneCRHGadget<EdwardsParameters, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
@@ -219,18 +200,17 @@ mod test {
         let parameters = TestCRH::setup(rng).unwrap();
         let primitive_result = TestCRH::evaluate(&parameters, input.as_slice()).unwrap();
 
-        let parameters_var =
-            <TestCRHGadget as CRHSchemeGadget<TestCRH, Fr>>::ParametersVar::new_witness(
-                ark_relations::ns!(cs, "parameters_var"),
-                || Ok(&parameters),
-            )
-            .unwrap();
+        let parameters_var = <TestCRH as CRHSchemeGadget<Fr>>::ParametersVar::new_witness(
+            ark_relations::ns!(cs, "parameters_var"),
+            || Ok(&parameters),
+        )
+        .unwrap();
         println!(
             "number of constraints for input + params: {}",
             cs.num_constraints()
         );
 
-        let result_var = TestCRHGadget::evaluate(&parameters_var, &input_var).unwrap();
+        let result_var = TestCRH::evaluate(&parameters_var, &input_var).unwrap();
 
         println!("number of constraints total: {}", cs.num_constraints());
 
@@ -252,18 +232,15 @@ mod test {
             TestTwoToOneCRH::evaluate(&parameters, left_input.as_slice(), right_input.as_slice())
                 .unwrap();
 
-        let parameters_var = <TestTwoToOneCRHGadget as TwoToOneCRHSchemeGadget<
-            TestTwoToOneCRH,
-            Fr,
-        >>::ParametersVar::new_witness(
-            ark_relations::ns!(cs, "parameters_var"),
-            || Ok(&parameters),
-        )
-        .unwrap();
+        let parameters_var =
+            <TestTwoToOneCRH as TwoToOneCRHSchemeGadget<Fr>>::ParametersVar::new_witness(
+                ark_relations::ns!(cs, "parameters_var"),
+                || Ok(&parameters),
+            )
+            .unwrap();
 
         let result_var =
-            TestTwoToOneCRHGadget::evaluate(&parameters_var, &left_input_var, &right_input_var)
-                .unwrap();
+            TestTwoToOneCRH::evaluate(&parameters_var, &left_input_var, &right_input_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
