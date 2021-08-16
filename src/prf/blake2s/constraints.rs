@@ -289,7 +289,6 @@ pub fn evaluate_blake2s_with_parameters<F: PrimeField>(
 
 use crate::prf::Blake2s;
 
-pub struct Blake2sGadget;
 #[derive(Clone, Debug)]
 pub struct OutputVar<ConstraintF: PrimeField>(pub Vec<UInt8<ConstraintF>>);
 
@@ -363,7 +362,7 @@ impl<F: PrimeField> R1CSVar<F> for OutputVar<F> {
     }
 }
 
-impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
+impl<F: PrimeField> PRFGadget<F> for Blake2s {
     type OutputVar = OutputVar<F>;
 
     #[tracing::instrument(target = "r1cs", skip(cs))]
@@ -398,7 +397,6 @@ mod test {
     use ark_relations::r1cs::ConstraintSystem;
     use blake2::VarBlake2s;
 
-    use super::Blake2sGadget;
     use ark_r1cs_std::prelude::*;
 
     #[test]
@@ -427,11 +425,11 @@ mod test {
         let mut input = [0u8; 32];
         rng.fill(&mut input);
 
-        let seed_var = Blake2sGadget::new_seed(cs.clone(), &seed);
+        let seed_var = Blake2s::new_seed(cs.clone(), &seed);
         let input_var =
             UInt8::new_witness_vec(ark_relations::ns!(cs, "declare_input"), &input).unwrap();
-        let out = B2SPRF::evaluate(&seed, &input).unwrap();
-        let actual_out_var = <Blake2sGadget as PRFGadget<_, Fr>>::OutputVar::new_witness(
+        let out = Blake2s::evaluate(&seed, &input).unwrap();
+        let actual_out_var = <Blake2sGadget as PRFGadget<Fr>>::OutputVar::new_witness(
             ark_relations::ns!(cs, "declare_output"),
             || Ok(out),
         )

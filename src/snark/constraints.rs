@@ -1,6 +1,6 @@
 use ark_ff::{BigInteger, FpParameters, PrimeField};
-use ark_nonnative_field::params::{get_params, OptimizationType};
-use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
+use ark_r1cs_std::fields::nonnative::params::{get_params, OptimizationType};
+use ark_r1cs_std::fields::nonnative::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
 use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::{
     bits::boolean::Boolean,
@@ -23,13 +23,13 @@ use ark_std::{
 };
 
 /// This implements constraints for SNARK verifiers.
-pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
-    type ProcessedVerifyingKeyVar: AllocVar<S::ProcessedVerifyingKey, ConstraintF> + Clone;
-    type VerifyingKeyVar: AllocVar<S::VerifyingKey, ConstraintF>
+pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField>: SNARK<F> {
+    type ProcessedVerifyingKeyVar: AllocVar<Self::ProcessedVerifyingKey, ConstraintF> + Clone;
+    type VerifyingKeyVar: AllocVar<Self::VerifyingKey, ConstraintF>
         + ToBytesGadget<ConstraintF>
         + Clone;
     type InputVar: AllocVar<Vec<F>, ConstraintF> + FromFieldElementsGadget<F, ConstraintF> + Clone;
-    type ProofVar: AllocVar<S::Proof, ConstraintF> + Clone;
+    type ProofVar: AllocVar<Self::Proof, ConstraintF> + Clone;
 
     /// Information about the R1CS constraints required to check proofs relative
     /// a given verification key. In the context of a LPCP-based pairing-based SNARK
@@ -42,7 +42,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
 
     /// Returns information about the R1CS constraints required to check proofs relative
     /// to the verification key `circuit_vk`.
-    fn verifier_size(circuit_vk: &S::VerifyingKey) -> Self::VerifierSize;
+    fn verifier_size(circuit_vk: &Self::VerifyingKey) -> Self::VerifierSize;
 
     /// Optionally allocates `S::Proof` in `cs` without performing
     /// additional checks, such as subgroup membership checks. Use this *only*
@@ -54,7 +54,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     /// The default implementation does not omit such checks, and just invokes
     /// `Self::ProofVar::new_variable`.
     #[tracing::instrument(target = "r1cs", skip(cs, f))]
-    fn new_proof_unchecked<T: Borrow<S::Proof>>(
+    fn new_proof_unchecked<T: Borrow<Self::Proof>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
@@ -72,7 +72,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     /// The default implementation does not omit such checks, and just invokes
     /// `Self::VerifyingKeyVar::new_variable`.
     #[tracing::instrument(target = "r1cs", skip(cs, f))]
-    fn new_verification_key_unchecked<T: Borrow<S::VerifyingKey>>(
+    fn new_verification_key_unchecked<T: Borrow<Self::VerifyingKey>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
@@ -93,21 +93,15 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     ) -> Result<Boolean<ConstraintF>, SynthesisError>;
 }
 
-pub trait CircuitSpecificSetupSNARKGadget<
-    F: PrimeField,
-    ConstraintF: PrimeField,
-    S: CircuitSpecificSetupSNARK<F>,
->: SNARKGadget<F, ConstraintF, S>
+pub trait CircuitSpecificSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
+    SNARKGadget<F, ConstraintF> + CircuitSpecificSetupSNARK<F>
 {
 }
 
-pub trait UniversalSetupSNARKGadget<
-    F: PrimeField,
-    ConstraintF: PrimeField,
-    S: UniversalSetupSNARK<F>,
->: SNARKGadget<F, ConstraintF, S>
+pub trait UniversalSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
+    SNARKGadget<F, ConstraintF> + UniversalSetupSNARK<F>
 {
-    type BoundCircuit: From<S::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+    type BoundCircuit: From<Self::ComputationBound> + ConstraintSynthesizer<F> + Clone;
 }
 
 /// Gadgets to convert elements between different fields for recursive proofs

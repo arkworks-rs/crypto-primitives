@@ -6,15 +6,21 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use ark_r1cs_std::prelude::*;
 
-pub trait PRFGadget<P: PRF, F: Field> {
-    type OutputVar: EqGadget<F>
-        + ToBytesGadget<F>
-        + AllocVar<P::Output, F>
-        + R1CSVar<F, Value = P::Output>
+pub trait PRFGadget<ConstraintF: Field>: PRF {
+    type OutputVar: EqGadget<ConstraintF>
+        + ToBytesGadget<ConstraintF>
+        + AllocVar<Self::Output, ConstraintF>
+        + R1CSVar<ConstraintF, Value = Self::Output>
         + Clone
         + Debug;
 
-    fn new_seed(cs: impl Into<Namespace<F>>, seed: &P::Seed) -> Vec<UInt8<F>>;
+    fn new_seed(
+        cs: impl Into<Namespace<ConstraintF>>,
+        seed: &Self::Seed,
+    ) -> Vec<UInt8<ConstraintF>>;
 
-    fn evaluate(seed: &[UInt8<F>], input: &[UInt8<F>]) -> Result<Self::OutputVar, SynthesisError>;
+    fn evaluate(
+        seed: &[UInt8<ConstraintF>],
+        input: &[UInt8<ConstraintF>],
+    ) -> Result<Self::OutputVar, SynthesisError>;
 }
