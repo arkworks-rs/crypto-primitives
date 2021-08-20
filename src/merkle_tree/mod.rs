@@ -9,6 +9,8 @@ use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
 
+pub mod incremental_merkle_tree;
+
 #[cfg(test)]
 mod tests;
 
