@@ -57,6 +57,10 @@ impl<P: Config> IncrementalMerkleTree<P> {
         two_to_one_hash_param: &TwoToOneParam<P>,
         height: usize,
     ) -> Result<Self, crate::Error> {
+        assert!(
+            height > 1,
+            "the height of incremental merkle tree should be at least 2"
+        );
         // use empty leaf digest
         let capacity: usize = 1 << (height - 1);
         let leaves_digest = vec![P::LeafDigest::default(); capacity];
@@ -101,10 +105,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
         &self,
         new_leaf_digest: P::LeafDigest,
     ) -> Result<(Path<P>, P::InnerDigest), crate::Error> {
-        assert!(
-            self.next_available() != None,
-            "index out of range"
-        );
+        assert!(self.next_available() != None, "index out of range");
 
         // calculate tree_height and empty hash
         let tree_height = tree_height(self.leaf_nodes.len());
@@ -247,6 +248,16 @@ impl<P: Config> IncrementalMerkleTree<P> {
             };
             Ok((path, new_current_node))
         }
+    }
+
+    /// FIXME
+    pub fn current_proof(&self) -> Path<P> {
+        self.current_path.clone()
+    }
+
+    /// FIXME
+    pub fn root(&self) -> P::InnerDigest {
+        self.root.clone()
     }
 }
 
