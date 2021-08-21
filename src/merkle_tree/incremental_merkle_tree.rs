@@ -22,12 +22,14 @@ pub struct IncrementalMerkleTree<P: Config> {
     current_path: Path<P>,
     /// Stores the root of the IMT
     root: P::InnerDigest,
+    /// Is the IMT empty
+    empty: bool,
 }
 
 impl<P: Config> IncrementalMerkleTree<P> {
     /// Check if this IMT is empty
     pub fn is_empty(&self) -> bool {
-        self.current_path.auth_path.len() == 0
+        self.empty
     }
 
     /// The index of the current right most leaf
@@ -76,6 +78,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
             leaf_hash_param: leaf_hash_param.clone(),
             root: P::InnerDigest::default(),
             height,
+            empty: true
         })
     }
 
@@ -96,6 +99,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
         let (path, root) = self.next_path(leaf_digest)?;
         self.current_path = path;
         self.root = root;
+        self.empty = false;
         Ok(())
     }
 
@@ -250,12 +254,12 @@ impl<P: Config> IncrementalMerkleTree<P> {
         }
     }
 
-    /// FIXME
+    /// the proof of the current item
     pub fn current_proof(&self) -> Path<P> {
         self.current_path.clone()
     }
 
-    /// FIXME
+    /// root of IMT
     pub fn root(&self) -> P::InnerDigest {
         self.root.clone()
     }

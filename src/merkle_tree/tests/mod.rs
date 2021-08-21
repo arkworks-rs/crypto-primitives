@@ -101,6 +101,8 @@ mod bytes_mt_tests {
         for v in update_query {
             let v = crate::to_unchecked_bytes!(v).unwrap();
             tree.append(v.clone()).unwrap();
+            println!("{:?}", tree.next_available());
+            println!("{:?}", tree.is_empty());
             let proof = tree.current_proof();
             assert!(proof
                 .verify(&leaf_crh_params, &two_to_one_params, &tree.root(), v)
@@ -171,8 +173,16 @@ mod bytes_mt_tests {
     }
 
     #[test]
+    #[should_panic]
     fn out_of_capacity_test_for_imt(){
-        
+        let mut rng = test_rng();
+
+        // test various sized IMTs
+        let mut updates = Vec::new();
+        for _ in 0..3u8 {
+            updates.push(BigInteger256::rand(&mut rng));
+        }
+        incremental_merkle_tree_test(2, &updates);
     }
 }
 
