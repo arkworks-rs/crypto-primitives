@@ -29,7 +29,7 @@ pub mod snark;
 pub use self::{
     commitment::CommitmentScheme,
     crh::CRHScheme,
-    merkle_tree::{MerkleTree, Path},
+    merkle_tree::{MerkleTree, incremental_merkle_tree::IncrementalMerkleTree, Path},
     prf::PRF,
     signature::SignatureScheme,
     snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK},

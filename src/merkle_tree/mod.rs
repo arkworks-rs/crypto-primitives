@@ -9,6 +9,8 @@ use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
 
+pub mod incremental_merkle_tree;
+
 #[cfg(test)]
 mod tests;
 
@@ -142,7 +144,7 @@ impl<P: Config> Path<P> {
         leaf: L,
     ) -> Result<bool, crate::Error> {
         // calculate leaf hash
-        let claimed_leaf_hash = P::LeafHash::evaluate(&leaf_hash_params, leaf)?;
+        let claimed_leaf_hash = P::LeafHash::evaluate(leaf_hash_params, leaf)?;
         // check hash along the path from bottom to root
         let (left_child, right_child) =
             select_left_right_child(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
@@ -152,7 +154,7 @@ impl<P: Config> Path<P> {
         let right_child = P::LeafInnerDigestConverter::convert(right_child)?;
 
         let mut curr_path_node =
-            P::TwoToOneHash::evaluate(&two_to_one_params, left_child, right_child)?;
+            P::TwoToOneHash::evaluate(two_to_one_params, left_child, right_child)?;
 
         // we will use `index` variable to track the position of path
         let mut index = self.leaf_index;
@@ -164,7 +166,7 @@ impl<P: Config> Path<P> {
             let (left, right) =
                 select_left_right_child(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
-            curr_path_node = P::TwoToOneHash::compress(&two_to_one_params, &left, &right)?;
+            curr_path_node = P::TwoToOneHash::compress(two_to_one_params, &left, &right)?;
             index >>= 1;
         }
 
@@ -307,7 +309,7 @@ impl<P: Config> MerkleTree<P> {
                 let left_index = left_child(current_index);
                 let right_index = right_child(current_index);
                 non_leaf_nodes[current_index] = P::TwoToOneHash::compress(
-                    &two_to_one_hash_param,
+                    two_to_one_hash_param,
                     non_leaf_nodes[left_index].clone(),
                     non_leaf_nodes[right_index].clone(),
                 )?

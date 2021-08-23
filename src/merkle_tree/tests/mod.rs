@@ -6,7 +6,7 @@ mod bytes_mt_tests {
 
     use crate::{
         crh::{pedersen, *},
-        merkle_tree::*,
+        merkle_tree::{incremental_merkle_tree::*, *},
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
@@ -35,6 +35,7 @@ mod bytes_mt_tests {
         type TwoToOneHash = CompressH;
     }
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
+    type JubJubIncrementalMerkleTree = IncrementalMerkleTree<JubJubMerkleTreeParams>;
 
     /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
     fn merkle_tree_test<L: CanonicalSerialize>(leaves: &[L], update_query: &[(usize, L)]) -> () {
@@ -79,6 +80,36 @@ mod bytes_mt_tests {
         }
     }
 
+    /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
+    fn incremental_merkle_tree_test<L: CanonicalSerialize>(
+        tree_height: usize,
+        update_query: &[L],
+    ) -> () {
+        let mut rng = ark_std::test_rng();
+        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
+            .unwrap()
+            .clone();
+        let mut tree = JubJubIncrementalMerkleTree::blank(
+            &leaf_crh_params.clone(),
+            &two_to_one_params.clone(),
+            tree_height,
+        )
+        .unwrap();
+
+        // test merkle tree update functionality
+        for v in update_query {
+            let v = crate::to_unchecked_bytes!(v).unwrap();
+            tree.append(v.clone()).unwrap();
+            println!("{:?}", tree.next_available());
+            println!("{:?}", tree.is_empty());
+            let proof = tree.current_proof();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &tree.root(), v)
+                .unwrap());
+        }
+    }
+
     #[test]
     fn good_root_test() {
         let mut rng = test_rng();
@@ -116,10 +147,66 @@ mod bytes_mt_tests {
             ],
         );
     }
+
+    #[test]
+    fn test_emptyness_for_imt() {
+        let mut rng = test_rng();
+        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
+            .unwrap()
+            .clone();
+        let mut tree = JubJubIncrementalMerkleTree::blank(
+            &leaf_crh_params.clone(),
+            &two_to_one_params.clone(),
+            5,
+        )
+        .unwrap();
+        assert!(tree.is_empty());
+        let v = BigInteger256::rand(&mut rng);
+        tree.append(crate::to_unchecked_bytes!(v).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn good_root_test_for_imt() {
+        let mut rng = test_rng();
+
+        // test various sized IMTs
+        let mut updates = Vec::new();
+        for _ in 0..2u8 {
+            updates.push(BigInteger256::rand(&mut rng));
+        }
+        incremental_merkle_tree_test(2, &updates);
+
+        let mut updates = Vec::new();
+        for _ in 0..7u8 {
+            updates.push(BigInteger256::rand(&mut rng));
+        }
+        incremental_merkle_tree_test(4, &updates);
+
+        let mut updates = Vec::new();
+        for _ in 0..128u8 {
+            updates.push(BigInteger256::rand(&mut rng));
+        }
+        incremental_merkle_tree_test(8, &updates);
+    }
+
+    #[test]
+    #[should_panic]
+    fn out_of_capacity_test_for_imt(){
+        let mut rng = test_rng();
+
+        // test various sized IMTs
+        let mut updates = Vec::new();
+        for _ in 0..3u8 {
+            updates.push(BigInteger256::rand(&mut rng));
+        }
+        incremental_merkle_tree_test(2, &updates);
+    }
 }
 
 mod field_mt_tests {
     use crate::crh::poseidon;
+    use crate::merkle_tree::incremental_merkle_tree::IncrementalMerkleTree;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter};
     use crate::MerkleTree;
@@ -140,6 +227,7 @@ mod field_mt_tests {
     }
 
     type FieldMT = MerkleTree<FieldMTConfig>;
+    type FieldIMT = IncrementalMerkleTree<FieldMTConfig>;
 
     fn merkle_tree_test(leaves: &[Vec<F>], update_query: &[(usize, Vec<F>)]) -> () {
         let mut leaves = leaves.to_vec();
@@ -195,6 +283,40 @@ mod field_mt_tests {
         }
     }
 
+    fn incremental_merkle_tree_test(tree_height: usize, update_query: &[Vec<F>]) -> () {
+        let leaf_crh_params = poseidon_parameters();
+        let two_to_one_params = leaf_crh_params.clone();
+
+        let mut tree = FieldIMT::blank(
+            &leaf_crh_params,
+            &two_to_one_params,
+            tree_height,
+        )
+        .unwrap();
+
+        // test incremental merkle tree append
+        for v in update_query {
+            tree.append(v.as_slice()).unwrap();
+            let proof = tree.current_proof();
+            assert!(proof.verify(&leaf_crh_params, &two_to_one_params, &tree.root(), v.as_slice()).unwrap());
+        }
+
+        {
+            // wrong root should lead to error but do not panic
+            let wrong_root = tree.root() + F::one();
+            let proof = tree.current_proof();
+            assert!(!proof
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_params,
+                    &wrong_root,
+                    update_query.last().unwrap().as_slice()
+                )
+                .unwrap())
+        }
+
+    }
+
     #[test]
     fn good_root_test() {
         let mut rng = test_rng();
@@ -213,6 +335,20 @@ mod field_mt_tests {
                 (111, rand_leaves()),
                 (127, rand_leaves()),
             ],
+        )
+    }
+
+    #[test]
+    fn good_root_test_for_imt(){
+        let mut rng = test_rng();
+        let mut rand_leaves = || (0..3).map(|_| F::rand(&mut rng)).collect();
+
+        let mut updates: Vec<Vec<_>> = Vec::new();
+        for _ in 0..128u8 {
+            updates.push(rand_leaves())
+        }
+        incremental_merkle_tree_test(
+            8, &updates
         )
     }
 }
