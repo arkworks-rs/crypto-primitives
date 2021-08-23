@@ -141,7 +141,7 @@ where
         let mut hash_input = Vec::new();
         hash_input.extend_from_slice(&parameters.salt);
         hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
-        hash_input.extend_from_slice(&message);
+        hash_input.extend_from_slice(message);
 
         let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
             C::ScalarField::from_random_bytes(&D::digest(&hash_input))

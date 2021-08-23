@@ -18,7 +18,6 @@ pub struct IncrementalMerkleTree<P: Config> {
     /// Stores the height of the MerkleTree
     height: usize,
     /// Stores the path of the "current leaf"
-    /// if current_path.auth_path.len() == mean, means the IMT is empty
     current_path: Path<P>,
     /// Stores the root of the IMT
     root: P::InnerDigest,
@@ -166,10 +165,10 @@ impl<P: Config> IncrementalMerkleTree<P> {
                 (
                     new_leaf_digest,
                     hash_of_empty_leaf.clone(),
-                    hash_of_empty_leaf.clone(),
+                    hash_of_empty_leaf,
                 )
             } else {
-                (old_leaf.clone(), new_leaf_digest, old_leaf.clone())
+                (old_leaf.clone(), new_leaf_digest, old_leaf)
             };
 
             let mut old_current_node = P::TwoToOneHash::evaluate(
