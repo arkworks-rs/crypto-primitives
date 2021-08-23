@@ -149,6 +149,24 @@ mod bytes_mt_tests {
     }
 
     #[test]
+    fn test_emptyness_for_imt() {
+        let mut rng = test_rng();
+        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
+            .unwrap()
+            .clone();
+        let mut tree = JubJubIncrementalMerkleTree::blank(
+            &leaf_crh_params.clone(),
+            &two_to_one_params.clone(),
+            5,
+        )
+        .unwrap();
+        assert!(tree.is_empty());
+        let v = BigInteger256::rand(&mut rng);
+        tree.append(crate::to_unchecked_bytes!(v).unwrap()).unwrap();
+    }
+
+    #[test]
     fn good_root_test_for_imt() {
         let mut rng = test_rng();
 
