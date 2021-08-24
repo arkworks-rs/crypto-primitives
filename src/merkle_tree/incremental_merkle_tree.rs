@@ -2,6 +2,7 @@ use crate::crh::TwoToOneCRHScheme;
 use crate::merkle_tree::{tree_height, Config, DigestConverter, LeafParam, Path, TwoToOneParam};
 use crate::CRHScheme;
 use ark_std::borrow::Borrow;
+use ark_std::vec::Vec;
 
 /// Defines an incremental merkle tree data structure.
 /// This merkle tree has runtime fixed height, and assumes number of leaves is 2^height.
@@ -77,7 +78,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
             leaf_hash_param: leaf_hash_param.clone(),
             root: P::InnerDigest::default(),
             height,
-            empty: true
+            empty: true,
         })
     }
 
