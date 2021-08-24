@@ -227,7 +227,12 @@ mod byte_mt_tests {
 
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_crh_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
-        let mut tree = JubJubIncrementalMerkleTree::blank(&leaf_crh_params, &two_to_one_crh_params, tree_height).unwrap();
+        let mut tree = JubJubIncrementalMerkleTree::blank(
+            &leaf_crh_params,
+            &two_to_one_crh_params,
+            tree_height,
+        )
+        .unwrap();
         for leaf in updates {
             let cs = ConstraintSystem::<Fq>::new_ref();
             tree.append(leaf.as_slice()).unwrap();
@@ -318,7 +323,6 @@ mod byte_mt_tests {
         }
     }
 
-
     #[test]
     fn good_root_test() {
         let mut leaves = Vec::new();
@@ -330,7 +334,7 @@ mod byte_mt_tests {
     }
 
     #[test]
-    fn good_root_test_for_imt(){
+    fn good_root_test_for_imt() {
         let mut updates = Vec::new();
         for i in 0..4u8 {
             updates.push(vec![i; 30]);
@@ -351,14 +355,13 @@ mod byte_mt_tests {
 
     #[test]
     #[should_panic]
-    fn bad_root_test_for_imt(){
+    fn bad_root_test_for_imt() {
         let mut updates = Vec::new();
         for i in 0..4u8 {
             updates.push(vec![i; 30]);
         }
         incremental_merkle_tree_test(&updates, true, 3);
     }
-
 }
 
 mod field_mt_tests {
@@ -566,20 +569,11 @@ mod field_mt_tests {
         }
     }
 
-    fn incremental_merkle_tree_test(
-        updates: &[Vec<F>],
-        use_bad_root: bool,
-        tree_height: usize,
-    ) {
+    fn incremental_merkle_tree_test(updates: &[Vec<F>], use_bad_root: bool, tree_height: usize) {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
-        let mut tree = FieldIMT::blank(
-            &leaf_crh_params,
-            &two_to_one_params,
-            tree_height,
-        )
-        .unwrap();
-        
+        let mut tree = FieldIMT::blank(&leaf_crh_params, &two_to_one_params, tree_height).unwrap();
+
         for leaf in updates {
             let cs = ConstraintSystem::<F>::new_ref();
             tree.append(leaf.as_slice()).unwrap();
@@ -667,9 +661,7 @@ mod field_mt_tests {
                 "verification constraints not satisfied"
             );
         }
-
- }
-
+    }
 
     #[test]
     fn good_root_test() {
@@ -713,7 +705,7 @@ mod field_mt_tests {
 
     #[test]
     #[should_panic]
-    fn bad_root_test_for_imt(){
+    fn bad_root_test_for_imt() {
         let mut rng = test_rng();
         let mut rand_leaves = || (0..2).map(|_| F::rand(&mut rng)).collect();
 

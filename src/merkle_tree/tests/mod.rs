@@ -192,7 +192,7 @@ mod bytes_mt_tests {
 
     #[test]
     #[should_panic]
-    fn out_of_capacity_test_for_imt(){
+    fn out_of_capacity_test_for_imt() {
         let mut rng = test_rng();
 
         // test various sized IMTs
@@ -287,18 +287,20 @@ mod field_mt_tests {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
 
-        let mut tree = FieldIMT::blank(
-            &leaf_crh_params,
-            &two_to_one_params,
-            tree_height,
-        )
-        .unwrap();
+        let mut tree = FieldIMT::blank(&leaf_crh_params, &two_to_one_params, tree_height).unwrap();
 
         // test incremental merkle tree append
         for v in update_query {
             tree.append(v.as_slice()).unwrap();
             let proof = tree.current_proof();
-            assert!(proof.verify(&leaf_crh_params, &two_to_one_params, &tree.root(), v.as_slice()).unwrap());
+            assert!(proof
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_params,
+                    &tree.root(),
+                    v.as_slice()
+                )
+                .unwrap());
         }
 
         {
@@ -314,7 +316,6 @@ mod field_mt_tests {
                 )
                 .unwrap())
         }
-
     }
 
     #[test]
@@ -339,7 +340,7 @@ mod field_mt_tests {
     }
 
     #[test]
-    fn good_root_test_for_imt(){
+    fn good_root_test_for_imt() {
         let mut rng = test_rng();
         let mut rand_leaves = || (0..3).map(|_| F::rand(&mut rng)).collect();
 
@@ -347,8 +348,6 @@ mod field_mt_tests {
         for _ in 0..128u8 {
             updates.push(rand_leaves())
         }
-        incremental_merkle_tree_test(
-            8, &updates
-        )
+        incremental_merkle_tree_test(8, &updates)
     }
 }
