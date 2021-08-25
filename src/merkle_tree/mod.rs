@@ -261,8 +261,8 @@ impl<P: Config> MerkleTree<P> {
     ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaves_digest.len();
         assert!(
-            leaf_nodes_size.is_power_of_two(),
-            "`leaves.len() should be power of two"
+            leaf_nodes_size.is_power_of_two() && leaf_nodes_size > 1,
+            "`leaves.len() should be power of two and greater than one"
         );
         let non_leaf_nodes_size = leaf_nodes_size - 1;
 
