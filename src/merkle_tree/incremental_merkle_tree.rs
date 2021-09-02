@@ -92,7 +92,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
     ///   .. / \ ....
     ///    [I]{new leaf}
     /// ```
-    /// append({new leaf}) when the `next_availabe` is at 4, would cause a recompute [E], [A], [B]
+    /// append({new leaf}) when the `next_availabe` is at 4, would cause a recompute [E], [B], [A]
     pub fn append<T: Borrow<P::Leaf>>(&mut self, new_leaf: T) -> Result<(), crate::Error> {
         assert!(self.next_available() != None, "index out of range");
         let leaf_digest = P::LeafHash::evaluate(&self.leaf_hash_param, new_leaf)?;

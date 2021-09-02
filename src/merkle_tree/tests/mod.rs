@@ -164,6 +164,7 @@ mod bytes_mt_tests {
         assert!(tree.is_empty());
         let v = BigInteger256::rand(&mut rng);
         tree.append(crate::to_unchecked_bytes!(v).unwrap()).unwrap();
+        assert!(!tree.is_empty());
     }
 
     #[test]
