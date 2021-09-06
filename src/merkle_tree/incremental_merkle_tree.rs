@@ -149,7 +149,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
             let mut old_index = self.current_index().unwrap();
             let old_leaf = self.leaf_nodes[old_index].clone();
 
-            // generate two mutable node: old_current_node, new_current_node to interate on
+            // generate two mutable node: old_current_node, new_current_node to iterate on
             let (old_left_leaf, old_right_leaf) = if is_left_child(old_index) {
                 (
                     self.leaf_nodes[old_index].clone(),
