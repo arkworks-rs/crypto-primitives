@@ -154,18 +154,27 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     /// * `leaf_index`: leaf index encoded in little-endian format
     #[tracing::instrument(target = "r1cs", skip(self))]
     pub fn set_leaf_position(&mut self, leaf_index: Vec<Boolean<ConstraintF>>) {
-        // convert leaf_index to path:
-        // first remove the element (which represent a leaf), pad it to appropriate length
-        // and reverse it to become big endian.
-        // Also, set `leaf_is_right_child` accordingly.
+        // The path to a leaf is described by the branching
+        // decisions taken at each node. This corresponds to the position
+        // of the leaf.
         let mut path = leaf_index;
+
+        // If leaves are numbered left-to-right starting from zero,
+        // then all left children have odd positions (least significant bit is one), while all
+        // right children have even positions (least significant bit is zero).
         let leaf_is_right_child = path.remove(0);
-        // pad the path
+
+        // pad with zero if the length of `path` is too short
         if path.len() < self.auth_path.len() {
             path.extend((0..self.auth_path.len() - path.len()).map(|_| Boolean::constant(false)))
         }
+
+        // truncate if the length of `path` is too long
         path.truncate(self.auth_path.len());
+
+        // branching decision starts from root, so we need to reverse it.
         path.reverse();
+
         self.path = path;
         self.leaf_is_right_child = leaf_is_right_child;
     }
