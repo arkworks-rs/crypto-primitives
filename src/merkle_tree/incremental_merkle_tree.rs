@@ -1,5 +1,5 @@
 use crate::crh::TwoToOneCRHScheme;
-use crate::merkle_tree::{tree_height, Config, DigestConverter, LeafParam, Path, TwoToOneParam};
+use crate::merkle_tree::{Config, DigestConverter, LeafParam, Path, TwoToOneParam};
 use crate::CRHScheme;
 use ark_std::borrow::Borrow;
 use ark_std::vec::Vec;
@@ -46,7 +46,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
         let current_index = self.current_path.leaf_index;
         if self.is_empty() {
             Some(0)
-        } else if current_index < self.leaf_nodes.len() - 1 {
+        } else if current_index < (1 << (self.height - 1)) - 1 {
             Some(current_index + 1)
         } else {
             None
@@ -64,8 +64,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
             "the height of incremental merkle tree should be at least 2"
         );
         // use empty leaf digest
-        let capacity: usize = 1 << (height - 1);
-        let leaves_digest = vec![P::LeafDigest::default(); capacity];
+        let leaves_digest = vec![];
         Ok(IncrementalMerkleTree {
             /// blank tree doesn't have current_path
             current_path: Path {
@@ -96,7 +95,8 @@ impl<P: Config> IncrementalMerkleTree<P> {
     pub fn append<T: Borrow<P::Leaf>>(&mut self, new_leaf: T) -> Result<(), crate::Error> {
         assert!(self.next_available() != None, "index out of range");
         let leaf_digest = P::LeafHash::evaluate(&self.leaf_hash_param, new_leaf)?;
-        let (path, root) = self.next_path(leaf_digest)?;
+        let (path, root) = self.next_path(leaf_digest.clone())?;
+        self.leaf_nodes.push(leaf_digest);
         self.current_path = path;
         self.root = root;
         self.empty = false;
@@ -112,7 +112,7 @@ impl<P: Config> IncrementalMerkleTree<P> {
         assert!(self.next_available() != None, "index out of range");
 
         // calculate tree_height and empty hash
-        let tree_height = tree_height(self.leaf_nodes.len());
+        let tree_height = self.height;
         let hash_of_empty_node: P::InnerDigest = P::InnerDigest::default();
         let hash_of_empty_leaf: P::LeafDigest = P::LeafDigest::default();
 
