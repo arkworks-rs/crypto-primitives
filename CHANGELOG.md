@@ -2,8 +2,6 @@
 
 ## Pending
 
-- [\#1](https://github.com/Manta-Network/crypto-primitives/pull/1) add incremental merkle tree implementation.
-
 ### Breaking changes
 
 - [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of the Bowe-Hopwood-Pedersen CRH to a single field element, in line with the Zcash specification.
@@ -16,6 +14,7 @@
 - [\#59](https://github.com/arkworks-rs/crypto-primitives/pull/59) Implement `TwoToOneCRHScheme` for Bowe-Hopwood CRH.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle tree no longer requires CRH to input and output bytes. Leaf can be any raw input of CRH, such as field elements.
 - [\#67](https://github.com/arkworks-rs/crypto-primitives/pull/67) User can access or replace leaf index variable in `PathVar`.
+- [\#72](https://github.com/arkworks-rs/crypto-primitives/pull/72) Add incremental Merkle tree implementation.
 
 ### Improvements
 
