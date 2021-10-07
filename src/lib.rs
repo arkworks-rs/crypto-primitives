@@ -14,6 +14,8 @@ extern crate ark_std;
 #[macro_use]
 extern crate derivative;
 
+use std::marker::PhantomData;
+
 pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
 mod macros;
 
@@ -38,12 +40,21 @@ pub use self::{
 #[cfg(feature = "r1cs")]
 pub use self::{
     commitment::CommitmentGadget,
-    crh::CRHSchemeGadget, merkle_tree::constraints::PathVar,
+    crh::CRHGadget, merkle_tree::constraints::PathVar,
     prf::PRFGadget,
     signature::SigRandomizePkGadget, snark::SNARKGadget,
 };
 
 pub type Error = Box<dyn ark_std::error::Error>;
+
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+)]
+pub struct Gadget<T>(PhantomData<T>);
 
 #[derive(Debug)]
 pub enum CryptoError {

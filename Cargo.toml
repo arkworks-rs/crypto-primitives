@@ -47,4 +47,8 @@ ark-mnt6-298 = { version = "^0.3.0", default-features = false, features = [ "r1c
 
 [patch.crates-io]
 ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", branch = "reduce-generics", optional = true, default-features = false }
+ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/curves", branch = "reduce-generics", default-features = false, features = [ "r1cs" ] }
+ark-bls12-377 = { git = "https://github.com/arkworks-rs/curves", branch = "reduce-generics", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt4-298 = { git = "https://github.com/arkworks-rs/curves", branch = "reduce-generics", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt6-298 = { git = "https://github.com/arkworks-rs/curves", branch = "reduce-generics", default-features = false, features = [ "curve", "r1cs" ] }
 ark-sponge = { git = "https://github.com/arkworks-rs/sponge", branch = "reduce-generics", default-features = false }
