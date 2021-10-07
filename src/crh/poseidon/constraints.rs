@@ -134,6 +134,7 @@ mod test {
             test_b.push(Fr::rand(&mut test_rng));
         }
 
+        // TODO: figure out appropriate rate and capacity
         let params = PoseidonParameters::<Fr>::new(8, 24, 31, mds, ark);
         let crh_a = CRH::<Fr>::evaluate(&params, test_a.clone()).unwrap();
         let crh_b = CRH::<Fr>::evaluate(&params, test_b.clone()).unwrap();

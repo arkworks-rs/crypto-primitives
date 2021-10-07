@@ -651,5 +651,6 @@ pub(crate) fn poseidon_parameters() -> PoseidonParameters<ark_ed_on_bls12_381::F
         vec![F::zero(), F::one(), F::one()],
     ];
 
+    // TODO: figure out appropriate rate and capacity
     PoseidonParameters::<F>::new(full_rounds, partial_rounds, alpha, mds, ark)
 }
