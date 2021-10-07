@@ -154,25 +154,25 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
 
     fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
-        let left_input = left_input.borrow();
-        let right_input = right_input.borrow();
+        let left = left.borrow();
+        let right = right.borrow();
         assert_eq!(
-            left_input.len(),
-            right_input.len(),
+            left.len(),
+            right.len(),
             "left and right input should be of equal length"
         );
         // check overflow
 
-        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
+        debug_assert!(left.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
 
         let mut buffer = vec![0u8; (Self::HALF_INPUT_SIZE_BITS + Self::HALF_INPUT_SIZE_BITS) / 8];
 
         buffer
             .iter_mut()
-            .zip(left_input.iter().chain(right_input.iter()))
+            .zip(left.iter().chain(right.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
         CRH::<C, W>::evaluate(parameters, buffer.as_slice())
@@ -180,16 +180,16 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
 
     /// A simple implementation method: just concat the left input and right input together
     ///
-    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
+    /// `evaluate` requires that `left` and `right` are of equal length.
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
         Self::evaluate(
             parameters,
-            crate::to_unchecked_bytes!(left_input)?,
-            crate::to_unchecked_bytes!(right_input)?,
+            crate::to_unchecked_bytes!(left)?,
+            crate::to_unchecked_bytes!(right)?,
         )
     }
 }

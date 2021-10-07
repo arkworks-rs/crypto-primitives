@@ -1,9 +1,10 @@
-use crate::crh::{
+use crate::{Gadget, crh::{
+    CRHGadget,
+    TwoToOneCRHGadget,
     constraints,
     injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
     pedersen::{self, constraints as ped_constraints, Window},
-    TwoToOneCRHSchemeGadget,
-};
+}};
 use core::fmt::Debug;
 
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
@@ -47,7 +48,7 @@ where
     }
 }
 
-impl<C, I, W> constraints::CRHSchemeGadget<ConstraintF<C>> for PedersenCRHCompressor<C, I, W>
+impl<C, I, W> constraints::CRHWithGadget<ConstraintF<C>> for PedersenCRHCompressor<C, I, W>
 where
     C: CurveWithVar<ConstraintF<C>>,
     for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
@@ -60,16 +61,16 @@ where
     type ParametersVar = ped_constraints::CRHParametersVar<C>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
-    fn evaluate(
+    fn evaluate_gadget(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let result = pedersen::CRH::<C, W>::evaluate(parameters, input)?;
+        let result = Gadget::<pedersen::CRH<C, W>>::evaluate(parameters, input)?;
         I::evaluate(&result)
     }
 }
 
-impl<C, I, W> constraints::TwoToOneCRHSchemeGadget<ConstraintF<C>>
+impl<C, I, W> constraints::TwoToOneCRHWithGadget<ConstraintF<C>>
     for PedersenTwoToOneCRHCompressor<C, I, W>
 where
     C: CurveWithVar<ConstraintF<C>>,
@@ -83,28 +84,29 @@ where
     type ParametersVar = ped_constraints::CRHParametersVar<C>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
-    fn evaluate(
+    fn evaluate_gadget(
         parameters: &Self::ParametersVar,
-        left_input: &Self::InputVar,
-        right_input: &Self::InputVar,
+        left: &Self::InputVar,
+        right: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // assume equality of left and right length
-        assert_eq!(left_input.len(), right_input.len());
-        let result = pedersen::TwoToOneCRH::<C, W>::evaluate(parameters, left_input, right_input)?;
+        assert_eq!(left.len(), right.len());
+        let result = Gadget::<pedersen::TwoToOneCRH<C, W>>::evaluate(parameters, left, right)?;
         I::evaluate(&result)
     }
 
-    fn compress(
+    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    fn compress_gadget(
         parameters: &Self::ParametersVar,
-        left_input: &Self::OutputVar,
-        right_input: &Self::OutputVar,
+        left: &Self::OutputVar,
+        right: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let left_input_bytes = left_input.to_non_unique_bytes()?;
-        let right_input_bytes = right_input.to_non_unique_bytes()?;
-        <Self as TwoToOneCRHSchemeGadget<_>>::evaluate(
+        let left= left.to_non_unique_bytes()?;
+        let right= right.to_non_unique_bytes()?;
+        Gadget::<Self>::evaluate(
             parameters,
-            &left_input_bytes,
-            &right_input_bytes,
+            &left,
+            &right,
         )
     }
 }

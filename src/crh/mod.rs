@@ -58,13 +58,13 @@ pub trait TwoToOneCRHScheme {
 
     fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error>;
 
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error>;
 }

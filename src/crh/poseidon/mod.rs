@@ -55,23 +55,23 @@ impl<F: PrimeField + Absorb> TwoToOneCRHScheme for TwoToOneCRH<F> {
 
     fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
-        Self::compress(parameters, left_input, right_input)
+        Self::compress(parameters, left, right)
     }
 
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
-        let left_input = left_input.borrow();
-        let right_input = right_input.borrow();
+        let left = left.borrow();
+        let right = right.borrow();
 
         let mut sponge = PoseidonSponge::new(parameters);
-        sponge.absorb(left_input);
-        sponge.absorb(right_input);
+        sponge.absorb(left);
+        sponge.absorb(right);
         let res = sponge.squeeze_field_elements::<F>(1);
         Ok(res[0])
     }
