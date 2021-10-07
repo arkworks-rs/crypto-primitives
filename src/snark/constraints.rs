@@ -22,8 +22,10 @@ use ark_std::{
     vec::{IntoIter, Vec},
 };
 
+use crate::Gadget;
+
 /// This implements constraints for SNARK verifiers.
-pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField>: SNARK<F> {
+pub trait SNARKWithGadget<F: PrimeField, ConstraintF: PrimeField>: SNARK<F> {
     type ProcessedVerifyingKeyVar: AllocVar<Self::ProcessedVerifyingKey, ConstraintF> + Clone;
     type VerifyingKeyVar: AllocVar<Self::VerifyingKey, ConstraintF>
         + ToBytesGadget<ConstraintF>
@@ -80,28 +82,153 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField>: SNARK<F> {
         Self::VerifyingKeyVar::new_variable(cs, f, mode)
     }
 
-    fn verify_with_processed_vk(
+    fn verify_with_processed_vk_gadget(
         circuit_pvk: &Self::ProcessedVerifyingKeyVar,
         x: &Self::InputVar,
         proof: &Self::ProofVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError>;
 
-    fn verify(
+    fn verify_gadget(
         circuit_vk: &Self::VerifyingKeyVar,
         x: &Self::InputVar,
         proof: &Self::ProofVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError>;
 }
 
+/// This implements constraints for SNARK verifiers.
+pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField> {
+    type Native: SNARKWithGadget<
+        F, 
+        ConstraintF,
+        VerifierSize = Self::VerifierSize,
+        ProcessedVerifyingKeyVar = Self::ProcessedVerifyingKeyVar,
+        VerifyingKeyVar = Self::VerifyingKeyVar,
+        InputVar = Self::InputVar,
+        ProofVar = Self::ProofVar,
+    >;
+    type ProcessedVerifyingKeyVar: AllocVar<<Self::Native as SNARK<F>>::ProcessedVerifyingKey, ConstraintF> + Clone;
+    type VerifyingKeyVar: AllocVar<<Self::Native as SNARK<F>>::VerifyingKey, ConstraintF>
+        + ToBytesGadget<ConstraintF>
+        + Clone;
+    type InputVar: AllocVar<Vec<F>, ConstraintF> + FromFieldElementsGadget<F, ConstraintF> + Clone;
+    type ProofVar: AllocVar<<Self::Native as SNARK<F>>::Proof, ConstraintF> + Clone;
+
+    /// Information about the R1CS constraints required to check proofs relative
+    /// a given verification key. In the context of a LPCP-based pairing-based SNARK
+    /// like that of [[Groth16]](https://eprint.iacr.org/2016/260),
+    /// this is independent of the R1CS matrices,
+    /// whereas for more "complex" SNARKs like [[Marlin]](https://eprint.iacr.org/2019/1047),
+    /// this can encode information about the highest degree of polynomials
+    /// required to verify proofs.
+    type VerifierSize: PartialOrd + Clone + fmt::Debug;
+
+    /// Returns information about the R1CS constraints required to check proofs relative
+    /// to the verification key `circuit_vk`.
+    fn verifier_size(vk: &<Self::Native as SNARK<F>>::VerifyingKey) -> Self::VerifierSize {
+        Self::Native::verifier_size(vk)
+    }
+
+    /// Optionally allocates `S::Proof` in `cs` without performing
+    /// additional checks, such as subgroup membership checks. Use this *only*
+    /// if you know it is safe to do so. Such "safe" scenarios can include
+    /// the case where `proof` is a public input (`mode == AllocationMode::Input`),
+    /// and the corresponding checks are performed by the SNARK verifier outside
+    /// the circuit.  Another example is the when `mode == AllocationMode::Constant`.
+    ///
+    /// The default implementation does not omit such checks, and just invokes
+    /// `Self::ProofVar::new_variable`.
+    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    fn new_proof_unchecked<T: Borrow<<Self::Native as SNARK<F>>::Proof>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self::ProofVar, SynthesisError> {
+        Self::Native::new_proof_unchecked(cs, f, mode)
+    }
+
+    /// Optionally allocates `S::VerifyingKey` in `cs` without performing
+    /// additional checks, such as subgroup membership checks. Use this *only*
+    /// if you know it is safe to do so. Such "safe" scenarios can include
+    /// the case where `vk` is a public input (`mode == AllocationMode::Input`),
+    /// and the corresponding checks are performed by the SNARK verifier outside
+    /// the circuit. Another example is the when `mode == AllocationMode::Constant`.
+    ///
+    /// The default implementation does not omit such checks, and just invokes
+    /// `Self::VerifyingKeyVar::new_variable`.
+    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    fn new_verification_key_unchecked<T: Borrow<<Self::Native as SNARK<F>>::VerifyingKey>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self::VerifyingKeyVar, SynthesisError> {
+        Self::Native::new_verification_key_unchecked(cs, f, mode)
+    }
+
+    fn verify_with_processed_vk(
+        pvk: &Self::ProcessedVerifyingKeyVar,
+        x: &Self::InputVar,
+        proof: &Self::ProofVar,
+    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
+        Self::Native::verify_with_processed_vk_gadget(pvk, x, proof)
+    }
+
+    fn verify(
+        vk: &Self::VerifyingKeyVar,
+        x: &Self::InputVar,
+        proof: &Self::ProofVar,
+    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
+        Self::Native::verify_gadget(vk, x, proof)
+    }
+}
+
+impl<S, F, ConstraintF> SNARKGadget<F, ConstraintF> for Gadget<S>
+where 
+    S: SNARKWithGadget<F, ConstraintF>,
+    F: PrimeField, ConstraintF: PrimeField
+{
+    type Native = S;
+    type VerifierSize = S::VerifierSize;
+    type ProcessedVerifyingKeyVar = S::ProcessedVerifyingKeyVar;
+    type VerifyingKeyVar = S::VerifyingKeyVar;
+    type InputVar = S::InputVar;
+    type ProofVar = S::ProofVar;
+}
+
 pub trait CircuitSpecificSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
-    SNARKGadget<F, ConstraintF> + CircuitSpecificSetupSNARK<F>
+    SNARKGadget<F, ConstraintF> 
+where
+    Self::Native: CircuitSpecificSetupSNARK<F>
 {
 }
 
-pub trait UniversalSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
-    SNARKGadget<F, ConstraintF> + UniversalSetupSNARK<F>
+impl<S, F, ConstraintF> CircuitSpecificSetupSNARKGadget<F, ConstraintF> for Gadget<S>
+where 
+    S: CircuitSpecificSetupSNARK<F> + SNARKWithGadget<F, ConstraintF>,
+    F: PrimeField, 
+    ConstraintF: PrimeField
+{}
+
+pub trait UniversalSetupSNARKWithGadget<F: PrimeField, ConstraintF: PrimeField>:
+    SNARKWithGadget<F, ConstraintF> + UniversalSetupSNARK<F>
 {
-    type BoundCircuit: From<Self::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+    type BoundCircuit: From<<Self as UniversalSetupSNARK<F>>::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+}
+
+pub trait UniversalSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
+    SNARKGadget<F, ConstraintF>
+where
+    Self::Native: UniversalSetupSNARKWithGadget<F, ConstraintF>
+{
+    type BoundCircuit: From<<Self::Native as UniversalSetupSNARK<F>>::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+}
+
+impl<S, F, ConstraintF> UniversalSetupSNARKGadget<F, ConstraintF> for Gadget<S>
+where 
+    S: UniversalSetupSNARK<F> + UniversalSetupSNARKWithGadget<F, ConstraintF>,
+    F: PrimeField, 
+    ConstraintF: PrimeField
+{
+    type BoundCircuit = S::BoundCircuit;
 }
 
 /// Gadgets to convert elements between different fields for recursive proofs
@@ -369,29 +496,17 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
 
 /// Conversion of field elements by allocating them as nonnative field elements
 /// Used by Marlin
-pub struct NonNativeFieldInputVar<F, CF>
-where
-    F: PrimeField,
-    CF: PrimeField,
-{
+pub struct NonNativeFieldInputVar<F: PrimeField, CF: PrimeField> {
     pub val: Vec<NonNativeFieldVar<F, CF>>,
 }
 
-impl<F, CF> NonNativeFieldInputVar<F, CF>
-where
-    F: PrimeField,
-    CF: PrimeField,
-{
+impl<F: PrimeField, CF: PrimeField> NonNativeFieldInputVar<F, CF> {
     pub fn new(val: Vec<NonNativeFieldVar<F, CF>>) -> Self {
         Self { val }
     }
 }
 
-impl<F, CF> IntoIterator for NonNativeFieldInputVar<F, CF>
-where
-    F: PrimeField,
-    CF: PrimeField,
-{
+impl<F: PrimeField, CF: PrimeField> IntoIterator for NonNativeFieldInputVar<F, CF> {
     type Item = NonNativeFieldVar<F, CF>;
     type IntoIter = IntoIter<NonNativeFieldVar<F, CF>>;
 
@@ -400,11 +515,7 @@ where
     }
 }
 
-impl<F, CF> Clone for NonNativeFieldInputVar<F, CF>
-where
-    F: PrimeField,
-    CF: PrimeField,
-{
+impl<F: PrimeField, CF: PrimeField> Clone for NonNativeFieldInputVar<F, CF> {
     fn clone(&self) -> Self {
         Self {
             val: self.val.clone(),
@@ -412,11 +523,7 @@ where
     }
 }
 
-impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
-where
-    F: PrimeField,
-    CF: PrimeField,
-{
+impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF> {
     fn new_variable<T: Borrow<Vec<F>>>(
         cs: impl Into<Namespace<CF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
