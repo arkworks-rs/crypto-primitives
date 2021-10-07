@@ -24,7 +24,7 @@ pub struct ParametersVar<C: CurveWithVar<ConstraintF<C>>> {
 #[derive(Clone, Debug)]
 pub struct RandomnessVar<F: Field>(Vec<UInt8<F>>);
 
-impl<C, W> crate::commitment::CommitmentGadget<ConstraintF<C>> for Commitment<C, W>
+impl<C, W> crate::commitment::CommitmentWithGadget<ConstraintF<C>> for Commitment<C, W>
 where
     C: CurveWithVar<ConstraintF<C>>,
     W: Window,
@@ -36,7 +36,7 @@ where
     type RandomnessVar = RandomnessVar<ConstraintF<C>>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, r))]
-    fn commit(
+    fn commit_gadget(
         parameters: &Self::ParametersVar,
         input: &[UInt8<ConstraintF<C>>],
         r: &Self::RandomnessVar,
@@ -117,12 +117,13 @@ where
 
 #[cfg(test)]
 mod test {
-    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq, Fr};
+    use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq, Fr};
     use ark_std::{test_rng, UniformRand};
 
     use crate::{
+        Gadget,
         commitment::{
-            pedersen::{constraints::CommGadget, Commitment, Randomness},
+            pedersen::{Commitment, Randomness},
             CommitmentGadget, CommitmentScheme,
         },
         crh::pedersen,
@@ -159,17 +160,17 @@ mod test {
             input_var.push(UInt8::new_witness(cs.clone(), || Ok(*input_byte)).unwrap());
         }
 
-        let randomness_var = <TestCOMM as CommitmentGadget<Fq>>::RandomnessVar::new_witness(
+        let randomness_var = <Gadget<TestCOMM> as CommitmentGadget<Fq>>::RandomnessVar::new_witness(
             ark_relations::ns!(cs, "gadget_randomness"),
             || Ok(&randomness),
         )
         .unwrap();
-        let parameters_var = <TestCOMM as CommitmentGadget<Fq>>::ParametersVar::new_witness(
+        let parameters_var = <Gadget<TestCOMM> as CommitmentGadget<Fq>>::ParametersVar::new_witness(
             ark_relations::ns!(cs, "gadget_parameters"),
             || Ok(&parameters),
         )
         .unwrap();
-        let result_var = TestCOMM::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+        let result_var = Gadget::<TestCOMM>::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

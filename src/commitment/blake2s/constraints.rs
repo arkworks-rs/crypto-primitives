@@ -1,10 +1,6 @@
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::{
-    commitment::{blake2s, CommitmentGadget},
-    prf::blake2s::constraints::{evaluate_blake2s, OutputVar},
-    Vec,
-};
+use crate::{Vec, commitment::{CommitmentWithGadget, blake2s}, prf::blake2s::constraints::{evaluate_blake2s, OutputVar}};
 use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::prelude::*;
 
@@ -16,13 +12,13 @@ pub struct ParametersVar;
 #[derive(Clone)]
 pub struct RandomnessVar<F: Field>(pub Vec<UInt8<F>>);
 
-impl<F: PrimeField> CommitmentGadget<F> for blake2s::Commitment {
+impl<F: PrimeField> CommitmentWithGadget<F> for blake2s::Commitment {
     type OutputVar = OutputVar<F>;
     type ParametersVar = ParametersVar;
     type RandomnessVar = RandomnessVar<F>;
 
     #[tracing::instrument(target = "r1cs", skip(input, r))]
-    fn commit(
+    fn commit_gadget(
         _: &Self::ParametersVar,
         input: &[UInt8<F>],
         r: &Self::RandomnessVar,
@@ -69,6 +65,7 @@ impl<ConstraintF: PrimeField> AllocVar<[u8; 32], ConstraintF> for RandomnessVar<
 
 #[cfg(test)]
 mod test {
+    use crate::Gadget;
     use crate::commitment::{
         blake2s::{constraints::RandomnessVar, Commitment},
         CommitmentGadget, CommitmentScheme,
@@ -105,12 +102,12 @@ mod test {
         }
         let randomness_var = RandomnessVar(randomness_var);
 
-        let parameters_var = <TestCOMM as CommitmentGadget<Fr>>::ParametersVar::new_witness(
+        let parameters_var = <Gadget<TestCOMM> as CommitmentGadget<Fr>>::ParametersVar::new_witness(
             ark_relations::ns!(cs, "gadget_parameters"),
             || Ok(&parameters),
         )
         .unwrap();
-        let result_var = <TestCOMM as CommitmentGadget<Fr>>::commit(
+        let result_var = Gadget::<TestCOMM>::commit(
             &parameters_var,
             &input_var,
             &randomness_var,
