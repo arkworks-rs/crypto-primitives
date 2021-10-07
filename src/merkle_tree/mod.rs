@@ -1,8 +1,8 @@
 #![allow(clippy::needless_range_loop)]
 
-use crate::CRHScheme;
+use crate::CRH;
 /// Defines a trait to chain two types of CRHs.
-use crate::{crh::TwoToOneCRHScheme, Error};
+use crate::{crh::TwoToOneCRH, Error};
 use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::borrow::Borrow;
@@ -54,21 +54,21 @@ pub trait Config {
                        // Tom's Note: in the future, if we want different hash function, we can simply add more
                        // types of digest here and specify a digest converter. Same for constraints.
 
-    type LeafHash: CRHScheme<Input = Self::Leaf>;
+    type LeafHash: CRH<Input = Self::Leaf>;
     /// 2 inner digest -> inner digest
-    type TwoToOneHash: TwoToOneCRHScheme;
+    type TwoToOneHash: TwoToOneCRH;
 
     type LeafToInnerConverter: DigestConverter<
         LeafDigest<Self>,
-        <Self::TwoToOneHash as TwoToOneCRHScheme>::Input,
+        <Self::TwoToOneHash as TwoToOneCRH>::Input,
     >;
 }
 
-pub type LeafDigest<C> = <<C as Config>::LeafHash as CRHScheme>::Output;
-pub type TwoToOneDigest<C> = <<C as Config>::TwoToOneHash as TwoToOneCRHScheme>::Output;
+pub type LeafDigest<C> = <<C as Config>::LeafHash as CRH>::Output;
+pub type TwoToOneDigest<C> = <<C as Config>::TwoToOneHash as TwoToOneCRH>::Output;
 
-pub type TwoToOneParams<P> = <<P as Config>::TwoToOneHash as TwoToOneCRHScheme>::Parameters;
-pub type LeafParams<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
+pub type TwoToOneParams<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
+pub type LeafParams<P> = <<P as Config>::LeafHash as CRH>::Parameters;
 
 /// Stores the hashes of a particular path (in order) from root to leaf.
 /// For example:

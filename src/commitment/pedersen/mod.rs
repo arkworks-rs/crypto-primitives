@@ -1,4 +1,4 @@
-use crate::{CRHScheme, Error, Vec};
+use crate::{Error, Vec, CRH};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
 use ark_std::io::{Result as IoResult, Write};

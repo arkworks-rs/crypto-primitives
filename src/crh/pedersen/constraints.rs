@@ -119,7 +119,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        crh::{pedersen, CRHGadget, CRHScheme, TwoToOneCRHGadget, TwoToOneCRHScheme},
+        crh::{pedersen, CRHGadget, TwoToOneCRH, TwoToOneCRHGadget, CRH},
         Gadget,
     };
     use ark_ec::ProjectiveCurve;

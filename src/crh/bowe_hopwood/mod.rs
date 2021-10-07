@@ -12,7 +12,7 @@ use ark_std::{
 use rayon::prelude::*;
 
 use super::pedersen;
-use crate::crh::{CRHScheme, TwoToOneCRHScheme};
+use crate::crh::{TwoToOneCRH as TwoToOneCRHTrait, CRH as CRHTrait};
 use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
@@ -72,7 +72,7 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -186,7 +186,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHTrait for TwoToOneCRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -253,7 +253,7 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 mod test {
     use crate::{
         crh::{bowe_hopwood, pedersen::Window},
-        CRHScheme,
+        CRH,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_std::test_rng;

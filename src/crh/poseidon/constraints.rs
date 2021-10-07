@@ -1,6 +1,6 @@
 use crate::crh::poseidon::{TwoToOneCRH, CRH};
-use crate::crh::{CRHWithGadget, TwoToOneCRHWithGadget};
-use crate::{CRHScheme, Vec};
+use crate::crh::{CRHWithGadget, TwoToOneCRHWithGadget, CRH as _};
+use crate::Vec;
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
 use ark_r1cs_std::fields::fp::FpVar;
@@ -31,7 +31,7 @@ impl<F: PrimeField + Absorb> CRHWithGadget<F> for CRH<F> {
         if cs.is_none() {
             let input = input.iter().map(|f| f.value().unwrap()).collect::<Vec<F>>();
             Ok(FpVar::Constant(
-                <CRH<F> as CRHScheme>::evaluate(&parameters.parameters, input).unwrap(),
+                CRH::<F>::evaluate(&parameters.parameters, input).unwrap(),
             ))
         } else {
             let mut sponge = PoseidonSpongeVar::new(cs, &parameters.parameters);
@@ -64,11 +64,8 @@ impl<F: PrimeField + Absorb> TwoToOneCRHWithGadget<F> for TwoToOneCRH<F> {
 
         if cs.is_none() {
             Ok(FpVar::Constant(
-                <CRH<F> as CRHScheme>::evaluate(
-                    &parameters.parameters,
-                    vec![left.value()?, right.value()?],
-                )
-                .unwrap(),
+                CRH::<F>::evaluate(&parameters.parameters, vec![left.value()?, right.value()?])
+                    .unwrap(),
             ))
         } else {
             let mut sponge = PoseidonSpongeVar::new(cs, &parameters.parameters);
@@ -96,10 +93,9 @@ impl<F: PrimeField + Absorb> AllocVar<PoseidonParameters<F>, F> for CRHParameter
 
 #[cfg(test)]
 mod test {
-    use crate::crh::poseidon::{TwoToOneCRH, CRH};
-    use crate::crh::{TwoToOneCRHGadget, TwoToOneCRHScheme};
-    use crate::{crh::poseidon::constraints::CRHParametersVar, Gadget};
-    use crate::{CRHGadget, CRHScheme};
+    use crate::crh::poseidon::{constraints::CRHParametersVar, TwoToOneCRH, CRH};
+    use crate::crh::{CRHGadget, TwoToOneCRH as _, TwoToOneCRHGadget, CRH as _};
+    use crate::Gadget;
     use ark_bls12_377::Fr;
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::{

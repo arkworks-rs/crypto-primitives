@@ -30,7 +30,7 @@ pub mod snark;
 
 pub use self::{
     commitment::CommitmentScheme,
-    crh::CRHScheme,
+    crh::CRH,
     merkle_tree::{MerkleTree, Path},
     prf::PRF,
     signature::SignatureScheme,

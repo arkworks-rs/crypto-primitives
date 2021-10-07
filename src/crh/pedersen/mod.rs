@@ -7,7 +7,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::crh::{CRHScheme, TwoToOneCRHScheme};
+use crate::crh::{TwoToOneCRH as TwoToOneCRHTrait, CRH as CRHTrait};
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
@@ -53,7 +53,7 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CRHScheme for CRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> CRHTrait for CRH<C, W> {
     type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
@@ -143,7 +143,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
+impl<C: ProjectiveCurve, W: Window> TwoToOneCRHTrait for TwoToOneCRH<C, W> {
     type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;

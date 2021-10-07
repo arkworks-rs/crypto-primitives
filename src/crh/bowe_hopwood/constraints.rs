@@ -153,9 +153,9 @@ where
 mod test {
     use ark_std::rand::Rng;
 
-    use crate::crh::{pedersen, TwoToOneCRHGadget, TwoToOneCRHScheme};
+    use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget};
     use crate::{crh::bowe_hopwood, Gadget};
-    use crate::{CRHGadget, CRHScheme};
+    use crate::{CRHGadget, CRH};
     use ark_ed_on_bls12_381::{EdwardsParameters, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};

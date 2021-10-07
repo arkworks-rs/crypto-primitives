@@ -1,12 +1,12 @@
 mod byte_mt_tests {
     use crate::{
-        crh::{pedersen, TwoToOneCRHGadget, TwoToOneCRHScheme},
+        crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget},
         Gadget,
     };
 
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::{ByteDigestConverter, Config};
-    use crate::{CRHGadget, CRHScheme, MerkleTree, PathVar};
+    use crate::{CRHGadget, MerkleTree, PathVar, CRH};
     use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq};
     #[allow(unused)]
     use ark_r1cs_std::prelude::*;
@@ -53,8 +53,8 @@ mod byte_mt_tests {
     ) -> () {
         let mut rng = ark_std::test_rng();
 
-        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
-        let two_to_one_crh_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
+        let leaf_crh_params = <LeafH as CRH>::setup(&mut rng).unwrap();
+        let two_to_one_crh_params = <CompressH as TwoToOneCRH>::setup(&mut rng).unwrap();
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_params,
             &two_to_one_crh_params,
@@ -79,7 +79,7 @@ mod byte_mt_tests {
                 ark_relations::ns!(cs, "new_digest"),
                 || {
                     if use_bad_root {
-                        Ok(<LeafH as CRHScheme>::Output::default())
+                        Ok(<LeafH as CRH>::Output::default())
                     } else {
                         Ok(root)
                     }

@@ -2,14 +2,14 @@ use ark_ff::Field;
 use core::fmt::Debug;
 
 use crate::{
-    crh::{CRHScheme, TwoToOneCRHScheme},
+    crh::{TwoToOneCRH, CRH},
     Gadget,
 };
 use ark_relations::r1cs::SynthesisError;
 
 use ark_r1cs_std::prelude::*;
 
-pub trait CRHWithGadget<ConstraintF: Field>: CRHScheme {
+pub trait CRHWithGadget<ConstraintF: Field>: CRH {
     type InputVar: ?Sized;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
@@ -38,12 +38,12 @@ pub trait CRHGadget<ConstraintF: Field> {
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
-        + AllocVar<<Self::Native as CRHScheme>::Output, ConstraintF>
+        + AllocVar<<Self::Native as CRH>::Output, ConstraintF>
         + R1CSVar<ConstraintF>
         + Debug
         + Clone
         + Sized;
-    type ParametersVar: AllocVar<<Self::Native as CRHScheme>::Parameters, ConstraintF> + Clone;
+    type ParametersVar: AllocVar<<Self::Native as CRH>::Parameters, ConstraintF> + Clone;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
@@ -53,7 +53,7 @@ pub trait CRHGadget<ConstraintF: Field> {
     }
 }
 
-pub trait TwoToOneCRHWithGadget<ConstraintF: Field>: TwoToOneCRHScheme {
+pub trait TwoToOneCRHWithGadget<ConstraintF: Field>: TwoToOneCRH {
     type InputVar: ?Sized;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
@@ -89,14 +89,13 @@ pub trait TwoToOneCRHGadget<ConstraintF: Field> {
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
-        + AllocVar<<Self::Native as TwoToOneCRHScheme>::Output, ConstraintF>
+        + AllocVar<<Self::Native as TwoToOneCRH>::Output, ConstraintF>
         + R1CSVar<ConstraintF>
         + Debug
         + Clone
         + Sized;
 
-    type ParametersVar: AllocVar<<Self::Native as TwoToOneCRHScheme>::Parameters, ConstraintF>
-        + Clone;
+    type ParametersVar: AllocVar<<Self::Native as TwoToOneCRH>::Parameters, ConstraintF> + Clone;
 
     fn evaluate(
         parameters: &Self::ParametersVar,

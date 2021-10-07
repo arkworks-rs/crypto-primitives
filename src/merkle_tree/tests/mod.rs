@@ -41,10 +41,8 @@ mod bytes_mt_tests {
             .iter()
             .map(|leaf| crate::to_unchecked_bytes!(leaf).unwrap())
             .collect();
-        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
-        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
-            .unwrap()
-            .clone();
+        let leaf_crh_params = <LeafH as CRH>::setup(&mut rng).unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRH>::setup(&mut rng).unwrap().clone();
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),

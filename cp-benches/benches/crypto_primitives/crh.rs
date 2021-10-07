@@ -3,7 +3,7 @@ extern crate criterion;
 
 use ark_crypto_primitives::crh::{
     pedersen::{Window, CRH as PedersenCRH},
-    CRHScheme,
+    CRH,
 };
 use ark_ed_on_bls12_377::EdwardsProjective as Edwards;
 use criterion::Criterion;

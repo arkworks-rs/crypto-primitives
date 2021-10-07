@@ -20,7 +20,7 @@ pub use constraints::*;
 
 /// Interface to CRH. Note that in this release, while all implementations of `CRH` have fixed length,
 /// variable length CRH may also implement this trait in future.
-pub trait CRHScheme {
+pub trait CRH {
     type Input: ?Sized;
     type Output: ToBytes
         + Clone
@@ -40,7 +40,7 @@ pub trait CRHScheme {
 }
 
 /// CRH used by merkle tree inner hash. Merkle tree will convert leaf output to bytes first.
-pub trait TwoToOneCRHScheme {
+pub trait TwoToOneCRH {
     /// Raw Input type of TwoToOneCRH
     type Input: ?Sized;
     /// Raw Output type of TwoToOneCRH

@@ -1,5 +1,5 @@
-use crate::crh::TwoToOneCRHScheme;
-use crate::{CRHScheme, Error};
+use crate::crh::{TwoToOneCRH as TwoToOneCRHTrait, CRH as CRHTrait};
+use crate::Error;
 use ark_ff::PrimeField;
 use ark_sponge::poseidon::{PoseidonParameters, PoseidonSponge};
 use ark_sponge::{Absorb, CryptographicSponge};
@@ -14,7 +14,7 @@ pub struct CRH<F: PrimeField + Absorb> {
     field_phantom: PhantomData<F>,
 }
 
-impl<F: PrimeField + Absorb> CRHScheme for CRH<F> {
+impl<F: PrimeField + Absorb> CRHTrait for CRH<F> {
     type Input = [F];
     type Output = F;
     type Parameters = PoseidonParameters<F>;
@@ -42,7 +42,7 @@ pub struct TwoToOneCRH<F: PrimeField + Absorb> {
     field_phantom: PhantomData<F>,
 }
 
-impl<F: PrimeField + Absorb> TwoToOneCRHScheme for TwoToOneCRH<F> {
+impl<F: PrimeField + Absorb> TwoToOneCRHTrait for TwoToOneCRH<F> {
     type Input = F;
     type Output = F;
     type Parameters = PoseidonParameters<F>;
