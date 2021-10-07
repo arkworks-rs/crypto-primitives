@@ -1,6 +1,6 @@
-use crate::crh::TwoToOneCRHSchemeGadget;
+use crate::{Gadget, crh::{CRHWithGadget, TwoToOneCRHGadget, TwoToOneCRHWithGadget}};
 use crate::merkle_tree::{Config, Path};
-use crate::CRHSchemeGadget;
+use crate::CRHGadget;
 use ark_ff::Field;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::boolean::Boolean;
@@ -12,7 +12,7 @@ use ark_std::borrow::Borrow;
 use ark_std::fmt::Debug;
 use ark_std::vec::Vec;
 
-use super::ByteDigestConverter;
+use super::{ByteDigestConverter, IdentityDigestConverter};
 
 pub trait DigestVarConverter<From, To: ?Sized> {
     type Target: Borrow<To>;
@@ -29,10 +29,20 @@ impl<T: ToBytesGadget<ConstraintF>, ConstraintF: Field> DigestVarConverter<T, [U
     }
 }
 
+impl<T: Clone> DigestVarConverter<T, T>
+    for IdentityDigestConverter
+{
+    type Target = T;
+
+    fn convert(from: &T) -> Result<Self::Target, SynthesisError> {
+        Ok(from.clone())
+    }
+}
+
 pub trait ConfigGadget<ConstraintF: Field>: Config
 where
-    Self::LeafHash: CRHSchemeGadget<ConstraintF, InputVar = Self::LeafVar>,
-    Self::TwoToOneHash: TwoToOneCRHSchemeGadget<ConstraintF>,
+    Self::LeafHash: CRHWithGadget<ConstraintF, InputVar = Self::LeafVar>,
+    Self::TwoToOneHash: TwoToOneCRHWithGadget<ConstraintF>,
 {
     type LeafVar: Debug + ?Sized;
 
@@ -43,24 +53,24 @@ where
 }
 
 pub type TwoToOneInputVar<C, CF> =
-    <<C as Config>::TwoToOneHash as TwoToOneCRHSchemeGadget<CF>>::InputVar;
-pub type LeafDigestVar<C, CF> = <<C as Config>::LeafHash as CRHSchemeGadget<CF>>::OutputVar;
+    <Gadget<<C as Config>::TwoToOneHash> as TwoToOneCRHGadget<CF>>::InputVar;
+pub type LeafDigestVar<C, CF> = <Gadget<<C as Config>::LeafHash> as CRHGadget<CF>>::OutputVar;
 pub type TwoToOneDigestVar<C, CF> =
-    <<C as Config>::TwoToOneHash as TwoToOneCRHSchemeGadget<CF>>::OutputVar;
+    <Gadget<<C as Config>::TwoToOneHash> as TwoToOneCRHGadget<CF>>::OutputVar;
 
 pub type LeafParamsVar<CG, ConstraintF> =
-    <<CG as Config>::LeafHash as CRHSchemeGadget<ConstraintF>>::ParametersVar;
+    <Gadget<<CG as Config>::LeafHash> as CRHGadget<ConstraintF>>::ParametersVar;
 
 pub type TwoToOneParamsVar<CG, ConstraintF> =
-    <<CG as Config>::TwoToOneHash as TwoToOneCRHSchemeGadget<ConstraintF>>::ParametersVar;
+    <Gadget<<CG as Config>::TwoToOneHash> as TwoToOneCRHGadget<ConstraintF>>::ParametersVar;
 
 /// Represents a merkle tree path gadget.
 #[derive(Debug, Derivative)]
 #[derivative(Clone(bound = "P: ConfigGadget<ConstraintF>, ConstraintF: Field"))]
 pub struct PathVar<P: ConfigGadget<ConstraintF>, ConstraintF: Field>
 where
-    P::LeafHash: CRHSchemeGadget<ConstraintF, InputVar = P::LeafVar>,
-    P::TwoToOneHash: TwoToOneCRHSchemeGadget<ConstraintF>,
+    P::LeafHash: CRHWithGadget<ConstraintF, InputVar = P::LeafVar>,
+    P::TwoToOneHash: TwoToOneCRHWithGadget<ConstraintF>,
 {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<ConstraintF>>,
@@ -75,8 +85,8 @@ where
 impl<P: ConfigGadget<ConstraintF>, ConstraintF: Field> AllocVar<Path<P>, ConstraintF>
     for PathVar<P, ConstraintF>
 where
-    P::LeafHash: CRHSchemeGadget<ConstraintF, InputVar = P::LeafVar>,
-    P::TwoToOneHash: TwoToOneCRHSchemeGadget<ConstraintF>,
+    P::LeafHash: CRHWithGadget<ConstraintF, InputVar = P::LeafVar>,
+    P::TwoToOneHash: TwoToOneCRHWithGadget<ConstraintF>,
 {
     #[tracing::instrument(target = "r1cs", skip(cs, f))]
     fn new_variable<T: Borrow<Path<P>>>(
@@ -121,8 +131,8 @@ where
 
 impl<P: ConfigGadget<ConstraintF>, ConstraintF: Field> PathVar<P, ConstraintF>
 where
-    P::LeafHash: CRHSchemeGadget<ConstraintF, InputVar = P::LeafVar>,
-    P::TwoToOneHash: TwoToOneCRHSchemeGadget<ConstraintF>,
+    P::LeafHash: CRHWithGadget<ConstraintF, InputVar = P::LeafVar>,
+    P::TwoToOneHash: TwoToOneCRHWithGadget<ConstraintF>,
 {
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
@@ -132,7 +142,7 @@ where
         two_to_one_params: &TwoToOneParamsVar<P, ConstraintF>,
         leaf: &P::LeafVar,
     ) -> Result<TwoToOneDigestVar<P, ConstraintF>, SynthesisError> {
-        let claimed_leaf_hash = P::LeafHash::evaluate(leaf_params, leaf)?;
+        let claimed_leaf_hash = Gadget::<P::LeafHash>::evaluate(leaf_params, leaf)?;
         let leaf_sibling_hash = &self.leaf_sibling;
 
         // calculate hash for the bottom non_leaf_layer
@@ -153,7 +163,7 @@ where
         let right_hash = P::LeafToInnerVarConverter::convert(&right_hash)?;
 
         let mut curr_hash =
-            P::TwoToOneHash::evaluate(two_to_one_params, left_hash.borrow(), &right_hash.borrow())?;
+            Gadget::<P::TwoToOneHash>::evaluate(two_to_one_params, left_hash.borrow(), &right_hash.borrow())?;
         // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
@@ -164,7 +174,7 @@ where
             let left_hash = bit.select(sibling, &curr_hash)?;
             let right_hash = bit.select(&curr_hash, sibling)?;
 
-            curr_hash = P::TwoToOneHash::compress(two_to_one_params, &left_hash, &right_hash)?;
+            curr_hash = Gadget::<P::TwoToOneHash>::compress(two_to_one_params, &left_hash, &right_hash)?;
         }
 
         Ok(curr_hash)

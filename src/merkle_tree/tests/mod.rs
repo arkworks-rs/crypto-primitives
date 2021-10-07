@@ -27,9 +27,7 @@ mod bytes_mt_tests {
     impl Config for JubJubMerkleTreeParams {
         type Leaf = [u8];
 
-        type LeafDigest = <LeafH as CRHScheme>::Output;
-        type LeafInnerDigestConverter = ByteDigestConverter<Self::LeafDigest>;
-        type InnerDigest = <CompressH as TwoToOneCRHScheme>::Output;
+        type LeafToInnerConverter =  ByteDigestConverter;
 
         type LeafHash = LeafH;
         type TwoToOneHash = CompressH;
@@ -132,9 +130,8 @@ mod field_mt_tests {
     struct FieldMTConfig;
     impl Config for FieldMTConfig {
         type Leaf = [F];
-        type LeafDigest = F;
-        type LeafInnerDigestConverter = IdentityDigestConverter<F>;
-        type InnerDigest = F;
+        type LeafToInnerConverter = IdentityDigestConverter;
+        
         type LeafHash = H;
         type TwoToOneHash = TwoToOneH;
     }
