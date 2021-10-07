@@ -4,13 +4,13 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use crate::encryption::elgamal::{
     Ciphertext, ElGamal, Parameters, Plaintext, PublicKey, Randomness,
 };
-use crate::encryption::AsymmetricEncryptionGadget;
+use crate::encryption::AsymmetricEncWithGadget;
 use ark_ec::ProjectiveCurve;
 use ark_ff::{
     fields::{Field, PrimeField},
     to_bytes, Zero,
 };
-use ark_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
+use ark_std::{borrow::Borrow, vec::Vec};
 
 pub type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
@@ -19,7 +19,7 @@ pub struct RandomnessVar<F: Field>(Vec<UInt8<F>>);
 
 impl<C, F> AllocVar<Randomness<C>, F> for RandomnessVar<F>
 where
-    C: ProjectiveCurve,
+    C: CurveWithVar<ConstraintF<C>>,
     F: PrimeField,
 {
     fn new_variable<T: Borrow<Randomness<C>>>(
@@ -36,113 +36,84 @@ where
     }
 }
 
+
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct ParametersVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    generator: GG,
-    #[doc(hidden)]
-    _curve: PhantomData<C>,
+#[derivative(Clone(bound = "C::Var: Clone"))]
+pub struct ParametersVar<C: CurveWithVar<ConstraintF<C>>> {
+    generator: C::Var,
 }
 
-impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for ParametersVar<C, GG>
+impl<C> AllocVar<Parameters<C>, ConstraintF<C>> for ParametersVar<C>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
 {
     fn new_variable<T: Borrow<Parameters<C>>>(
         cs: impl Into<Namespace<ConstraintF<C>>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
+        _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let generator = GG::new_variable(cs, || f().map(|g| g.borrow().generator), mode)?;
+        // Always allocate as constant
+        let generator = C::Var::new_constant(cs, f().map(|g| g.borrow().generator.into()).unwrap())?;
         Ok(Self {
             generator,
-            _curve: PhantomData,
         })
     }
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct PlaintextVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    pub plaintext: GG,
-    #[doc(hidden)]
-    _curve: PhantomData<C>,
+#[derivative(Clone(bound = "C::Var: Clone"))]
+pub struct PlaintextVar<C: CurveWithVar<ConstraintF<C>>> {
+    pub plaintext: C::Var,
 }
 
-impl<C, GG> AllocVar<Plaintext<C>, ConstraintF<C>> for PlaintextVar<C, GG>
+impl<C> AllocVar<Plaintext<C>, ConstraintF<C>> for PlaintextVar<C>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
 {
     fn new_variable<T: Borrow<Plaintext<C>>>(
         cs: impl Into<Namespace<ConstraintF<C>>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let plaintext = GG::new_variable(cs, f, mode)?;
+        let plaintext = C::Var::new_variable(cs, f, mode)?;
         Ok(Self {
             plaintext,
-            _curve: PhantomData,
         })
     }
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct PublicKeyVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    pub pk: GG,
-    #[doc(hidden)]
-    _curve: PhantomData<C>,
+#[derivative(Clone(bound = "C::Var: Clone"))]
+pub struct PublicKeyVar<C: CurveWithVar<ConstraintF<C>>> {
+    pub pk: C::Var,
 }
 
-impl<C, GG> AllocVar<PublicKey<C>, ConstraintF<C>> for PublicKeyVar<C, GG>
+impl<C> AllocVar<PublicKey<C>, ConstraintF<C>> for PublicKeyVar<C>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
 {
     fn new_variable<T: Borrow<PublicKey<C>>>(
         cs: impl Into<Namespace<ConstraintF<C>>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let pk = GG::new_variable(cs, f, mode)?;
+        let pk = C::Var::new_variable(cs, f, mode)?;
         Ok(Self {
             pk,
-            _curve: PhantomData,
         })
     }
 }
 
 #[derive(Derivative, Debug)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct OutputVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    pub c1: GG,
-    pub c2: GG,
-    #[doc(hidden)]
-    _curve: PhantomData<C>,
+#[derivative(Clone(bound = "C::Var: Clone"))]
+pub struct CiphertextVar<C: CurveWithVar<ConstraintF<C>>> {
+    pub c1: C::Var,
+    pub c2: C::Var,
 }
 
-impl<C, GG> AllocVar<Ciphertext<C>, ConstraintF<C>> for OutputVar<C, GG>
+impl<C> AllocVar<Ciphertext<C>, ConstraintF<C>> for CiphertextVar<C>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
 {
     fn new_variable<T: Borrow<Ciphertext<C>>>(
         cs: impl Into<Namespace<ConstraintF<C>>>,
@@ -152,21 +123,18 @@ where
         let ns = cs.into();
         let cs = ns.cs();
         let prep = f().map(|g| *g.borrow());
-        let c1 = GG::new_variable(cs.clone(), || prep.map(|g| g.borrow().0), mode)?;
-        let c2 = GG::new_variable(cs.clone(), || prep.map(|g| g.borrow().1), mode)?;
+        let c1 = C::Var::new_variable(cs.clone(), || prep.map(|g| g.borrow().0), mode)?;
+        let c2 = C::Var::new_variable(cs.clone(), || prep.map(|g| g.borrow().1), mode)?;
         Ok(Self {
             c1,
             c2,
-            _curve: PhantomData,
         })
     }
 }
 
-impl<C, GC> EqGadget<ConstraintF<C>> for OutputVar<C, GC>
+impl<C> EqGadget<ConstraintF<C>> for CiphertextVar<C>
 where
-    C: ProjectiveCurve,
-    GC: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
+    C: CurveWithVar<ConstraintF<C>>,
 {
     #[inline]
     fn is_eq(&self, other: &Self) -> Result<Boolean<ConstraintF<C>>, SynthesisError> {
@@ -174,34 +142,23 @@ where
     }
 }
 
-pub struct ElGamalEncGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+impl<C> AsymmetricEncWithGadget<ConstraintF<C>> for ElGamal<C>
 where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    #[doc(hidden)]
-    _curve: PhantomData<*const C>,
-    _group_var: PhantomData<*const GG>,
-}
-
-impl<C, GG> AsymmetricEncryptionGadget<ElGamal<C>, ConstraintF<C>> for ElGamalEncGadget<C, GG>
-where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
     ConstraintF<C>: PrimeField,
 {
-    type OutputVar = OutputVar<C, GG>;
-    type ParametersVar = ParametersVar<C, GG>;
-    type PlaintextVar = PlaintextVar<C, GG>;
-    type PublicKeyVar = PublicKeyVar<C, GG>;
+    type CiphertextVar = CiphertextVar<C>;
+    type ParametersVar = ParametersVar<C>;
+    type PlaintextVar = PlaintextVar<C>;
+    type PublicKeyVar = PublicKeyVar<C>;
     type RandomnessVar = RandomnessVar<ConstraintF<C>>;
 
-    fn encrypt(
+    fn encrypt_gadget(
         parameters: &Self::ParametersVar,
         message: &Self::PlaintextVar,
         randomness: &Self::RandomnessVar,
         public_key: &Self::PublicKeyVar,
-    ) -> Result<Self::OutputVar, SynthesisError> {
+    ) -> Result<Self::CiphertextVar, SynthesisError> {
         // flatten randomness to little-endian bit vector
         let randomness = randomness
             .0
@@ -210,34 +167,33 @@ where
             .collect::<Vec<_>>();
 
         // compute s = randomness*pk
-        let s = public_key.pk.clone().scalar_mul_le(randomness.iter())?;
+        let s = public_key.pk.scalar_mul_le(randomness.iter())?;
 
         // compute c1 = randomness*generator
         let c1 = parameters
             .generator
-            .clone()
             .scalar_mul_le(randomness.iter())?;
 
         // compute c2 = m + s
-        let c2 = message.plaintext.clone() + s;
+        let c2 = s + &message.plaintext;
 
-        Ok(Self::OutputVar {
+        Ok(Self::CiphertextVar {
             c1,
             c2,
-            _curve: PhantomData,
         })
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::encryption::constraints::AsymmetricEncryptionGadget;
+    use crate::Gadget;
+    use crate::encryption::constraints::AsymmetricEncGadget;
+    use crate::encryption::elgamal::{ElGamal, Randomness};
+    use crate::encryption::AsymmetricEnc;
     use ark_std::{test_rng, UniformRand};
 
-    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
+    use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq};
 
-    use crate::encryption::elgamal::{constraints::ElGamalEncGadget, ElGamal, Randomness};
-    use crate::encryption::AsymmetricEncryptionScheme;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
 
@@ -245,38 +201,38 @@ mod test {
     fn test_elgamal_gadget() {
         let rng = &mut test_rng();
 
-        type MyEnc = ElGamal<JubJub>;
-        type MyGadget = ElGamalEncGadget<JubJub, EdwardsVar>;
+        type TestEnc = ElGamal<JubJub>;
+        type TestGadget = Gadget<TestEnc>;
 
         // compute primitive result
-        let parameters = MyEnc::setup(rng).unwrap();
-        let (pk, _) = MyEnc::keygen(&parameters, rng).unwrap();
+        let parameters = TestEnc::setup(rng).unwrap();
+        let (pk, _) = TestEnc::keygen(&parameters, rng).unwrap();
         let msg = JubJub::rand(rng).into();
         let randomness = Randomness::rand(rng);
-        let primitive_result = MyEnc::encrypt(&parameters, &pk, &msg, &randomness).unwrap();
+        let primitive_result = TestEnc::encrypt(&parameters, &pk, &msg, &randomness).unwrap();
 
         // construct constraint system
         let cs = ConstraintSystem::<Fq>::new_ref();
         let randomness_var =
-            <MyGadget as AsymmetricEncryptionGadget<MyEnc, Fq>>::RandomnessVar::new_witness(
+            <TestGadget as AsymmetricEncGadget<Fq>>::RandomnessVar::new_witness(
                 ark_relations::ns!(cs, "gadget_randomness"),
                 || Ok(&randomness),
             )
             .unwrap();
         let parameters_var =
-            <MyGadget as AsymmetricEncryptionGadget<MyEnc, Fq>>::ParametersVar::new_constant(
+            <TestGadget as AsymmetricEncGadget<Fq>>::ParametersVar::new_constant(
                 ark_relations::ns!(cs, "gadget_parameters"),
                 &parameters,
             )
             .unwrap();
         let msg_var =
-            <MyGadget as AsymmetricEncryptionGadget<MyEnc, Fq>>::PlaintextVar::new_witness(
+            <TestGadget as AsymmetricEncGadget<Fq>>::PlaintextVar::new_witness(
                 ark_relations::ns!(cs, "gadget_message"),
                 || Ok(&msg),
             )
             .unwrap();
         let pk_var =
-            <MyGadget as AsymmetricEncryptionGadget<MyEnc, Fq>>::PublicKeyVar::new_witness(
+            <TestGadget as AsymmetricEncGadget<Fq>>::PublicKeyVar::new_witness(
                 ark_relations::ns!(cs, "gadget_public_key"),
                 || Ok(&pk),
             )
@@ -284,11 +240,11 @@ mod test {
 
         // use gadget
         let result_var =
-            MyGadget::encrypt(&parameters_var, &msg_var, &randomness_var, &pk_var).unwrap();
+            TestGadget::encrypt(&parameters_var, &msg_var, &randomness_var, &pk_var).unwrap();
 
         // check that result equals expected ciphertext in the constraint system
         let expected_var =
-            <MyGadget as AsymmetricEncryptionGadget<MyEnc, Fq>>::OutputVar::new_input(
+            <TestGadget as AsymmetricEncGadget<Fq>>::CiphertextVar::new_input(
                 ark_relations::ns!(cs, "gadget_expected"),
                 || Ok(&primitive_result),
             )
