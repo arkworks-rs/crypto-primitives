@@ -83,7 +83,11 @@ pub type LeafParams<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
 /// ```
 ///  Suppose we want to prove I, then `leaf_sibling_hash` is J, `auth_path` is `[C,D]`
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Clone(bound = "P: Config"))]
+#[derivative(
+    Clone(bound = "P: Config"),
+    Debug(bound = "P: Config"),
+    Default(bound = "P: Config")
+)]
 pub struct Path<P: Config> {
     pub leaf_sibling_hash: LeafDigest<P>,
     /// The sibling of path node ordered from higher layer to lower layer (does not include root node).
@@ -233,8 +237,8 @@ impl<P: Config> MerkleTree<P> {
     ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaves_digest.len();
         assert!(
-            leaf_nodes_size.is_power_of_two(),
-            "`leaves.len() should be power of two"
+            leaf_nodes_size.is_power_of_two() && leaf_nodes_size > 1,
+            "`leaves.len() should be power of two and greater than one"
         );
         let non_leaf_nodes_size = leaf_nodes_size - 1;
 
