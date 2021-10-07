@@ -39,10 +39,8 @@ pub use self::{
 
 #[cfg(feature = "r1cs")]
 pub use self::{
-    commitment::CommitmentGadget,
-    crh::CRHGadget, merkle_tree::constraints::PathVar,
-    prf::PRFGadget,
-    signature::SigRandomizePkGadget, snark::SNARKGadget,
+    commitment::CommitmentGadget, crh::CRHGadget, merkle_tree::constraints::PathVar,
+    prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
 };
 
 pub type Error = Box<dyn ark_std::error::Error>;
@@ -52,7 +50,7 @@ pub type Error = Box<dyn ark_std::error::Error>;
     Clone(bound = ""),
     Debug(bound = ""),
     PartialEq(bound = ""),
-    Eq(bound = ""),
+    Eq(bound = "")
 )]
 pub struct Gadget<T>(PhantomData<T>);
 

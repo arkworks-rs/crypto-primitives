@@ -1,10 +1,12 @@
-use crate::{Gadget, crh::{
-    CRHGadget,
-    TwoToOneCRHGadget,
-    constraints,
-    injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
-    pedersen::{self, constraints as ped_constraints, Window},
-}};
+use crate::{
+    crh::{
+        constraints,
+        injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
+        pedersen::{self, constraints as ped_constraints, Window},
+        CRHGadget, TwoToOneCRHGadget,
+    },
+    Gadget,
+};
 use core::fmt::Debug;
 
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
@@ -101,12 +103,8 @@ where
         left: &Self::OutputVar,
         right: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let left= left.to_non_unique_bytes()?;
-        let right= right.to_non_unique_bytes()?;
-        Gadget::<Self>::evaluate(
-            parameters,
-            &left,
-            &right,
-        )
+        let left = left.to_non_unique_bytes()?;
+        let right = right.to_non_unique_bytes()?;
+        Gadget::<Self>::evaluate(parameters, &left, &right)
     }
 }

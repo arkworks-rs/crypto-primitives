@@ -1,7 +1,10 @@
 use ark_ff::Field;
 use core::fmt::Debug;
 
-use crate::{Gadget, crh::{CRHScheme, TwoToOneCRHScheme}};
+use crate::{
+    crh::{CRHScheme, TwoToOneCRHScheme},
+    Gadget,
+};
 use ark_relations::r1cs::SynthesisError;
 
 use ark_r1cs_std::prelude::*;
@@ -92,7 +95,8 @@ pub trait TwoToOneCRHGadget<ConstraintF: Field> {
         + Clone
         + Sized;
 
-    type ParametersVar: AllocVar<<Self::Native as TwoToOneCRHScheme>::Parameters, ConstraintF> + Clone;
+    type ParametersVar: AllocVar<<Self::Native as TwoToOneCRHScheme>::Parameters, ConstraintF>
+        + Clone;
 
     fn evaluate(
         parameters: &Self::ParametersVar,
@@ -113,7 +117,8 @@ pub trait TwoToOneCRHGadget<ConstraintF: Field> {
 
 impl<H, ConstraintF> CRHGadget<ConstraintF> for Gadget<H>
 where
-    H: CRHWithGadget<ConstraintF>, ConstraintF: Field
+    H: CRHWithGadget<ConstraintF>,
+    ConstraintF: Field,
 {
     type Native = H;
     type InputVar = H::InputVar;
@@ -123,7 +128,8 @@ where
 
 impl<H, ConstraintF> TwoToOneCRHGadget<ConstraintF> for Gadget<H>
 where
-    H: TwoToOneCRHWithGadget<ConstraintF>, ConstraintF: Field
+    H: TwoToOneCRHWithGadget<ConstraintF>,
+    ConstraintF: Field,
 {
     type Native = H;
     type InputVar = H::InputVar;

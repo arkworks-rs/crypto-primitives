@@ -36,8 +36,10 @@ pub trait CommitmentGadget<ConstraintF: Field> {
         + Clone
         + Sized
         + Debug;
-    type ParametersVar: AllocVar<<Self::Native as CommitmentScheme>::Parameters, ConstraintF> + Clone;
-    type RandomnessVar: AllocVar<<Self::Native as CommitmentScheme>::Randomness, ConstraintF> + Clone;
+    type ParametersVar: AllocVar<<Self::Native as CommitmentScheme>::Parameters, ConstraintF>
+        + Clone;
+    type RandomnessVar: AllocVar<<Self::Native as CommitmentScheme>::Randomness, ConstraintF>
+        + Clone;
 
     fn commit(
         parameters: &Self::ParametersVar,
@@ -50,8 +52,8 @@ pub trait CommitmentGadget<ConstraintF: Field> {
 
 impl<C, ConstraintF> CommitmentGadget<ConstraintF> for crate::Gadget<C>
 where
-    C: CommitmentWithGadget<ConstraintF>, 
-    ConstraintF: Field
+    C: CommitmentWithGadget<ConstraintF>,
+    ConstraintF: Field,
 {
     type Native = C;
     type OutputVar = C::OutputVar;

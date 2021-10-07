@@ -1,7 +1,7 @@
 use ark_ff::PrimeField;
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 
-use crate::{Vec, prf::PRFWithGadget};
+use crate::{prf::PRFWithGadget, Vec};
 use ark_r1cs_std::prelude::*;
 
 use core::borrow::Borrow;
@@ -373,7 +373,10 @@ impl<F: PrimeField> PRFWithGadget<F> for Blake2s {
     }
 
     #[tracing::instrument(target = "r1cs", skip(seed, input))]
-    fn evaluate_gadget(seed: &[UInt8<F>], input: &[UInt8<F>]) -> Result<Self::OutputVar, SynthesisError> {
+    fn evaluate_gadget(
+        seed: &[UInt8<F>],
+        input: &[UInt8<F>],
+    ) -> Result<Self::OutputVar, SynthesisError> {
         assert_eq!(seed.len(), 32);
         let input: Vec<_> = seed
             .iter()
@@ -386,7 +389,6 @@ impl<F: PrimeField> PRFWithGadget<F> for Blake2s {
             .collect();
         Ok(OutputVar(result))
     }
-
 }
 
 #[cfg(test)]
@@ -394,7 +396,13 @@ mod test {
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_std::rand::Rng;
 
-    use crate::{Gadget, prf::{PRF, PRFWithGadget, blake2s::{constraints::evaluate_blake2s, Blake2s}}};
+    use crate::{
+        prf::{
+            blake2s::{constraints::evaluate_blake2s, Blake2s},
+            PRFWithGadget, PRF,
+        },
+        Gadget,
+    };
     use ark_relations::r1cs::ConstraintSystem;
     use blake2::VarBlake2s;
 

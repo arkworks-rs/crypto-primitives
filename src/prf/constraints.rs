@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use core::fmt::Debug;
 
-use crate::{Gadget, Vec, prf::PRF};
+use crate::{prf::PRF, Gadget, Vec};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use ark_r1cs_std::prelude::*;
@@ -26,10 +26,7 @@ pub trait PRFWithGadget<ConstraintF: Field>: PRF {
 }
 
 pub trait PRFGadget<ConstraintF: Field> {
-    type Native: PRFWithGadget<
-        ConstraintF, 
-        OutputVar = Self::OutputVar,
-    >;
+    type Native: PRFWithGadget<ConstraintF, OutputVar = Self::OutputVar>;
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + AllocVar<<Self::Native as PRF>::Output, ConstraintF>
@@ -51,7 +48,7 @@ pub trait PRFGadget<ConstraintF: Field> {
     }
 }
 
-impl<P, ConstraintF> PRFGadget<ConstraintF> for Gadget<P> 
+impl<P, ConstraintF> PRFGadget<ConstraintF> for Gadget<P>
 where
     P: PRFWithGadget<ConstraintF>,
     ConstraintF: Field,
@@ -65,5 +62,4 @@ where
     ) -> Result<Self::OutputVar, SynthesisError> {
         P::evaluate_gadget(seed, input)
     }
-
 }

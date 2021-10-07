@@ -1,4 +1,4 @@
-use crate::{Gadget, encryption::AsymmetricEnc};
+use crate::{encryption::AsymmetricEnc, Gadget};
 
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::SynthesisError;
@@ -54,8 +54,8 @@ pub trait AsymmetricEncGadget<ConstraintF: Field> {
     }
 }
 
-impl<Enc, ConstraintF> AsymmetricEncGadget<ConstraintF> for Gadget<Enc> 
-where 
+impl<Enc, ConstraintF> AsymmetricEncGadget<ConstraintF> for Gadget<Enc>
+where
     Enc: AsymmetricEncWithGadget<ConstraintF>,
     ConstraintF: Field,
 {

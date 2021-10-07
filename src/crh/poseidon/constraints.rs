@@ -1,7 +1,5 @@
 use crate::crh::poseidon::{TwoToOneCRH, CRH};
-use crate::crh::{
-    CRHWithGadget, TwoToOneCRHWithGadget,
-};
+use crate::crh::{CRHWithGadget, TwoToOneCRHWithGadget};
 use crate::{CRHScheme, Vec};
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
@@ -98,10 +96,10 @@ impl<F: PrimeField + Absorb> AllocVar<PoseidonParameters<F>, F> for CRHParameter
 
 #[cfg(test)]
 mod test {
-    use crate::{Gadget, crh::poseidon::constraints::CRHParametersVar};
     use crate::crh::poseidon::{TwoToOneCRH, CRH};
-    use crate::crh::{TwoToOneCRHScheme, TwoToOneCRHGadget};
-    use crate::{CRHScheme, CRHGadget};
+    use crate::crh::{TwoToOneCRHGadget, TwoToOneCRHScheme};
+    use crate::{crh::poseidon::constraints::CRHParametersVar, Gadget};
+    use crate::{CRHGadget, CRHScheme};
     use ark_bls12_377::Fr;
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::{

@@ -1,11 +1,14 @@
-use crate::{Gadget, commitment::{
-    injective_map::PedersenCommCompressor,
-    pedersen::{
-        constraints::{ParametersVar, RandomnessVar},
-        Commitment, Window,
+use crate::{
+    commitment::{
+        injective_map::PedersenCommCompressor,
+        pedersen::{
+            constraints::{ParametersVar, RandomnessVar},
+            Commitment, Window,
+        },
+        CommitmentGadget,
     },
-    CommitmentGadget,
-}};
+    Gadget,
+};
 
 pub use crate::crh::injective_map::constraints::InjectiveMapGadget;
 use ark_ec::ProjectiveCurve;

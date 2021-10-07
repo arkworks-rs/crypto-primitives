@@ -98,9 +98,7 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHSch
     ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
         let result = I::injective_map(&pedersen::TwoToOneCRH::<C, W>::evaluate(
-            parameters,
-            left,
-            right,
+            parameters, left, right,
         )?)?;
         end_timer!(eval_time);
         Ok(result)

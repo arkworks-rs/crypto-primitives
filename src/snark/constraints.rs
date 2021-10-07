@@ -98,7 +98,7 @@ pub trait SNARKWithGadget<F: PrimeField, ConstraintF: PrimeField>: SNARK<F> {
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField> {
     type Native: SNARKWithGadget<
-        F, 
+        F,
         ConstraintF,
         VerifierSize = Self::VerifierSize,
         ProcessedVerifyingKeyVar = Self::ProcessedVerifyingKeyVar,
@@ -106,7 +106,8 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField> {
         InputVar = Self::InputVar,
         ProofVar = Self::ProofVar,
     >;
-    type ProcessedVerifyingKeyVar: AllocVar<<Self::Native as SNARK<F>>::ProcessedVerifyingKey, ConstraintF> + Clone;
+    type ProcessedVerifyingKeyVar: AllocVar<<Self::Native as SNARK<F>>::ProcessedVerifyingKey, ConstraintF>
+        + Clone;
     type VerifyingKeyVar: AllocVar<<Self::Native as SNARK<F>>::VerifyingKey, ConstraintF>
         + ToBytesGadget<ConstraintF>
         + Clone;
@@ -182,9 +183,10 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField> {
 }
 
 impl<S, F, ConstraintF> SNARKGadget<F, ConstraintF> for Gadget<S>
-where 
+where
     S: SNARKWithGadget<F, ConstraintF>,
-    F: PrimeField, ConstraintF: PrimeField
+    F: PrimeField,
+    ConstraintF: PrimeField,
 {
     type Native = S;
     type VerifierSize = S::VerifierSize;
@@ -195,38 +197,43 @@ where
 }
 
 pub trait CircuitSpecificSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
-    SNARKGadget<F, ConstraintF> 
+    SNARKGadget<F, ConstraintF>
 where
-    Self::Native: CircuitSpecificSetupSNARK<F>
+    Self::Native: CircuitSpecificSetupSNARK<F>,
 {
 }
 
 impl<S, F, ConstraintF> CircuitSpecificSetupSNARKGadget<F, ConstraintF> for Gadget<S>
-where 
+where
     S: CircuitSpecificSetupSNARK<F> + SNARKWithGadget<F, ConstraintF>,
-    F: PrimeField, 
-    ConstraintF: PrimeField
-{}
+    F: PrimeField,
+    ConstraintF: PrimeField,
+{
+}
 
 pub trait UniversalSetupSNARKWithGadget<F: PrimeField, ConstraintF: PrimeField>:
     SNARKWithGadget<F, ConstraintF> + UniversalSetupSNARK<F>
 {
-    type BoundCircuit: From<<Self as UniversalSetupSNARK<F>>::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+    type BoundCircuit: From<<Self as UniversalSetupSNARK<F>>::ComputationBound>
+        + ConstraintSynthesizer<F>
+        + Clone;
 }
 
 pub trait UniversalSetupSNARKGadget<F: PrimeField, ConstraintF: PrimeField>:
     SNARKGadget<F, ConstraintF>
 where
-    Self::Native: UniversalSetupSNARKWithGadget<F, ConstraintF>
+    Self::Native: UniversalSetupSNARKWithGadget<F, ConstraintF>,
 {
-    type BoundCircuit: From<<Self::Native as UniversalSetupSNARK<F>>::ComputationBound> + ConstraintSynthesizer<F> + Clone;
+    type BoundCircuit: From<<Self::Native as UniversalSetupSNARK<F>>::ComputationBound>
+        + ConstraintSynthesizer<F>
+        + Clone;
 }
 
 impl<S, F, ConstraintF> UniversalSetupSNARKGadget<F, ConstraintF> for Gadget<S>
-where 
+where
     S: UniversalSetupSNARK<F> + UniversalSetupSNARKWithGadget<F, ConstraintF>,
-    F: PrimeField, 
-    ConstraintF: PrimeField
+    F: PrimeField,
+    ConstraintF: PrimeField,
 {
     type BoundCircuit = S::BoundCircuit;
 }

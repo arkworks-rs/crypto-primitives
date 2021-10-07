@@ -10,7 +10,7 @@ use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use core::{iter, borrow::Borrow};
+use core::{borrow::Borrow, iter};
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 #[derive(Derivative)]
@@ -118,9 +118,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{Gadget, crh::{
-        pedersen, CRHScheme, CRHGadget, TwoToOneCRHScheme, TwoToOneCRHGadget,
-    }};
+    use crate::{
+        crh::{pedersen, CRHGadget, CRHScheme, TwoToOneCRHGadget, TwoToOneCRHScheme},
+        Gadget,
+    };
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_r1cs_std::prelude::*;
@@ -195,8 +196,7 @@ mod test {
         let (left, left_var) = generate_affine(cs.clone(), rng);
         let (right, right_var) = generate_affine(cs.clone(), rng);
         let parameters = TestTwoToOneCRH::setup(rng).unwrap();
-        let primitive_result =
-            TestTwoToOneCRH::compress(&parameters, left, right).unwrap();
+        let primitive_result = TestTwoToOneCRH::compress(&parameters, left, right).unwrap();
 
         let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
             ark_relations::ns!(cs, "CRH Parameters"),
@@ -205,8 +205,7 @@ mod test {
         .unwrap();
 
         let result_var =
-            Gadget::<TestTwoToOneCRH>::compress(&parameters_var, &left_var, &right_var)
-                .unwrap();
+            Gadget::<TestTwoToOneCRH>::compress(&parameters_var, &left_var, &right_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

@@ -27,7 +27,7 @@ mod bytes_mt_tests {
     impl Config for JubJubMerkleTreeParams {
         type Leaf = [u8];
 
-        type LeafToInnerConverter =  ByteDigestConverter;
+        type LeafToInnerConverter = ByteDigestConverter;
 
         type LeafHash = LeafH;
         type TwoToOneHash = CompressH;
@@ -131,7 +131,7 @@ mod field_mt_tests {
     impl Config for FieldMTConfig {
         type Leaf = [F];
         type LeafToInnerConverter = IdentityDigestConverter;
-        
+
         type LeafHash = H;
         type TwoToOneHash = TwoToOneH;
     }

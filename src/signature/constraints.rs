@@ -2,7 +2,7 @@ use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::SynthesisError;
 
-use crate::{Gadget, signature::SignatureScheme};
+use crate::{signature::SignatureScheme, Gadget};
 
 pub trait SigVerifyWithGadget<ConstraintF: Field>: SignatureScheme {
     type ParametersVar: AllocVar<Self::Parameters, ConstraintF> + Clone;
@@ -29,9 +29,13 @@ pub trait SigVerifyGadget<ConstraintF: Field> {
     >;
     type ParametersVar: AllocVar<<Self::Native as SignatureScheme>::Parameters, ConstraintF> + Clone;
 
-    type PublicKeyVar: ToBytesGadget<ConstraintF> + AllocVar<<Self::Native as SignatureScheme>::PublicKey, ConstraintF> + Clone;
+    type PublicKeyVar: ToBytesGadget<ConstraintF>
+        + AllocVar<<Self::Native as SignatureScheme>::PublicKey, ConstraintF>
+        + Clone;
 
-    type SignatureVar: ToBytesGadget<ConstraintF> + AllocVar<<Self::Native as SignatureScheme>::Signature, ConstraintF> + Clone;
+    type SignatureVar: ToBytesGadget<ConstraintF>
+        + AllocVar<<Self::Native as SignatureScheme>::Signature, ConstraintF>
+        + Clone;
 
     fn verify(
         parameters: &Self::ParametersVar,
@@ -44,7 +48,7 @@ pub trait SigVerifyGadget<ConstraintF: Field> {
     }
 }
 
-impl<S, ConstraintF> SigVerifyGadget<ConstraintF> for Gadget<S> 
+impl<S, ConstraintF> SigVerifyGadget<ConstraintF> for Gadget<S>
 where
     S: SigVerifyWithGadget<ConstraintF>,
     ConstraintF: Field,

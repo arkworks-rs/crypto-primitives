@@ -1,6 +1,13 @@
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
-use crate::{Vec, crh::{CRHWithGadget, TwoToOneCRHWithGadget, bowe_hopwood::{self, CHUNK_SIZE, CRH, Parameters, TwoToOneCRH}, pedersen::Window}};
+use crate::{
+    crh::{
+        bowe_hopwood::{self, Parameters, TwoToOneCRH, CHUNK_SIZE, CRH},
+        pedersen::Window,
+        CRHWithGadget, TwoToOneCRHWithGadget,
+    },
+    Vec,
+};
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::Field;
 use ark_r1cs_std::{
@@ -146,9 +153,9 @@ where
 mod test {
     use ark_std::rand::Rng;
 
-    use crate::{Gadget, crh::bowe_hopwood};
-    use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHGadget};
-    use crate::{CRHScheme, CRHGadget};
+    use crate::crh::{pedersen, TwoToOneCRHGadget, TwoToOneCRHScheme};
+    use crate::{crh::bowe_hopwood, Gadget};
+    use crate::{CRHGadget, CRHScheme};
     use ark_ed_on_bls12_381::{EdwardsParameters, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
@@ -221,8 +228,7 @@ mod test {
         let (right, right_var) = generate_u8_input(cs.clone(), 31, rng);
         let parameters = TestTwoToOneCRH::setup(rng).unwrap();
         let primitive_result =
-            TestTwoToOneCRH::evaluate(&parameters, left.as_slice(), right.as_slice())
-                .unwrap();
+            TestTwoToOneCRH::evaluate(&parameters, left.as_slice(), right.as_slice()).unwrap();
 
         let parameters_var =
             <Gadget<TestTwoToOneCRH> as TwoToOneCRHGadget<Fr>>::ParametersVar::new_witness(

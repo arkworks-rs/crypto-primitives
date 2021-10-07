@@ -36,7 +36,6 @@ where
     }
 }
 
-
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C::Var: Clone"))]
 pub struct ParametersVar<C: CurveWithVar<ConstraintF<C>>> {
@@ -53,10 +52,9 @@ where
         _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         // Always allocate as constant
-        let generator = C::Var::new_constant(cs, f().map(|g| g.borrow().generator.into()).unwrap())?;
-        Ok(Self {
-            generator,
-        })
+        let generator =
+            C::Var::new_constant(cs, f().map(|g| g.borrow().generator.into()).unwrap())?;
+        Ok(Self { generator })
     }
 }
 
@@ -76,9 +74,7 @@ where
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let plaintext = C::Var::new_variable(cs, f, mode)?;
-        Ok(Self {
-            plaintext,
-        })
+        Ok(Self { plaintext })
     }
 }
 
@@ -98,9 +94,7 @@ where
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let pk = C::Var::new_variable(cs, f, mode)?;
-        Ok(Self {
-            pk,
-        })
+        Ok(Self { pk })
     }
 }
 
@@ -125,10 +119,7 @@ where
         let prep = f().map(|g| *g.borrow());
         let c1 = C::Var::new_variable(cs.clone(), || prep.map(|g| g.borrow().0), mode)?;
         let c2 = C::Var::new_variable(cs.clone(), || prep.map(|g| g.borrow().1), mode)?;
-        Ok(Self {
-            c1,
-            c2,
-        })
+        Ok(Self { c1, c2 })
     }
 }
 
@@ -170,26 +161,21 @@ where
         let s = public_key.pk.scalar_mul_le(randomness.iter())?;
 
         // compute c1 = randomness*generator
-        let c1 = parameters
-            .generator
-            .scalar_mul_le(randomness.iter())?;
+        let c1 = parameters.generator.scalar_mul_le(randomness.iter())?;
 
         // compute c2 = m + s
         let c2 = s + &message.plaintext;
 
-        Ok(Self::CiphertextVar {
-            c1,
-            c2,
-        })
+        Ok(Self::CiphertextVar { c1, c2 })
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::Gadget;
     use crate::encryption::constraints::AsymmetricEncGadget;
     use crate::encryption::elgamal::{ElGamal, Randomness};
     use crate::encryption::AsymmetricEnc;
+    use crate::Gadget;
     use ark_std::{test_rng, UniformRand};
 
     use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq};
@@ -213,42 +199,37 @@ mod test {
 
         // construct constraint system
         let cs = ConstraintSystem::<Fq>::new_ref();
-        let randomness_var =
-            <TestGadget as AsymmetricEncGadget<Fq>>::RandomnessVar::new_witness(
-                ark_relations::ns!(cs, "gadget_randomness"),
-                || Ok(&randomness),
-            )
-            .unwrap();
-        let parameters_var =
-            <TestGadget as AsymmetricEncGadget<Fq>>::ParametersVar::new_constant(
-                ark_relations::ns!(cs, "gadget_parameters"),
-                &parameters,
-            )
-            .unwrap();
-        let msg_var =
-            <TestGadget as AsymmetricEncGadget<Fq>>::PlaintextVar::new_witness(
-                ark_relations::ns!(cs, "gadget_message"),
-                || Ok(&msg),
-            )
-            .unwrap();
-        let pk_var =
-            <TestGadget as AsymmetricEncGadget<Fq>>::PublicKeyVar::new_witness(
-                ark_relations::ns!(cs, "gadget_public_key"),
-                || Ok(&pk),
-            )
-            .unwrap();
+        let randomness_var = <TestGadget as AsymmetricEncGadget<Fq>>::RandomnessVar::new_witness(
+            ark_relations::ns!(cs, "gadget_randomness"),
+            || Ok(&randomness),
+        )
+        .unwrap();
+        let parameters_var = <TestGadget as AsymmetricEncGadget<Fq>>::ParametersVar::new_constant(
+            ark_relations::ns!(cs, "gadget_parameters"),
+            &parameters,
+        )
+        .unwrap();
+        let msg_var = <TestGadget as AsymmetricEncGadget<Fq>>::PlaintextVar::new_witness(
+            ark_relations::ns!(cs, "gadget_message"),
+            || Ok(&msg),
+        )
+        .unwrap();
+        let pk_var = <TestGadget as AsymmetricEncGadget<Fq>>::PublicKeyVar::new_witness(
+            ark_relations::ns!(cs, "gadget_public_key"),
+            || Ok(&pk),
+        )
+        .unwrap();
 
         // use gadget
         let result_var =
             TestGadget::encrypt(&parameters_var, &msg_var, &randomness_var, &pk_var).unwrap();
 
         // check that result equals expected ciphertext in the constraint system
-        let expected_var =
-            <TestGadget as AsymmetricEncGadget<Fq>>::CiphertextVar::new_input(
-                ark_relations::ns!(cs, "gadget_expected"),
-                || Ok(&primitive_result),
-            )
-            .unwrap();
+        let expected_var = <TestGadget as AsymmetricEncGadget<Fq>>::CiphertextVar::new_input(
+            ark_relations::ns!(cs, "gadget_expected"),
+            || Ok(&primitive_result),
+        )
+        .unwrap();
         expected_var.enforce_equal(&result_var).unwrap();
 
         assert_eq!(primitive_result.0, result_var.c1.value().unwrap());

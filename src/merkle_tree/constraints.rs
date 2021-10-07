@@ -1,6 +1,9 @@
-use crate::{Gadget, crh::{CRHWithGadget, TwoToOneCRHGadget, TwoToOneCRHWithGadget}};
 use crate::merkle_tree::{Config, Path};
 use crate::CRHGadget;
+use crate::{
+    crh::{CRHWithGadget, TwoToOneCRHGadget, TwoToOneCRHWithGadget},
+    Gadget,
+};
 use ark_ff::Field;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::boolean::Boolean;
@@ -29,9 +32,7 @@ impl<T: ToBytesGadget<ConstraintF>, ConstraintF: Field> DigestVarConverter<T, [U
     }
 }
 
-impl<T: Clone> DigestVarConverter<T, T>
-    for IdentityDigestConverter
-{
+impl<T: Clone> DigestVarConverter<T, T> for IdentityDigestConverter {
     type Target = T;
 
     fn convert(from: &T) -> Result<Self::Target, SynthesisError> {
@@ -162,8 +163,11 @@ where
         let left_hash = P::LeafToInnerVarConverter::convert(&left_hash)?;
         let right_hash = P::LeafToInnerVarConverter::convert(&right_hash)?;
 
-        let mut curr_hash =
-            Gadget::<P::TwoToOneHash>::evaluate(two_to_one_params, left_hash.borrow(), &right_hash.borrow())?;
+        let mut curr_hash = Gadget::<P::TwoToOneHash>::evaluate(
+            two_to_one_params,
+            left_hash.borrow(),
+            &right_hash.borrow(),
+        )?;
         // To traverse up a MT, we iterate over the path from bottom to top (i.e. in reverse)
 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
@@ -174,7 +178,8 @@ where
             let left_hash = bit.select(sibling, &curr_hash)?;
             let right_hash = bit.select(&curr_hash, sibling)?;
 
-            curr_hash = Gadget::<P::TwoToOneHash>::compress(two_to_one_params, &left_hash, &right_hash)?;
+            curr_hash =
+                Gadget::<P::TwoToOneHash>::compress(two_to_one_params, &left_hash, &right_hash)?;
         }
 
         Ok(curr_hash)

@@ -1,6 +1,10 @@
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::{Vec, commitment::{CommitmentWithGadget, blake2s}, prf::blake2s::constraints::{evaluate_blake2s, OutputVar}};
+use crate::{
+    commitment::{blake2s, CommitmentWithGadget},
+    prf::blake2s::constraints::{evaluate_blake2s, OutputVar},
+    Vec,
+};
 use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::prelude::*;
 
@@ -65,11 +69,11 @@ impl<ConstraintF: PrimeField> AllocVar<[u8; 32], ConstraintF> for RandomnessVar<
 
 #[cfg(test)]
 mod test {
-    use crate::Gadget;
     use crate::commitment::{
         blake2s::{constraints::RandomnessVar, Commitment},
         CommitmentGadget, CommitmentScheme,
     };
+    use crate::Gadget;
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
@@ -102,17 +106,14 @@ mod test {
         }
         let randomness_var = RandomnessVar(randomness_var);
 
-        let parameters_var = <Gadget<TestCOMM> as CommitmentGadget<Fr>>::ParametersVar::new_witness(
-            ark_relations::ns!(cs, "gadget_parameters"),
-            || Ok(&parameters),
-        )
-        .unwrap();
-        let result_var = Gadget::<TestCOMM>::commit(
-            &parameters_var,
-            &input_var,
-            &randomness_var,
-        )
-        .unwrap();
+        let parameters_var =
+            <Gadget<TestCOMM> as CommitmentGadget<Fr>>::ParametersVar::new_witness(
+                ark_relations::ns!(cs, "gadget_parameters"),
+                || Ok(&parameters),
+            )
+            .unwrap();
+        let result_var =
+            Gadget::<TestCOMM>::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
         for i in 0..32 {
             assert_eq!(primitive_result[i], result_var.0[i].value().unwrap());

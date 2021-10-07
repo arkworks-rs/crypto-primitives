@@ -121,12 +121,12 @@ mod test {
     use ark_std::{test_rng, UniformRand};
 
     use crate::{
-        Gadget,
         commitment::{
             pedersen::{Commitment, Randomness},
             CommitmentGadget, CommitmentScheme,
         },
         crh::pedersen,
+        Gadget,
     };
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
@@ -160,17 +160,20 @@ mod test {
             input_var.push(UInt8::new_witness(cs.clone(), || Ok(*input_byte)).unwrap());
         }
 
-        let randomness_var = <Gadget<TestCOMM> as CommitmentGadget<Fq>>::RandomnessVar::new_witness(
-            ark_relations::ns!(cs, "gadget_randomness"),
-            || Ok(&randomness),
-        )
-        .unwrap();
-        let parameters_var = <Gadget<TestCOMM> as CommitmentGadget<Fq>>::ParametersVar::new_witness(
-            ark_relations::ns!(cs, "gadget_parameters"),
-            || Ok(&parameters),
-        )
-        .unwrap();
-        let result_var = Gadget::<TestCOMM>::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+        let randomness_var =
+            <Gadget<TestCOMM> as CommitmentGadget<Fq>>::RandomnessVar::new_witness(
+                ark_relations::ns!(cs, "gadget_randomness"),
+                || Ok(&randomness),
+            )
+            .unwrap();
+        let parameters_var =
+            <Gadget<TestCOMM> as CommitmentGadget<Fq>>::ParametersVar::new_witness(
+                ark_relations::ns!(cs, "gadget_parameters"),
+                || Ok(&parameters),
+            )
+            .unwrap();
+        let result_var =
+            Gadget::<TestCOMM>::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

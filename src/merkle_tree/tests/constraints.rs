@@ -1,9 +1,12 @@
 mod byte_mt_tests {
-    use crate::{Gadget, crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHGadget}};
+    use crate::{
+        crh::{pedersen, TwoToOneCRHGadget, TwoToOneCRHScheme},
+        Gadget,
+    };
 
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::{ByteDigestConverter, Config};
-    use crate::{CRHScheme, CRHGadget, MerkleTree, PathVar};
+    use crate::{CRHGadget, CRHScheme, MerkleTree, PathVar};
     use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq};
     #[allow(unused)]
     use ark_r1cs_std::prelude::*;
@@ -88,12 +91,11 @@ mod byte_mt_tests {
             println!("constraints from digest: {}", constraints_from_digest);
 
             // Allocate Parameters for CRH
-            let leaf_crh_params_var =
-                <Gadget<LeafH> as CRHGadget<_>>::ParametersVar::new_constant(
-                    ark_relations::ns!(cs, "leaf_crh_parameter"),
-                    &leaf_crh_params,
-                )
-                .unwrap();
+            let leaf_crh_params_var = <Gadget<LeafH> as CRHGadget<_>>::ParametersVar::new_constant(
+                ark_relations::ns!(cs, "leaf_crh_parameter"),
+                &leaf_crh_params,
+            )
+            .unwrap();
             let two_to_one_crh_params_var =
                 <Gadget<CompressH> as TwoToOneCRHGadget<_>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_crh_parameter"),
@@ -151,12 +153,11 @@ mod byte_mt_tests {
         if let Some(update_query) = update_query {
             let cs = ConstraintSystem::<Fq>::new_ref();
             // allocate parameters for CRH
-            let leaf_crh_params_var =
-                <Gadget<LeafH> as CRHGadget<_>>::ParametersVar::new_constant(
-                    ark_relations::ns!(cs, "leaf_crh_parameter"),
-                    &leaf_crh_params,
-                )
-                .unwrap();
+            let leaf_crh_params_var = <Gadget<LeafH> as CRHGadget<_>>::ParametersVar::new_constant(
+                ark_relations::ns!(cs, "leaf_crh_parameter"),
+                &leaf_crh_params,
+            )
+            .unwrap();
             let two_to_one_crh_params_var =
                 <Gadget<CompressH> as TwoToOneCRHGadget<_>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_crh_parameter"),
@@ -230,10 +231,13 @@ mod byte_mt_tests {
 }
 
 mod field_mt_tests {
-    use crate::{Gadget, crh::{poseidon, TwoToOneCRHGadget}};
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter};
+    use crate::{
+        crh::{poseidon, TwoToOneCRHGadget},
+        Gadget,
+    };
     use crate::{CRHGadget, MerkleTree, PathVar};
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::fields::fp::FpVar;
@@ -257,7 +261,7 @@ mod field_mt_tests {
 
     impl ConfigGadget<F> for FieldMTConfig {
         type LeafVar = LeafVar;
-        
+
         type LeafToInnerVarConverter = IdentityDigestConverter;
     }
 
@@ -395,11 +399,11 @@ mod field_mt_tests {
             let old_root_var = FpVar::new_input(cs.clone(), || Ok(old_root)).unwrap();
 
             let old_path = tree.generate_proof(update_query.0).unwrap();
-            let old_path_var = PathVar::<FieldMTConfig, F>::new_input(
-                ark_relations::ns!(cs, "old_path"),
-                || Ok(old_path),
-            )
-            .unwrap();
+            let old_path_var =
+                PathVar::<FieldMTConfig, F>::new_input(ark_relations::ns!(cs, "old_path"), || {
+                    Ok(old_path)
+                })
+                .unwrap();
             let new_root = {
                 tree.update(update_query.0, update_query.1.as_slice())
                     .unwrap();
