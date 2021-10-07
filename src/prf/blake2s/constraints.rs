@@ -1,7 +1,7 @@
 use ark_ff::PrimeField;
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 
-use crate::{prf::PRFGadget, Vec};
+use crate::{Vec, prf::PRFWithGadget};
 use ark_r1cs_std::prelude::*;
 
 use core::borrow::Borrow;
@@ -362,18 +362,18 @@ impl<F: PrimeField> R1CSVar<F> for OutputVar<F> {
     }
 }
 
-impl<F: PrimeField> PRFGadget<F> for Blake2s {
+impl<F: PrimeField> PRFWithGadget<F> for Blake2s {
     type OutputVar = OutputVar<F>;
 
     #[tracing::instrument(target = "r1cs", skip(cs))]
-    fn new_seed(cs: impl Into<Namespace<F>>, seed: &[u8; 32]) -> Vec<UInt8<F>> {
+    fn new_seed_as_witness(cs: impl Into<Namespace<F>>, seed: &[u8; 32]) -> Vec<UInt8<F>> {
         let ns = cs.into();
         let cs = ns.cs();
         UInt8::new_witness_vec(ark_relations::ns!(cs, "New Blake2s seed"), seed).unwrap()
     }
 
     #[tracing::instrument(target = "r1cs", skip(seed, input))]
-    fn evaluate(seed: &[UInt8<F>], input: &[UInt8<F>]) -> Result<Self::OutputVar, SynthesisError> {
+    fn evaluate_gadget(seed: &[UInt8<F>], input: &[UInt8<F>]) -> Result<Self::OutputVar, SynthesisError> {
         assert_eq!(seed.len(), 32);
         let input: Vec<_> = seed
             .iter()
@@ -386,6 +386,7 @@ impl<F: PrimeField> PRFGadget<F> for Blake2s {
             .collect();
         Ok(OutputVar(result))
     }
+
 }
 
 #[cfg(test)]
@@ -393,7 +394,7 @@ mod test {
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_std::rand::Rng;
 
-    use crate::prf::blake2s::{constraints::evaluate_blake2s, Blake2s as B2SPRF};
+    use crate::{Gadget, prf::{PRF, PRFWithGadget, blake2s::{constraints::evaluate_blake2s, Blake2s}}};
     use ark_relations::r1cs::ConstraintSystem;
     use blake2::VarBlake2s;
 
@@ -414,7 +415,7 @@ mod test {
 
     #[test]
     fn test_blake2s_prf() {
-        use crate::prf::{PRFGadget, PRF};
+        use crate::prf::PRFGadget;
 
         let mut rng = ark_std::test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
@@ -425,17 +426,17 @@ mod test {
         let mut input = [0u8; 32];
         rng.fill(&mut input);
 
-        let seed_var = Blake2s::new_seed(cs.clone(), &seed);
+        let seed_var = Blake2s::new_seed_as_witness(cs.clone(), &seed);
         let input_var =
             UInt8::new_witness_vec(ark_relations::ns!(cs, "declare_input"), &input).unwrap();
         let out = Blake2s::evaluate(&seed, &input).unwrap();
-        let actual_out_var = <Blake2sGadget as PRFGadget<Fr>>::OutputVar::new_witness(
+        let actual_out_var = <Gadget<Blake2s> as PRFGadget<Fr>>::OutputVar::new_witness(
             ark_relations::ns!(cs, "declare_output"),
             || Ok(out),
         )
         .unwrap();
 
-        let output_var = Blake2sGadget::evaluate(&seed_var, &input_var).unwrap();
+        let output_var = Gadget::<Blake2s>::evaluate(&seed_var, &input_var).unwrap();
         output_var.enforce_equal(&actual_out_var).unwrap();
 
         if !cs.is_satisfied().unwrap() {
