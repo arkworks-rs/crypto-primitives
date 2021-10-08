@@ -22,6 +22,7 @@ pub mod crh;
 pub mod merkle_tree;
 
 pub mod encryption;
+pub mod pow;
 pub mod prf;
 pub mod signature;
 pub mod snark;
