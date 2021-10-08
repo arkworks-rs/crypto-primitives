@@ -1,4 +1,7 @@
+#![allow(unused_variables)] // TODO: remove after finished this
 use ark_std::rand::Rng;
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// Any cryptographic hash implementation will satisfy those two properties:
 /// - **Preimage Resistance**: For all adversary, given y = H(x) where x is
@@ -8,9 +11,9 @@ use ark_std::rand::Rng;
 ///   CRH trait implementors.
 pub trait CryptoHash {
     /// Parameter for the crypto hash.
-    type Parameters;
+    type Parameters: Sync;
     /// Input of the hash.
-    type Input;
+    type Input: Sync;
     /// Output of the Hash.
     type Output;
     /// Generate the parameter for the crypto hash using `rng`.
@@ -33,7 +36,7 @@ pub trait PoW: CryptoHash {
     /// k)` output true. In most cases, `verify` outputs true when the bit
     /// composition of output has `k` trailing zeroes, but this trait allows
     /// implementation to implement their own `verify` logic.
-    type Nonce;
+    type Nonce: Clone + Sync;
 
     /// Given input and nonce, check whether `H(input||nonce)` is a valid proof
     /// of work under certain difficulty.
