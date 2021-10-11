@@ -1,7 +1,11 @@
 pub mod poseidon;
 
-// TODO: remove after finished this
+use ark_std::borrow::Borrow;
+
 use ark_std::rand::Rng;
+
+use ark_std::vec::Vec;
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -15,14 +19,14 @@ pub trait CryptoHash {
     /// Parameter for the crypto hash.
     type Parameters: Sync;
     /// Input of the hash.
-    type Input: Sync;
+    type Input: Sync + ?Sized;
     /// Output of the Hash.
     type Output;
     /// Generate the parameter for the crypto hash using `rng`.
     fn setup<R: Rng>(rng: &mut R) -> &Self::Parameters;
 
     /// Given the input and parameters, compute the output.
-    fn digest(param: &Self::Parameters, input: &Self::Input) -> Self::Output;
+    fn digest<T: Borrow<Self::Input>>(param: &Self::Parameters, input: T) -> Self::Output;
 }
 
 /// An extension trait for `CryptoHash`. Any implementation can be used for
@@ -87,14 +91,18 @@ pub trait PoW: CryptoHash {
     /// under given difficulty.
     /// This function will repeatedly run `verify` on a batch of `nonces`, and
     /// return the first nonce that successfully let `verify` return true.
+    ///
+    /// This function return the first valid nonce and number of batches it has
+    /// iterated.
     fn generate_pow<R: Rng>(
         param: &Self::Parameters,
         rng: &mut R,
         input: &Self::Input,
         difficulty: usize,
         batch_size: usize,
-    ) -> Self::Nonce {
+    ) -> (Self::Nonce, usize) {
         let mut nonces = Self::batch_nonce(param, Self::initial_nonce(param, rng), batch_size);
+        let mut counter = 0;
         loop {
             if let Some((i, _)) = Self::batch_verify(param, input, &nonces, difficulty)
                 .into_iter()
@@ -102,10 +110,11 @@ pub trait PoW: CryptoHash {
                 .filter(|(_, v)| *v)
                 .next()
             {
-                return nonces[i].clone();
+                return (nonces[i].clone(), counter);
             };
             let last_nonce = nonces.last().unwrap().clone();
-            nonces = Self::batch_nonce(param, last_nonce, batch_size);
+            nonces = Self::batch_nonce(param, Self::next_nonce(param, &last_nonce), batch_size);
+            counter += 1;
         }
     }
 }
