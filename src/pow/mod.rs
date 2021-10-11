@@ -1,4 +1,6 @@
-#![allow(unused_variables)] // TODO: remove after finished this
+pub mod poseidon;
+
+// TODO: remove after finished this
 use ark_std::rand::Rng;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -61,34 +63,49 @@ pub trait PoW: CryptoHash {
     }
 
     /// Return the initial nonce that can be used for PoW generation.
-    fn initial_nonce(param: &Self::Parameters) -> Self::Nonce;
+    fn initial_nonce<R: Rng>(param: &Self::Parameters, rng: &mut R) -> Self::Nonce;
 
     /// Return the next nonce for PoW Generation.
-    fn next_nonce(param: &Self::Parameters, nonce: Self::Nonce) -> Self::Nonce;
+    fn next_nonce(param: &Self::Parameters, nonce: &Self::Nonce) -> Self::Nonce;
 
     /// Generate initial batch of nonces.
-    fn initial_nonce_batch(param: &Self::Parameters, batch_size: usize) -> Vec<Self::Nonce> {
-        todo!()
-    }
-
-    /// Given the last element of previous batch, return the next nonce batch.
-    fn next_nonce_batch(
+    fn batch_nonce(
         param: &Self::Parameters,
-        prev_nonce: Self::Nonce,
+        initial_nonce: Self::Nonce,
         batch_size: usize,
     ) -> Vec<Self::Nonce> {
-        todo!()
+        let mut result = Vec::with_capacity(batch_size);
+        result.push(initial_nonce);
+        for _ in 0..batch_size - 1 {
+            result.push(Self::next_nonce(param, result.last().unwrap()));
+        }
+
+        result
     }
 
     /// Generate the nonce as proof of work such that H(input||nonce) is valid
     /// under given difficulty.
-    /// This function will run `verify` on a batch of `nonces` for iteration.
-    fn generate_pow(
+    /// This function will repeatedly run `verify` on a batch of `nonces`, and
+    /// return the first nonce that successfully let `verify` return true.
+    fn generate_pow<R: Rng>(
         param: &Self::Parameters,
+        rng: &mut R,
         input: &Self::Input,
         difficulty: usize,
         batch_size: usize,
     ) -> Self::Nonce {
-        todo!()
+        let mut nonces = Self::batch_nonce(param, Self::initial_nonce(param, rng), batch_size);
+        loop {
+            if let Some((i, _)) = Self::batch_verify(param, input, &nonces, difficulty)
+                .into_iter()
+                .enumerate()
+                .filter(|(_, v)| *v)
+                .next()
+            {
+                return nonces[i].clone();
+            };
+            let last_nonce = nonces.last().unwrap().clone();
+            nonces = Self::batch_nonce(param, last_nonce, batch_size);
+        }
     }
 }
