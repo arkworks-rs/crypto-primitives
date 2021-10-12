@@ -51,7 +51,7 @@ impl<F: PrimeField + Absorb, I: Absorb + Sync> PoW for PoseidonHash<F, I> {
         nonce: &Self::Nonce,
         difficulty: usize,
     ) -> bool {
-        assert!(F::size_in_bits() >= 20, "difficulty is too large");
+        assert!(F::size_in_bits() >= difficulty, "difficulty is too large");
         let input = input.borrow();
 
         let mut sponge = PoseidonSponge::new(param);

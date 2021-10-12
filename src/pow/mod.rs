@@ -1,3 +1,4 @@
+pub mod constraints;
 pub mod poseidon;
 
 use ark_std::borrow::Borrow;
@@ -94,6 +95,9 @@ pub trait PoW: CryptoHash {
     ///
     /// This function return the first valid nonce and number of batches it has
     /// iterated.
+    ///
+    /// When `parallel` feature is on, for each batch, all nonces will be
+    /// checked in parallel.
     fn generate_pow<R: Rng>(
         param: &Self::Parameters,
         rng: &mut R,
