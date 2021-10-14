@@ -11,6 +11,7 @@
 
 ### Features
 
+- [\#75](https://github.com/arkworks-rs/crypto-primitives/pull/75) Add Cryptographic Hash and Proof of Work. 
 - [\#59](https://github.com/arkworks-rs/crypto-primitives/pull/59) Implement `TwoToOneCRHScheme` for Bowe-Hopwood CRH.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle tree no longer requires CRH to input and output bytes. Leaf can be any raw input of CRH, such as field elements.
 - [\#67](https://github.com/arkworks-rs/crypto-primitives/pull/67) User can access or replace leaf index variable in `PathVar`.
