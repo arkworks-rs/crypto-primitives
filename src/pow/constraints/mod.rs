@@ -1,37 +1,24 @@
 pub mod poseidon;
 
+use ark_std::borrow::Borrow;
+
 use ark_ff::PrimeField;
 use ark_r1cs_std::{alloc::AllocVar, boolean::Boolean};
 use ark_relations::r1cs::{ConstraintSystemRef, SynthesisError};
-use ark_std::borrow::Borrow;
 
-use super::{CryptoHash, PoW};
+use crate::cryptographic_hash::{constraints::CryptoHashGadget, CryptoHash};
 
-/// R1CS Gadget for Crypto Hash.
-pub trait CryptoHashGadget<CF: PrimeField> {
-    type Parameters;
-    /// Input of the hash
-    type InputVar: ?Sized;
-    /// Outout of the Hash
-    type OutputVar;
-
-    /// Given the input var and parameters, compute the output var.
-    fn digest<T: Borrow<Self::InputVar>>(
-        cs: ConstraintSystemRef<CF>,
-        param: &Self::Parameters,
-        input: T,
-    ) -> Result<Self::OutputVar, SynthesisError>;
-}
+use super::PoW;
 
 /// R1CS Gadget for Proof of Work
 pub trait PoWGadget<CF: PrimeField>: CryptoHashGadget<CF> {
     type NonceVar;
     /// Given input var and nonce var, check whether `H(input||nonce)` is a
     /// valid proof of work under certain difficulty.
-    fn verify(
+    fn verify_pow<T: Borrow<Self::InputVar>>(
         cs: ConstraintSystemRef<CF>,
         param: &Self::Parameters,
-        input: &Self::InputVar,
+        input: T,
         nonce: &Self::NonceVar,
         difficulty: usize,
     ) -> Result<Boolean<CF>, SynthesisError>;

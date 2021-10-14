@@ -1,7 +1,8 @@
+#[cfg(feature = "r1cs")]
 pub mod constraints;
 pub mod poseidon;
 
-use ark_std::borrow::Borrow;
+use std::borrow::Borrow;
 
 use ark_std::rand::Rng;
 
@@ -10,25 +11,7 @@ use ark_std::vec::Vec;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// Any cryptographic hash implementation will satisfy those two properties:
-/// - **Preimage Resistance**: For all adversary, given y = H(x) where x is
-///   random, the probability to find z such that H(z) = y is negligible.
-/// - **Collision Resistant**: It's computationally infeasible to find two
-///   distinct inputs to lead to same output. This property is also satisfied by
-///   CRH trait implementors.
-pub trait CryptoHash {
-    /// Parameter for the crypto hash.
-    type Parameters: Sync;
-    /// Input of the hash.
-    type Input: Sync + ?Sized;
-    /// Output of the Hash.
-    type Output;
-    /// Generate the parameter for the crypto hash using `rng`.
-    fn setup<R: Rng>(rng: &mut R) -> &Self::Parameters;
-
-    /// Given the input and parameters, compute the output.
-    fn digest<T: Borrow<Self::Input>>(param: &Self::Parameters, input: T) -> Self::Output;
-}
+use crate::cryptographic_hash::CryptoHash;
 
 /// An extension trait for `CryptoHash`. Any implementation can be used for
 /// proof of work.
@@ -47,23 +30,24 @@ pub trait PoW: CryptoHash {
 
     /// Given input and nonce, check whether `H(input||nonce)` is a valid proof
     /// of work under certain difficulty.
-    fn verify(
+    fn verify_pow<T: Borrow<Self::Input>>(
         param: &Self::Parameters,
-        input: &Self::Input,
+        input: T,
         nonce: &Self::Nonce,
         difficulty: usize,
     ) -> bool;
 
     /// Given input and a list of nonces, batch verify the correctness of nonce
     /// under given difficulty.
-    fn batch_verify(
+    fn batch_verify<T: Borrow<Self::Input>>(
         param: &Self::Parameters,
-        input: &Self::Input,
+        input: T,
         nonces: &[Self::Nonce],
         difficulty: usize,
     ) -> Vec<bool> {
+        let input = input.borrow();
         cfg_iter!(nonces)
-            .map(|nonce| Self::verify(param, input, nonce, difficulty))
+            .map(|nonce| Self::verify_pow(param, input, nonce, difficulty))
             .collect()
     }
 
@@ -98,13 +82,14 @@ pub trait PoW: CryptoHash {
     ///
     /// When `parallel` feature is on, for each batch, all nonces will be
     /// checked in parallel.
-    fn generate_pow<R: Rng>(
+    fn generate_pow<R: Rng, T: Borrow<Self::Input>>(
         param: &Self::Parameters,
         rng: &mut R,
-        input: &Self::Input,
+        input: T,
         difficulty: usize,
         batch_size: usize,
     ) -> (Self::Nonce, usize) {
+        let input = input.borrow();
         let mut nonces = Self::batch_nonce(param, Self::initial_nonce(param, rng), batch_size);
         let mut counter = 0;
         loop {

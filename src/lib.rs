@@ -21,6 +21,7 @@ pub mod commitment;
 pub mod crh;
 pub mod merkle_tree;
 
+pub mod cryptographic_hash;
 pub mod encryption;
 pub mod pow;
 pub mod prf;
