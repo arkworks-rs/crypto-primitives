@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use ark_std::borrow::Borrow;
 
 use ark_sponge::{poseidon::PoseidonSponge, Absorb, CryptographicSponge};
 
@@ -55,10 +55,11 @@ mod tests {
     #[test]
     fn test_pow() {
         const BATCH_SIZE: usize = 64;
-        const DIFFICULTY: usize = 15;
+        const DIFFICULTY: usize = 14;
         let param = poseidon_parameters();
         let message = vec![0x11, 0x12, 0x13, 0x14, 0x15];
         let mut rng = test_rng();
+        #[allow(unused)]
         let (proof, num_batches_iterated) = PoseidonHash::<_, &[u32]>::generate_pow(
             &param,
             &mut rng,
@@ -66,6 +67,7 @@ mod tests {
             DIFFICULTY,
             BATCH_SIZE,
         );
+        #[cfg(feature = "std")]
         println!(
             "total number of iterations: {}x{} = {}",
             num_batches_iterated,

@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, marker::PhantomData};
+use ark_std::{borrow::Borrow, marker::PhantomData};
 
 use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;

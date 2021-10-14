@@ -2,7 +2,7 @@
 pub mod constraints;
 pub mod poseidon;
 
-use std::borrow::Borrow;
+use ark_std::borrow::Borrow;
 
 use ark_std::rand::Rng;
 

@@ -124,8 +124,8 @@ mod field_mt_tests {
         merkle_tree::{tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter},
         MerkleTree,
     };
+    use ark_std::vec::Vec;
     use ark_std::{test_rng, One, UniformRand};
-
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;
