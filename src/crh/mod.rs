@@ -7,6 +7,7 @@ pub mod bowe_hopwood;
 pub mod injective_map;
 pub mod pedersen;
 pub mod poseidon;
+pub mod sha256;
 
 use crate::Error;
 
