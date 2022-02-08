@@ -3,13 +3,22 @@
 // See LICENSE-MIT in the root directory for a copy of the license
 // Thank you!
 
-use crate::crh::sha256::r1cs_utils::UInt32Ext;
+use crate::crh::{
+    sha256::{r1cs_utils::UInt32Ext, Sha256},
+    CRHSchemeGadget, TwoToOneCRHSchemeGadget,
+};
 
-use core::iter;
+use core::{borrow::Borrow, iter, marker::PhantomData};
 
 use ark_ff::PrimeField;
-use ark_r1cs_std::bits::{uint32::UInt32, uint8::UInt8};
-use ark_relations::r1cs::SynthesisError;
+use ark_r1cs_std::{
+    alloc::{AllocVar, AllocationMode},
+    bits::{boolean::Boolean, uint32::UInt32, uint8::UInt8, ToBytesGadget},
+    eq::EqGadget,
+    select::CondSelectGadget,
+    R1CSVar,
+};
+use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 use ark_std::{vec, vec::Vec};
 
 const STATE_LEN: usize = 8;
@@ -158,7 +167,7 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
     }
 
     /// Outputs the final digest of all the inputted data
-    pub fn finalize(mut self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+    pub fn finalize(mut self) -> Result<DigestVar<ConstraintF>, SynthesisError> {
         // Encode the number of processed bits as a u64, then serialize it to 8 big-endian bytes
         let data_bitlen = self.completed_data_blocks * 512 + self.num_pending as u64 * 8;
         let encoded_bitlen: Vec<UInt8<ConstraintF>> = {
@@ -183,15 +192,186 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
         self.update(&pending[..offset + 8])?;
 
         // Collect the state into big-endian bytes
-        Ok(self.state.iter().flat_map(UInt32::to_bytes_be).collect())
+        let bytes: Vec<_> = self.state.iter().flat_map(UInt32::to_bytes_be).collect();
+        Ok(DigestVar(bytes))
     }
 
     /// Computes the digest of the given data. This is a shortcut for `default()` followed by
     /// `update()` followed by `finalize()`.
-    pub fn digest(data: &[UInt8<ConstraintF>]) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+    pub fn digest(data: &[UInt8<ConstraintF>]) -> Result<DigestVar<ConstraintF>, SynthesisError> {
         let mut sha256_var = Self::default();
         sha256_var.update(data)?;
         sha256_var.finalize()
+    }
+}
+
+// Now implement the CRH traits for SHA256
+
+/// Contains a 32-byte SHA256 digest
+#[derive(Clone, Debug)]
+pub struct DigestVar<ConstraintF: PrimeField>(Vec<UInt8<ConstraintF>>);
+
+impl<ConstraintF> EqGadget<ConstraintF> for DigestVar<ConstraintF>
+where
+    ConstraintF: PrimeField,
+{
+    fn is_eq(&self, other: &Self) -> Result<Boolean<ConstraintF>, SynthesisError> {
+        self.0
+            .iter()
+            .zip(other.0.iter())
+            .fold(Ok(Boolean::constant(false)), |acc, (a, b)| {
+                acc.and_then(|acc| acc.and(&a.is_eq(&b)?))
+            })
+    }
+}
+
+impl<ConstraintF: PrimeField> ToBytesGadget<ConstraintF> for DigestVar<ConstraintF> {
+    fn to_bytes(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+        Ok(self.0.clone())
+    }
+}
+
+impl<ConstraintF: PrimeField> CondSelectGadget<ConstraintF> for DigestVar<ConstraintF>
+where
+    Self: Sized,
+    Self: Clone,
+{
+    fn conditionally_select(
+        cond: &Boolean<ConstraintF>,
+        true_value: &Self,
+        false_value: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let bytes: Result<Vec<_>, _> = true_value
+            .0
+            .iter()
+            .zip(false_value.0.iter())
+            .map(|(t, f)| UInt8::conditionally_select(cond, t, f))
+            .collect();
+        Ok(DigestVar(bytes?))
+    }
+}
+
+/// The unit type for circuit variables. This contains no data.
+#[derive(Clone, Debug, Default)]
+pub struct UnitVar<ConstraintF: PrimeField>(PhantomData<ConstraintF>);
+
+impl<ConstraintF: PrimeField> AllocVar<(), ConstraintF> for UnitVar<ConstraintF> {
+    // Allocates 32 UInt8s
+    fn new_variable<T: Borrow<()>>(
+        _cs: impl Into<Namespace<ConstraintF>>,
+        _f: impl FnOnce() -> Result<T, SynthesisError>,
+        _mode: AllocationMode,
+    ) -> Result<Self, SynthesisError> {
+        Ok(UnitVar(PhantomData))
+    }
+}
+
+impl<ConstraintF: PrimeField> AllocVar<Vec<u8>, ConstraintF> for DigestVar<ConstraintF> {
+    // Allocates 32 UInt8s
+    fn new_variable<T: Borrow<Vec<u8>>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self, SynthesisError> {
+        let cs = cs.into().cs();
+        let native_bytes = f();
+
+        if native_bytes
+            .as_ref()
+            .map(|b| b.borrow().len())
+            .unwrap_or(32)
+            != 32
+        {
+            panic!("DigestVar must be allocated with precisely 32 bytes");
+        }
+
+        // For each i, allocate the i-th byte
+        let var_bytes: Result<Vec<_>, _> = (0..32)
+            .map(|i| {
+                UInt8::new_variable(
+                    cs.clone(),
+                    || native_bytes.as_ref().map(|v| v.borrow()[i]).map_err(|e| *e),
+                    mode,
+                )
+            })
+            .collect();
+
+        Ok(DigestVar(var_bytes?))
+    }
+}
+
+impl<ConstraintF: PrimeField> R1CSVar<ConstraintF> for DigestVar<ConstraintF> {
+    type Value = [u8; 32];
+
+    fn cs(&self) -> ConstraintSystemRef<ConstraintF> {
+        let mut result = ConstraintSystemRef::None;
+        for var in &self.0 {
+            result = var.cs().or(result);
+        }
+        result
+    }
+
+    fn value(&self) -> Result<Self::Value, SynthesisError> {
+        let mut buf = [0u8; 32];
+        for (b, var) in buf.iter_mut().zip(self.0.iter()) {
+            *b = var.value()?;
+        }
+
+        Ok(buf)
+    }
+}
+
+impl<ConstraintF> CRHSchemeGadget<Sha256, ConstraintF> for Sha256Gadget<ConstraintF>
+where
+    ConstraintF: PrimeField,
+{
+    type InputVar = [UInt8<ConstraintF>];
+    type OutputVar = DigestVar<ConstraintF>;
+    type ParametersVar = UnitVar<ConstraintF>;
+
+    #[tracing::instrument(target = "r1cs", skip(_parameters))]
+    fn evaluate(
+        _parameters: &Self::ParametersVar,
+        input: &Self::InputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        Self::digest(input)
+    }
+}
+
+impl<ConstraintF> TwoToOneCRHSchemeGadget<Sha256, ConstraintF> for Sha256Gadget<ConstraintF>
+where
+    ConstraintF: PrimeField,
+{
+    type InputVar = [UInt8<ConstraintF>];
+    type OutputVar = DigestVar<ConstraintF>;
+    type ParametersVar = UnitVar<ConstraintF>;
+
+    #[tracing::instrument(target = "r1cs", skip(_parameters))]
+    fn evaluate(
+        _parameters: &Self::ParametersVar,
+        left_input: &Self::InputVar,
+        right_input: &Self::InputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        let mut h = Self::default();
+        h.update(left_input)?;
+        h.update(right_input)?;
+        h.finalize()
+    }
+
+    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    fn compress(
+        parameters: &Self::ParametersVar,
+        left_input: &Self::OutputVar,
+        right_input: &Self::OutputVar,
+    ) -> Result<Self::OutputVar, SynthesisError> {
+        // Convert output to bytes
+        let left_input = left_input.to_bytes()?;
+        let right_input = right_input.to_bytes()?;
+        <Self as TwoToOneCRHSchemeGadget<Sha256, ConstraintF>>::evaluate(
+            parameters,
+            &left_input,
+            &right_input,
+        )
     }
 }
 
@@ -199,7 +379,10 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::crh::sha256::{digest::Digest, Sha256};
+    use crate::crh::{
+        sha256::{digest::Digest, Sha256},
+        CRHScheme, CRHSchemeGadget, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget,
+    };
 
     use ark_bls12_377::Fr;
     use ark_r1cs_std::R1CSVar;
@@ -217,11 +400,7 @@ mod test {
 
     /// Finalizes a SHA256 gadget and gets the bytes
     fn finalize_var(sha256_var: Sha256Gadget<Fr>) -> Vec<u8> {
-        sha256_var
-            .finalize()
-            .into_iter()
-            .flat_map(|b| b.value().unwrap())
-            .collect()
+        sha256_var.finalize().unwrap().value().unwrap().to_vec()
     }
 
     /// Finalizes a native SHA256 struct and gets the bytes
@@ -278,5 +457,63 @@ mod test {
 
         // Make sure the result is consistent
         assert_eq!(finalize_var(sha256_var), finalize(sha256));
+    }
+
+    /// Tests the CRHCheme and TwoToOneCRHScheme traits
+    #[test]
+    fn crh() {
+        let mut rng = ark_std::test_rng();
+        let cs = ConstraintSystem::<Fr>::new_ref();
+
+        // CRH parameters are nothing
+        let unit = ();
+        let unit_var = UnitVar::default();
+
+        // First test CRHScheme
+        for i in 0..=64 {
+            // Make a random string of length i
+            let mut input_str = vec![0u8; i];
+            rng.fill_bytes(&mut input_str);
+
+            // Compute the hashes and assert consistency
+            let computed_output = <Sha256Gadget<Fr> as CRHSchemeGadget<Sha256, Fr>>::evaluate(
+                &unit_var,
+                &to_byte_vars(ns!(cs, "input"), &input_str),
+            )
+            .unwrap();
+            let expected_output = <Sha256 as CRHScheme>::evaluate(&unit, input_str).unwrap();
+            assert_eq!(
+                computed_output.value().unwrap().to_vec(),
+                expected_output,
+                "CRH error at length {}",
+                i
+            )
+        }
+
+        // Now test TwoToOneCRHScheme
+        for i in 0..=64 {
+            // Make random strings of length i
+            let mut left_input = vec![0u8; i];
+            let mut right_input = vec![0u8; i];
+            rng.fill_bytes(&mut left_input);
+            rng.fill_bytes(&mut right_input);
+
+            // Compute the hashes and assert consistency
+            let computed_output =
+                <Sha256Gadget<Fr> as TwoToOneCRHSchemeGadget<Sha256, Fr>>::evaluate(
+                    &unit_var,
+                    &to_byte_vars(ns!(cs, "left input"), &left_input),
+                    &to_byte_vars(ns!(cs, "right input"), &right_input),
+                )
+                .unwrap();
+            let expected_output =
+                <Sha256 as TwoToOneCRHScheme>::evaluate(&unit, left_input, right_input).unwrap();
+            assert_eq!(
+                computed_output.value().unwrap().to_vec(),
+                expected_output,
+                "TwoToOneCRH error at length {}",
+                i
+            )
+        }
     }
 }
