@@ -1,3 +1,5 @@
+use crate::Vec;
+
 use ark_ff::PrimeField;
 use ark_r1cs_std::bits::{boolean::Boolean, uint32::UInt32, uint8::UInt8, ToBitsGadget};
 use ark_relations::r1cs::SynthesisError;
