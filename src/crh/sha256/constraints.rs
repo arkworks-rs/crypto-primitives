@@ -392,6 +392,10 @@ mod test {
     };
     use ark_std::rand::RngCore;
 
+    const TEST_LENGTHS: &[usize] = &[
+        0, 1, 2, 8, 20, 40, 55, 56, 57, 63, 64, 65, 90, 100, 127, 128, 129,
+    ];
+
     /// Witnesses bytes
     fn to_byte_vars(cs: impl Into<Namespace<Fr>>, data: &[u8]) -> Vec<UInt8<Fr>> {
         let cs = cs.into().cs();
@@ -408,18 +412,18 @@ mod test {
         sha256.finalize().to_vec()
     }
 
-    /// Tests the SHA256 of random strings of all lengths from 0 to 100
+    /// Tests the SHA256 of random strings of varied lengths
     #[test]
     fn varied_lengths() {
         let mut rng = ark_std::test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
 
-        for i in 0..=100 {
+        for &len in TEST_LENGTHS {
             let mut sha256 = Sha256::default();
             let mut sha256_var = Sha256Gadget::default();
 
-            // Make a random string of length i
-            let mut input_str = vec![0u8; i];
+            // Make a random string of the given length
+            let mut input_str = vec![0u8; len];
             rng.fill_bytes(&mut input_str);
 
             // Compute the hashes and assert consistency
@@ -431,7 +435,7 @@ mod test {
                 finalize_var(sha256_var),
                 finalize(sha256),
                 "error at length {}",
-                i
+                len
             );
         }
     }
@@ -444,8 +448,8 @@ mod test {
         let mut sha256 = Sha256::default();
         let mut sha256_var = Sha256Gadget::default();
 
-        // Append the same 7-byte string 128 times
-        for _ in 0..128 {
+        // Append the same 7-byte string 20 times
+        for _ in 0..20 {
             let mut input_str = vec![0u8; 7];
             rng.fill_bytes(&mut input_str);
 
@@ -459,7 +463,7 @@ mod test {
         assert_eq!(finalize_var(sha256_var), finalize(sha256));
     }
 
-    /// Tests the CRHCheme and TwoToOneCRHScheme traits
+    /// Tests the CRHCheme trait
     #[test]
     fn crh() {
         let mut rng = ark_std::test_rng();
@@ -469,10 +473,9 @@ mod test {
         let unit = ();
         let unit_var = UnitVar::default();
 
-        // First test CRHScheme
-        for i in 0..=64 {
-            // Make a random string of length i
-            let mut input_str = vec![0u8; i];
+        for &len in TEST_LENGTHS {
+            // Make a random string of the given length
+            let mut input_str = vec![0u8; len];
             rng.fill_bytes(&mut input_str);
 
             // Compute the hashes and assert consistency
@@ -486,15 +489,25 @@ mod test {
                 computed_output.value().unwrap().to_vec(),
                 expected_output,
                 "CRH error at length {}",
-                i
+                len
             )
         }
+    }
 
-        // Now test TwoToOneCRHScheme
-        for i in 0..=64 {
-            // Make random strings of length i
-            let mut left_input = vec![0u8; i];
-            let mut right_input = vec![0u8; i];
+    /// Tests the TwoToOneCRHScheme trait
+    #[test]
+    fn to_to_one_crh() {
+        let mut rng = ark_std::test_rng();
+        let cs = ConstraintSystem::<Fr>::new_ref();
+
+        // CRH parameters are nothing
+        let unit = ();
+        let unit_var = UnitVar::default();
+
+        for &len in TEST_LENGTHS {
+            // Make random strings of the given length
+            let mut left_input = vec![0u8; len];
+            let mut right_input = vec![0u8; len];
             rng.fill_bytes(&mut left_input);
             rng.fill_bytes(&mut right_input);
 
@@ -512,7 +525,7 @@ mod test {
                 computed_output.value().unwrap().to_vec(),
                 expected_output,
                 "TwoToOneCRH error at length {}",
-                i
+                len
             )
         }
     }
