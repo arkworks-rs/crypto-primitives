@@ -9,6 +9,7 @@ use core::iter;
 
 use ark_ff::PrimeField;
 use ark_r1cs_std::bits::{uint32::UInt32, uint8::UInt8};
+use ark_relations::r1cs::SynthesisError;
 use ark_std::{vec, vec::Vec};
 
 const STATE_LEN: usize = 8;
@@ -52,12 +53,15 @@ impl<ConstraintF: PrimeField> Default for Sha256Gadget<ConstraintF> {
 // Wikipedia's pseudocode is a good companion for understanding the below
 // https://en.wikipedia.org/wiki/SHA-2#Pseudocode
 impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
-    fn update_state(state: &mut [UInt32<ConstraintF>], data: &[UInt8<ConstraintF>]) {
+    fn update_state(
+        state: &mut [UInt32<ConstraintF>],
+        data: &[UInt8<ConstraintF>],
+    ) -> Result<(), SynthesisError> {
         assert_eq!(data.len(), 64);
 
         let mut w = vec![UInt32::constant(0); 64];
         for (word, chunk) in w.iter_mut().zip(data.chunks(4)) {
-            *word = UInt32::from_be_bytes(chunk);
+            *word = UInt32::from_bytes_be(chunk)?;
         }
 
         for i in 16..64 {
@@ -65,69 +69,71 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
                 let x1 = w[i - 15].rotr(7);
                 let x2 = w[i - 15].rotr(18);
                 let x3 = w[i - 15].shr(3);
-                x1.xor(&x2).unwrap().xor(&x3).unwrap()
+                x1.xor(&x2)?.xor(&x3)?
             };
             let s1 = {
                 let x1 = w[i - 2].rotr(17);
                 let x2 = w[i - 2].rotr(19);
                 let x3 = w[i - 2].shr(10);
-                x1.xor(&x2).unwrap().xor(&x3).unwrap()
+                x1.xor(&x2)?.xor(&x3)?
             };
-            w[i] = UInt32::addmany(&[w[i - 16].clone(), s0, w[i - 7].clone(), s1]).unwrap();
+            w[i] = UInt32::addmany(&[w[i - 16].clone(), s0, w[i - 7].clone(), s1])?;
         }
 
         let mut h = state.to_vec();
         for i in 0..64 {
             let ch = {
-                let x1 = h[4].bitand(&h[5]);
-                let x2 = h[4].not().bitand(&h[6]);
-                x1.xor(&x2).unwrap()
+                let x1 = h[4].bitand(&h[5])?;
+                let x2 = h[4].not().bitand(&h[6])?;
+                x1.xor(&x2)?
             };
             let ma = {
-                let x1 = h[0].bitand(&h[1]);
-                let x2 = h[0].bitand(&h[2]);
-                let x3 = h[1].bitand(&h[2]);
-                x1.xor(&x2).unwrap().xor(&x3).unwrap()
+                let x1 = h[0].bitand(&h[1])?;
+                let x2 = h[0].bitand(&h[2])?;
+                let x3 = h[1].bitand(&h[2])?;
+                x1.xor(&x2)?.xor(&x3)?
             };
             let s0 = {
                 let x1 = h[0].rotr(2);
                 let x2 = h[0].rotr(13);
                 let x3 = h[0].rotr(22);
-                x1.xor(&x2).unwrap().xor(&x3).unwrap()
+                x1.xor(&x2)?.xor(&x3)?
             };
             let s1 = {
                 let x1 = h[4].rotr(6);
                 let x2 = h[4].rotr(11);
                 let x3 = h[4].rotr(25);
-                x1.xor(&x2).unwrap().xor(&x3).unwrap()
+                x1.xor(&x2)?.xor(&x3)?
             };
-            let t0 = UInt32::addmany(&[h[7].clone(), s1, ch, UInt32::constant(K[i]), w[i].clone()])
-                .unwrap();
-            let t1 = UInt32::addmany(&[s0, ma]).unwrap();
+            let t0 =
+                UInt32::addmany(&[h[7].clone(), s1, ch, UInt32::constant(K[i]), w[i].clone()])?;
+            let t1 = UInt32::addmany(&[s0, ma])?;
 
             h[7] = h[6].clone();
             h[6] = h[5].clone();
             h[5] = h[4].clone();
-            h[4] = UInt32::addmany(&[h[3].clone(), t0.clone()]).unwrap();
+            h[4] = UInt32::addmany(&[h[3].clone(), t0.clone()])?;
             h[3] = h[2].clone();
             h[2] = h[1].clone();
             h[1] = h[0].clone();
-            h[0] = UInt32::addmany(&[t0, t1]).unwrap();
+            h[0] = UInt32::addmany(&[t0, t1])?;
         }
 
         for (s, hi) in state.iter_mut().zip(h.iter()) {
-            *s = UInt32::addmany(&[s.clone(), hi.clone()]).unwrap();
+            *s = UInt32::addmany(&[s.clone(), hi.clone()])?;
         }
+
+        Ok(())
     }
 
     /// Consumes the given data and updates the internal state
-    pub fn update(&mut self, data: &[UInt8<ConstraintF>]) {
+    pub fn update(&mut self, data: &[UInt8<ConstraintF>]) -> Result<(), SynthesisError> {
         let mut offset = 0;
         if self.num_pending > 0 && self.num_pending + data.len() >= 64 {
             offset = 64 - self.num_pending;
             // If the inputted data pushes the pending buffer over the chunk size, process it all
             self.pending[self.num_pending..].clone_from_slice(&data[..offset]);
-            Self::update_state(&mut self.state, &self.pending);
+            Self::update_state(&mut self.state, &self.pending)?;
 
             self.completed_data_blocks += 1;
             self.num_pending = 0;
@@ -138,7 +144,7 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
 
             if chunk_size == 64 {
                 // If it's a full chunk, process it
-                Self::update_state(&mut self.state, chunk);
+                Self::update_state(&mut self.state, chunk)?;
                 self.completed_data_blocks += 1;
             } else {
                 // Otherwise, add the bytes to the `pending` buffer
@@ -147,10 +153,12 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
                 self.num_pending += chunk_size;
             }
         }
+
+        Ok(())
     }
 
     /// Outputs the final digest of all the inputted data
-    pub fn finalize(mut self) -> Vec<UInt8<ConstraintF>> {
+    pub fn finalize(mut self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
         // Encode the number of processed bits as a u64, then serialize it to 8 big-endian bytes
         let data_bitlen = self.completed_data_blocks * 512 + self.num_pending as u64 * 8;
         let encoded_bitlen: Vec<UInt8<ConstraintF>> = {
@@ -172,17 +180,17 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
 
         // Write the bitlen to the end of the padding. Then process all the padding
         pending[offset..offset + 8].clone_from_slice(&encoded_bitlen);
-        self.update(&pending[..offset + 8]);
+        self.update(&pending[..offset + 8])?;
 
         // Collect the state into big-endian bytes
-        self.state.iter().flat_map(UInt32::to_be_bytes).collect()
+        Ok(self.state.iter().flat_map(UInt32::to_bytes_be).collect())
     }
 
     /// Computes the digest of the given data. This is a shortcut for `default()` followed by
     /// `update()` followed by `finalize()`.
-    pub fn digest(data: &[UInt8<ConstraintF>]) -> Vec<UInt8<ConstraintF>> {
+    pub fn digest(data: &[UInt8<ConstraintF>]) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
         let mut sha256_var = Self::default();
-        sha256_var.update(data);
+        sha256_var.update(data)?;
         sha256_var.finalize()
     }
 }
@@ -212,7 +220,7 @@ mod test {
         sha256_var
             .finalize()
             .into_iter()
-            .map(|b| b.value().unwrap())
+            .flat_map(|b| b.value().unwrap())
             .collect()
     }
 
@@ -236,7 +244,9 @@ mod test {
             rng.fill_bytes(&mut input_str);
 
             // Compute the hashes and assert consistency
-            sha256_var.update(&to_byte_vars(ns!(cs, "input"), &input_str));
+            sha256_var
+                .update(&to_byte_vars(ns!(cs, "input"), &input_str))
+                .unwrap();
             sha256.update(input_str);
             assert_eq!(
                 finalize_var(sha256_var),
@@ -260,7 +270,9 @@ mod test {
             let mut input_str = vec![0u8; 7];
             rng.fill_bytes(&mut input_str);
 
-            sha256_var.update(&to_byte_vars(ns!(cs, "input"), &input_str));
+            sha256_var
+                .update(&to_byte_vars(ns!(cs, "input"), &input_str))
+                .unwrap();
             sha256.update(input_str);
         }
 
