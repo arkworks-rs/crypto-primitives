@@ -216,12 +216,7 @@ where
     ConstraintF: PrimeField,
 {
     fn is_eq(&self, other: &Self) -> Result<Boolean<ConstraintF>, SynthesisError> {
-        self.0
-            .iter()
-            .zip(other.0.iter())
-            .fold(Ok(Boolean::constant(false)), |acc, (a, b)| {
-                acc.and_then(|acc| acc.and(&a.is_eq(&b)?))
-            })
+        self.0.is_eq(&other.0)
     }
 }
 
@@ -247,7 +242,7 @@ where
             .zip(false_value.0.iter())
             .map(|(t, f)| UInt8::conditionally_select(cond, t, f))
             .collect();
-        Ok(DigestVar(bytes?))
+        bytes.map(DigestVar)
     }
 }
 
@@ -296,7 +291,7 @@ impl<ConstraintF: PrimeField> AllocVar<Vec<u8>, ConstraintF> for DigestVar<Const
             })
             .collect();
 
-        Ok(DigestVar(var_bytes?))
+        var_bytes.map(DigestVar)
     }
 }
 
@@ -528,5 +523,28 @@ mod test {
                 len
             )
         }
+    }
+
+    /// Tests the EqGadget impl of DigestVar
+    #[test]
+    fn digest_eq() {
+        let mut rng = ark_std::test_rng();
+        let cs = ConstraintSystem::<Fr>::new_ref();
+
+        // Make two distinct digests
+        let mut digest1 = [0u8; 32];
+        let mut digest2 = [0u8; 32];
+        rng.fill_bytes(&mut digest1);
+        rng.fill_bytes(&mut digest2);
+
+        // Witness them
+        let digest1_var = DigestVar::new_witness(cs.clone(), || Ok(digest1.to_vec())).unwrap();
+        let digest2_var = DigestVar::new_witness(cs.clone(), || Ok(digest2.to_vec())).unwrap();
+
+        // Assert that the distinct digests are distinct
+        assert!(!digest1_var.is_eq(&digest2_var).unwrap().value().unwrap());
+
+        // Now assert that a digest equals itself
+        assert!(digest1_var.is_eq(&digest1_var).unwrap().value().unwrap());
     }
 }
