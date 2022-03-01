@@ -3,6 +3,7 @@
 ## Pending
 
 - Implemented SHA-256 CRH
+- Fixed Pedersen padding bug [\#76](https://github.com/arkworks-rs/crypto-primitives/issues/76)
 
 ### Breaking changes
 
