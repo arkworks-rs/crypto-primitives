@@ -209,7 +209,7 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
 
 /// Contains a 32-byte SHA256 digest
 #[derive(Clone, Debug)]
-pub struct DigestVar<ConstraintF: PrimeField>(Vec<UInt8<ConstraintF>>);
+pub struct DigestVar<ConstraintF: PrimeField>(pub Vec<UInt8<ConstraintF>>);
 
 impl<ConstraintF> EqGadget<ConstraintF> for DigestVar<ConstraintF>
 where
