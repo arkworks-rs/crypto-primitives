@@ -2,8 +2,8 @@
 
 ## Pending
 
-- Implemented SHA-256 CRH
-- Fixed Pedersen padding bug [\#76](https://github.com/arkworks-rs/crypto-primitives/issues/76)
+- [\#77](https://github.com/arkworks-rs/crypto-primitives/pull/77) Implement SHA-256 CRH.
+- [\#76](https://github.com/arkworks-rs/crypto-primitives/pull/79) Fix Pedersen padding bug.
 
 ### Breaking changes
 
