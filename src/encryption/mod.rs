@@ -8,7 +8,7 @@ pub mod elgamal;
 use crate::Error;
 use ark_std::rand::Rng;
 
-pub trait AsymmetricEncryptionScheme {
+pub trait AsymmetricEnc {
     type Parameters;
     type PublicKey;
     type SecretKey;

@@ -1,10 +1,13 @@
 mod byte_mt_tests {
-    use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
+    use crate::{
+        crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget},
+        Gadget,
+    };
 
-    use crate::merkle_tree::constraints::{BytesVarDigestConverter, ConfigGadget};
+    use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::{ByteDigestConverter, Config};
-    use crate::{CRHScheme, CRHSchemeGadget, MerkleTree, PathVar};
-    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
+    use crate::{CRHGadget, MerkleTree, PathVar, CRH};
+    use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq};
     #[allow(unused)]
     use ark_r1cs_std::prelude::*;
     #[allow(unused)]
@@ -18,10 +21,9 @@ mod byte_mt_tests {
     }
 
     type LeafH = pedersen::CRH<JubJub, Window4x256>;
-    type LeafHG = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window4x256>;
 
     type CompressH = pedersen::TwoToOneCRH<JubJub, Window4x256>;
-    type CompressHG = pedersen::constraints::TwoToOneCRHGadget<JubJub, EdwardsVar, Window4x256>;
+    type CompressHG = Gadget<CompressH>;
 
     type LeafVar<ConstraintF> = [UInt8<ConstraintF>];
 
@@ -29,24 +31,16 @@ mod byte_mt_tests {
 
     impl Config for JubJubMerkleTreeParams {
         type Leaf = [u8];
-        type LeafDigest = <LeafH as CRHScheme>::Output;
-        type LeafInnerDigestConverter = ByteDigestConverter<Self::LeafDigest>;
+        type LeafToInnerConverter = ByteDigestConverter;
 
-        type InnerDigest = <CompressH as TwoToOneCRHScheme>::Output;
         type LeafHash = LeafH;
         type TwoToOneHash = CompressH;
     }
 
     type ConstraintF = Fq;
-    struct JubJubMerkleTreeParamsVar;
-    impl ConfigGadget<JubJubMerkleTreeParams, ConstraintF> for JubJubMerkleTreeParamsVar {
-        type Leaf = LeafVar<ConstraintF>;
-        type LeafDigest = <LeafHG as CRHSchemeGadget<LeafH, ConstraintF>>::OutputVar;
-        type LeafInnerConverter = BytesVarDigestConverter<Self::LeafDigest, ConstraintF>;
-        type InnerDigest =
-            <CompressHG as TwoToOneCRHSchemeGadget<CompressH, ConstraintF>>::OutputVar;
-        type LeafHash = LeafHG;
-        type TwoToOneHash = CompressHG;
+    impl ConfigGadget<ConstraintF> for JubJubMerkleTreeParams {
+        type LeafVar = LeafVar<ConstraintF>;
+        type LeafToInnerVarConverter = ByteDigestConverter;
     }
 
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
@@ -59,8 +53,8 @@ mod byte_mt_tests {
     ) -> () {
         let mut rng = ark_std::test_rng();
 
-        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
-        let two_to_one_crh_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
+        let leaf_crh_params = <LeafH as CRH>::setup(&mut rng).unwrap();
+        let two_to_one_crh_params = <CompressH as TwoToOneCRH>::setup(&mut rng).unwrap();
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_params,
             &two_to_one_crh_params,
@@ -81,11 +75,11 @@ mod byte_mt_tests {
                 .unwrap());
 
             // Allocate Merkle Tree Root
-            let root = <LeafHG as CRHSchemeGadget<LeafH, _>>::OutputVar::new_witness(
+            let root = <Gadget<LeafH> as CRHGadget<_>>::OutputVar::new_witness(
                 ark_relations::ns!(cs, "new_digest"),
                 || {
                     if use_bad_root {
-                        Ok(<LeafH as CRHScheme>::Output::default())
+                        Ok(<LeafH as CRH>::Output::default())
                     } else {
                         Ok(root)
                     }
@@ -97,14 +91,13 @@ mod byte_mt_tests {
             println!("constraints from digest: {}", constraints_from_digest);
 
             // Allocate Parameters for CRH
-            let leaf_crh_params_var =
-                <LeafHG as CRHSchemeGadget<LeafH, _>>::ParametersVar::new_constant(
-                    ark_relations::ns!(cs, "leaf_crh_parameter"),
-                    &leaf_crh_params,
-                )
-                .unwrap();
+            let leaf_crh_params_var = <Gadget<LeafH> as CRHGadget<_>>::ParametersVar::new_constant(
+                ark_relations::ns!(cs, "leaf_crh_parameter"),
+                &leaf_crh_params,
+            )
+            .unwrap();
             let two_to_one_crh_params_var =
-                <CompressHG as TwoToOneCRHSchemeGadget<CompressH, _>>::ParametersVar::new_constant(
+                <Gadget<CompressH> as TwoToOneCRHGadget<_>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_crh_parameter"),
                     &two_to_one_crh_params,
                 )
@@ -121,7 +114,7 @@ mod byte_mt_tests {
             println!("constraints from leaf: {}", constraints_from_leaf);
 
             // Allocate Merkle Tree Path
-            let cw: PathVar<JubJubMerkleTreeParams, Fq, JubJubMerkleTreeParamsVar> =
+            let cw: PathVar<JubJubMerkleTreeParams, Fq> =
                 PathVar::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(&proof)).unwrap();
 
             let constraints_from_path = cs.num_constraints()
@@ -160,14 +153,13 @@ mod byte_mt_tests {
         if let Some(update_query) = update_query {
             let cs = ConstraintSystem::<Fq>::new_ref();
             // allocate parameters for CRH
-            let leaf_crh_params_var =
-                <LeafHG as CRHSchemeGadget<LeafH, _>>::ParametersVar::new_constant(
-                    ark_relations::ns!(cs, "leaf_crh_parameter"),
-                    &leaf_crh_params,
-                )
-                .unwrap();
+            let leaf_crh_params_var = <Gadget<LeafH> as CRHGadget<_>>::ParametersVar::new_constant(
+                ark_relations::ns!(cs, "leaf_crh_parameter"),
+                &leaf_crh_params,
+            )
+            .unwrap();
             let two_to_one_crh_params_var =
-                <CompressHG as TwoToOneCRHSchemeGadget<CompressH, _>>::ParametersVar::new_constant(
+                <Gadget<CompressH> as TwoToOneCRHGadget<_>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_crh_parameter"),
                     &two_to_one_crh_params,
                 )
@@ -182,19 +174,19 @@ mod byte_mt_tests {
             //
             // suppose the verifier already knows old root, new root, old leaf, new leaf, and the original path (so they are public)
             let old_root = tree.root();
-            let old_root_var = <LeafHG as CRHSchemeGadget<LeafH, _>>::OutputVar::new_input(
+            let old_root_var = <Gadget<LeafH> as CRHGadget<_>>::OutputVar::new_input(
                 ark_relations::ns!(cs, "old_root"),
                 || Ok(old_root),
             )
             .unwrap();
             let old_path = tree.generate_proof(update_query.0).unwrap();
-            let old_path_var: PathVar<JubJubMerkleTreeParams, Fq, JubJubMerkleTreeParamsVar> =
+            let old_path_var: PathVar<JubJubMerkleTreeParams, Fq> =
                 PathVar::new_input(ark_relations::ns!(cs, "old_path"), || Ok(old_path)).unwrap();
             let new_root = {
                 tree.update(update_query.0, &update_query.1).unwrap();
                 tree.root()
             };
-            let new_root_var = <LeafHG as CRHSchemeGadget<LeafH, _>>::OutputVar::new_input(
+            let new_root_var = <Gadget<LeafH> as CRHGadget<_>>::OutputVar::new_input(
                 ark_relations::ns!(cs, "new_root"),
                 || Ok(new_root),
             )
@@ -239,11 +231,14 @@ mod byte_mt_tests {
 }
 
 mod field_mt_tests {
-    use crate::crh::{poseidon, TwoToOneCRHSchemeGadget};
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter};
-    use crate::{CRHSchemeGadget, MerkleTree, PathVar};
+    use crate::{
+        crh::{poseidon, TwoToOneCRHGadget},
+        Gadget,
+    };
+    use crate::{CRHGadget, MerkleTree, PathVar};
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::uint32::UInt32;
@@ -253,31 +248,22 @@ mod field_mt_tests {
 
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
-    type HG = poseidon::constraints::CRHGadget<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;
-    type TwoToOneHG = poseidon::constraints::TwoToOneCRHGadget<F>;
 
     type LeafVar = [FpVar<F>];
 
     struct FieldMTConfig;
     impl Config for FieldMTConfig {
         type Leaf = [F];
-        type LeafDigest = F;
-        type LeafInnerDigestConverter = IdentityDigestConverter<F>;
-        type InnerDigest = F;
+        type LeafToInnerConverter = IdentityDigestConverter;
         type LeafHash = H;
         type TwoToOneHash = TwoToOneH;
     }
 
-    struct FieldMTConfigVar;
+    impl ConfigGadget<F> for FieldMTConfig {
+        type LeafVar = LeafVar;
 
-    impl ConfigGadget<FieldMTConfig, F> for FieldMTConfigVar {
-        type Leaf = LeafVar;
-        type LeafDigest = FpVar<F>;
-        type LeafInnerConverter = IdentityDigestConverter<FpVar<F>>;
-        type InnerDigest = FpVar<F>;
-        type LeafHash = HG;
-        type TwoToOneHash = TwoToOneHG;
+        type LeafToInnerVarConverter = IdentityDigestConverter;
     }
 
     type FieldMT = MerkleTree<FieldMTConfig>;
@@ -315,14 +301,14 @@ mod field_mt_tests {
             let constraints_from_digest = cs.num_constraints();
             println!("constraints from digest: {}", constraints_from_digest);
 
-            let leaf_crh_params_var = <HG as CRHSchemeGadget<H, _>>::ParametersVar::new_constant(
+            let leaf_crh_params_var = <Gadget<H> as CRHGadget<_>>::ParametersVar::new_constant(
                 ark_relations::ns!(cs, "leaf_crh_params"),
                 &leaf_crh_params,
             )
             .unwrap();
 
             let two_to_one_crh_params_var =
-                <TwoToOneHG as TwoToOneCRHSchemeGadget<TwoToOneH, _>>::ParametersVar::new_constant(
+                <Gadget<TwoToOneH> as TwoToOneCRHGadget<_>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_params"),
                     &leaf_crh_params,
                 )
@@ -342,7 +328,7 @@ mod field_mt_tests {
             println!("constraints from leaf: {}", constraints_from_leaf);
 
             // Allocate MT Path
-            let mut cw = PathVar::<FieldMTConfig, F, FieldMTConfigVar>::new_witness(
+            let mut cw = PathVar::<FieldMTConfig, F>::new_witness(
                 ark_relations::ns!(cs, "new_witness"),
                 || Ok(&proof),
             )
@@ -399,14 +385,14 @@ mod field_mt_tests {
         if let Some(update_query) = update_query {
             let cs = ConstraintSystem::<F>::new_ref();
             // allocate parameters for CRH
-            let leaf_crh_params_var = <HG as CRHSchemeGadget<H, _>>::ParametersVar::new_constant(
+            let leaf_crh_params_var = <Gadget<H> as CRHGadget<_>>::ParametersVar::new_constant(
                 ark_relations::ns!(cs, "leaf_crh_params"),
                 &leaf_crh_params,
             )
             .unwrap();
 
             let two_to_one_crh_params_var =
-                <TwoToOneHG as TwoToOneCRHSchemeGadget<TwoToOneH, _>>::ParametersVar::new_constant(
+                <Gadget<TwoToOneH> as TwoToOneCRHGadget<_>>::ParametersVar::new_constant(
                     ark_relations::ns!(cs, "two_to_one_params"),
                     &leaf_crh_params,
                 )
@@ -426,11 +412,11 @@ mod field_mt_tests {
             let old_root_var = FpVar::new_input(cs.clone(), || Ok(old_root)).unwrap();
 
             let old_path = tree.generate_proof(update_query.0).unwrap();
-            let old_path_var = PathVar::<FieldMTConfig, F, FieldMTConfigVar>::new_input(
-                ark_relations::ns!(cs, "old_path"),
-                || Ok(old_path),
-            )
-            .unwrap();
+            let old_path_var =
+                PathVar::<FieldMTConfig, F>::new_input(ark_relations::ns!(cs, "old_path"), || {
+                    Ok(old_path)
+                })
+                .unwrap();
             let new_root = {
                 tree.update(update_query.0, update_query.1.as_slice())
                     .unwrap();

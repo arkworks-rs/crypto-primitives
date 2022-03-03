@@ -11,51 +11,32 @@ use ark_ff::{
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use ark_r1cs_std::prelude::*;
-use core::{borrow::Borrow, marker::PhantomData};
+use core::borrow::Borrow;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct ParametersVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
+#[derivative(Clone(bound = "C: CurveWithVar<ConstraintF<C>>"))]
+pub struct ParametersVar<C: CurveWithVar<ConstraintF<C>>> {
     params: Parameters<C>,
-    #[doc(hidden)]
-    _group_var: PhantomData<GG>,
 }
 
 #[derive(Clone, Debug)]
 pub struct RandomnessVar<F: Field>(Vec<UInt8<F>>);
 
-pub struct CommGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
+impl<C, W> crate::commitment::CommitmentWithGadget<ConstraintF<C>> for Commitment<C, W>
 where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    #[doc(hidden)]
-    _curve: PhantomData<*const C>,
-    #[doc(hidden)]
-    _group_var: PhantomData<*const GG>,
-    #[doc(hidden)]
-    _window: PhantomData<*const W>,
-}
-
-impl<C, GG, W> crate::commitment::CommitmentGadget<Commitment<C, W>, ConstraintF<C>>
-    for CommGadget<C, GG, W>
-where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
+    C: CurveWithVar<ConstraintF<C>>,
     W: Window,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
     ConstraintF<C>: PrimeField,
 {
-    type OutputVar = GG;
-    type ParametersVar = ParametersVar<C, GG>;
+    type OutputVar = C::Var;
+    type ParametersVar = ParametersVar<C>;
     type RandomnessVar = RandomnessVar<ConstraintF<C>>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, r))]
-    fn commit(
+    fn commit_gadget(
         parameters: &Self::ParametersVar,
         input: &[UInt8<ConstraintF<C>>],
         r: &Self::RandomnessVar,
@@ -80,8 +61,10 @@ where
             .flat_map(|byte| byte.to_bits_le().unwrap())
             .collect();
         let input_in_bits = input_in_bits.chunks(W::WINDOW_SIZE);
-        let mut result =
-            GG::precomputed_base_multiscalar_mul_le(&parameters.params.generators, input_in_bits)?;
+        let mut result = C::Var::precomputed_base_multiscalar_mul_le(
+            &parameters.params.generators,
+            input_in_bits,
+        )?;
 
         // Compute h^r
         let rand_bits: Vec<_> =
@@ -98,11 +81,10 @@ where
     }
 }
 
-impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for ParametersVar<C, GG>
+impl<C> AllocVar<Parameters<C>, ConstraintF<C>> for ParametersVar<C>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
+    for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
 {
     fn new_variable<T: Borrow<Parameters<C>>>(
         _cs: impl Into<Namespace<ConstraintF<C>>>,
@@ -110,10 +92,7 @@ where
         _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let params = f()?.borrow().clone();
-        Ok(ParametersVar {
-            params,
-            _group_var: PhantomData,
-        })
+        Ok(ParametersVar { params })
     }
 }
 
@@ -138,15 +117,16 @@ where
 
 #[cfg(test)]
 mod test {
-    use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq, Fr};
+    use ark_ed_on_bls12_381::{EdwardsProjective as JubJub, Fq, Fr};
     use ark_std::{test_rng, UniformRand};
 
     use crate::{
         commitment::{
-            pedersen::{constraints::CommGadget, Commitment, Randomness},
+            pedersen::{Commitment, Randomness},
             CommitmentGadget, CommitmentScheme,
         },
         crh::pedersen,
+        Gadget,
     };
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
@@ -168,7 +148,6 @@ mod test {
         let rng = &mut test_rng();
 
         type TestCOMM = Commitment<JubJub, Window>;
-        type TestCOMMGadget = CommGadget<JubJub, EdwardsVar, Window>;
 
         let randomness = Randomness(Fr::rand(rng));
 
@@ -182,19 +161,19 @@ mod test {
         }
 
         let randomness_var =
-            <TestCOMMGadget as CommitmentGadget<TestCOMM, Fq>>::RandomnessVar::new_witness(
+            <Gadget<TestCOMM> as CommitmentGadget<Fq>>::RandomnessVar::new_witness(
                 ark_relations::ns!(cs, "gadget_randomness"),
                 || Ok(&randomness),
             )
             .unwrap();
         let parameters_var =
-            <TestCOMMGadget as CommitmentGadget<TestCOMM, Fq>>::ParametersVar::new_witness(
+            <Gadget<TestCOMM> as CommitmentGadget<Fq>>::ParametersVar::new_witness(
                 ark_relations::ns!(cs, "gadget_parameters"),
                 || Ok(&parameters),
             )
             .unwrap();
         let result_var =
-            TestCOMMGadget::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+            Gadget::<TestCOMM>::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

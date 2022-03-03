@@ -1,7 +1,7 @@
 use crate::{
     crh::{
-        pedersen::{Parameters, Window},
-        CRHSchemeGadget as CRHGadgetTrait,
+        pedersen::{Parameters, TwoToOneCRH, Window, CRH},
+        CRHWithGadget, TwoToOneCRHWithGadget,
     },
     Vec,
 };
@@ -10,47 +10,27 @@ use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::crh::pedersen::{TwoToOneCRH, CRH};
-use crate::crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget};
-use core::{borrow::Borrow, marker::PhantomData};
-
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct CRHParametersVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    params: Parameters<C>,
-    #[doc(hidden)]
-    _group_g: PhantomData<GG>,
-}
+use core::{borrow::Borrow, iter};
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
-pub struct CRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
-where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    #[doc(hidden)]
-    _group: PhantomData<*const C>,
-    #[doc(hidden)]
-    _group_var: PhantomData<*const GG>,
-    #[doc(hidden)]
-    _window: PhantomData<*const W>,
+#[derive(Derivative)]
+#[derivative(Clone(bound = "C: CurveWithVar<ConstraintF<C>>"))]
+pub struct CRHParametersVar<C: CurveWithVar<ConstraintF<C>>> {
+    params: Parameters<C>,
 }
 
-impl<C, GG, W> CRHSchemeGadget<CRH<C, W>, ConstraintF<C>> for CRHGadget<C, GG, W>
+impl<C, W> CRHWithGadget<ConstraintF<C>> for CRH<C, W>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
+    C: CurveWithVar<ConstraintF<C>>,
     W: Window,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
 {
     type InputVar = [UInt8<ConstraintF<C>>];
-    type OutputVar = GG;
-    type ParametersVar = CRHParametersVar<C, GG>;
+    type OutputVar = C::Var;
+    type ParametersVar = CRHParametersVar<C>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
-    fn evaluate(
+    fn evaluate_gadget(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
@@ -71,70 +51,59 @@ where
             .flat_map(|b| b.to_bits_le().unwrap())
             .collect();
         let input_in_bits = input_in_bits.chunks(W::WINDOW_SIZE);
-        let result =
-            GG::precomputed_base_multiscalar_mul_le(&parameters.params.generators, input_in_bits)?;
+        let result = C::Var::precomputed_base_multiscalar_mul_le(
+            &parameters.params.generators,
+            input_in_bits,
+        )?;
         Ok(result)
     }
 }
 
-pub struct TwoToOneCRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
+impl<C, W> TwoToOneCRHWithGadget<ConstraintF<C>> for TwoToOneCRH<C, W>
 where
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
-{
-    #[doc(hidden)]
-    _group: PhantomData<*const C>,
-    #[doc(hidden)]
-    _group_var: PhantomData<*const GG>,
-    #[doc(hidden)]
-    _window: PhantomData<*const W>,
-}
-
-impl<C, GG, W> TwoToOneCRHSchemeGadget<TwoToOneCRH<C, W>, ConstraintF<C>>
-    for TwoToOneCRHGadget<C, GG, W>
-where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
+    C: CurveWithVar<ConstraintF<C>>,
     W: Window,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    for<'a> &'a C::Var: GroupOpsBounds<'a, C, C::Var>,
 {
     type InputVar = [UInt8<ConstraintF<C>>];
-    type OutputVar = GG;
-    type ParametersVar = CRHParametersVar<C, GG>;
+    type OutputVar = C::Var;
+    type ParametersVar = CRHParametersVar<C>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
-    fn evaluate(
+    #[tracing::instrument(target = "r1cs", skip(parameters, left, right))]
+    fn evaluate_gadget(
         parameters: &Self::ParametersVar,
-        left_input: &Self::InputVar,
-        right_input: &Self::InputVar,
+        left: &Self::InputVar,
+        right: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // assume equality of left and right length
-        assert_eq!(left_input.len(), right_input.len());
-        let chained_input: Vec<_> = left_input
-            .to_vec()
-            .into_iter()
-            .chain(right_input.to_vec().into_iter())
+        assert_eq!(left.len(), right.len());
+        let input_size_bytes = CRH::<C, W>::INPUT_SIZE_BITS / 8;
+        let num_trailing_zeros = input_size_bytes - 2 * left.len();
+        let chained: Vec<_> = left
+            .iter()
+            .chain(right.iter())
+            .cloned()
+            .chain(iter::repeat(UInt8::constant(0u8)).take(num_trailing_zeros))
             .collect();
-        CRHGadget::<C, GG, W>::evaluate(parameters, &chained_input)
+        CRH::<C, W>::evaluate_gadget(parameters, &chained)
     }
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
-    fn compress(
+    #[tracing::instrument(target = "r1cs", skip(parameters, left, right))]
+    fn compress_gadget(
         parameters: &Self::ParametersVar,
-        left_input: &Self::OutputVar,
-        right_input: &Self::OutputVar,
+        left: &Self::OutputVar,
+        right: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // convert output to bytes
-        let left_input = left_input.to_bytes()?;
-        let right_input = right_input.to_bytes()?;
-        Self::evaluate(parameters, &left_input, &right_input)
+        let left = left.to_bytes()?;
+        let right = right.to_bytes()?;
+        Self::evaluate_gadget(parameters, &left, &right)
     }
 }
 
-impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for CRHParametersVar<C, GG>
+impl<C> AllocVar<Parameters<C>, ConstraintF<C>> for CRHParametersVar<C>
 where
-    C: ProjectiveCurve,
-    GG: CurveVar<C, ConstraintF<C>>,
-    for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
+    C: CurveWithVar<ConstraintF<C>>,
 {
     #[tracing::instrument(target = "r1cs", skip(_cs, f))]
     fn new_variable<T: Borrow<Parameters<C>>>(
@@ -143,17 +112,15 @@ where
         _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let params = f()?.borrow().clone();
-        Ok(CRHParametersVar {
-            params,
-            _group_g: PhantomData,
-        })
+        Ok(CRHParametersVar { params })
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::crh::{
-        pedersen, CRHScheme, CRHSchemeGadget, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget,
+    use crate::{
+        crh::{pedersen, CRHGadget, TwoToOneCRH, TwoToOneCRHGadget, CRH},
+        Gadget,
     };
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
@@ -163,11 +130,8 @@ mod test {
     use ark_std::{test_rng, UniformRand};
 
     type TestCRH = pedersen::CRH<JubJub, Window>;
-    type TestCRHGadget = pedersen::constraints::CRHGadget<JubJub, EdwardsVar, Window>;
 
     type TestTwoToOneCRH = pedersen::TwoToOneCRH<JubJub, Window>;
-    type TestTwoToOneCRHGadget =
-        pedersen::constraints::TwoToOneCRHGadget<JubJub, EdwardsVar, Window>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
@@ -217,7 +181,7 @@ mod test {
         )
         .unwrap();
 
-        let result_var = TestCRHGadget::evaluate(&parameters_var, &input_var).unwrap();
+        let result_var = Gadget::<TestCRH>::evaluate(&parameters_var, &input_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
@@ -229,11 +193,10 @@ mod test {
         let rng = &mut test_rng();
         let cs = ConstraintSystem::<Fr>::new_ref();
 
-        let (left_input, left_input_var) = generate_affine(cs.clone(), rng);
-        let (right_input, right_input_var) = generate_affine(cs.clone(), rng);
+        let (left, left_var) = generate_affine(cs.clone(), rng);
+        let (right, right_var) = generate_affine(cs.clone(), rng);
         let parameters = TestTwoToOneCRH::setup(rng).unwrap();
-        let primitive_result =
-            TestTwoToOneCRH::compress(&parameters, left_input, right_input).unwrap();
+        let primitive_result = TestTwoToOneCRH::compress(&parameters, left, right).unwrap();
 
         let parameters_var = pedersen::constraints::CRHParametersVar::new_constant(
             ark_relations::ns!(cs, "CRH Parameters"),
@@ -242,8 +205,7 @@ mod test {
         .unwrap();
 
         let result_var =
-            TestTwoToOneCRHGadget::compress(&parameters_var, &left_input_var, &right_input_var)
-                .unwrap();
+            Gadget::<TestTwoToOneCRH>::compress(&parameters_var, &left_var, &right_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

@@ -2,22 +2,19 @@ use core::{borrow::Borrow, iter, marker::PhantomData};
 
 use crate::{
     crh::{
-        bowe_hopwood::{Parameters, CHUNK_SIZE},
-        pedersen::{self, Window},
-        CRHSchemeGadget, TwoToOneCRHSchemeGadget,
+        bowe_hopwood::{self, Parameters, TwoToOneCRH, CHUNK_SIZE, CRH},
+        pedersen::Window,
+        CRHWithGadget, TwoToOneCRHWithGadget,
     },
     Vec,
 };
-use ark_ec::{
-    twisted_edwards_extended::GroupProjective as TEProjective, ModelParameters, TEModelParameters,
-};
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::Field;
 use ark_r1cs_std::{
     alloc::AllocVar, groups::curves::twisted_edwards::AffineVar, prelude::*, uint8::UInt8,
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::crh::bowe_hopwood::{TwoToOneCRH, CRH};
 use ark_r1cs_std::bits::boolean::Boolean;
 
 type ConstraintF<P> = <<P as ModelParameters>::BaseField as Field>::BasePrimeField;
@@ -30,32 +27,26 @@ pub struct ParametersVar<P: TEModelParameters, W: Window> {
     _window: PhantomData<W>,
 }
 
-pub struct CRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
-where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-{
-    #[doc(hidden)]
-    _params: PhantomData<P>,
-    #[doc(hidden)]
-    _base_field: PhantomData<F>,
-}
+type BF<P> = <P as ModelParameters>::BaseField;
+type BFVar<P> = <BF<P> as FieldWithVar>::Var;
 
-impl<P, F, W> CRHSchemeGadget<CRH<P, W>, ConstraintF<P>> for CRHGadget<P, F>
+impl<P, W> CRHWithGadget<ConstraintF<P>> for CRH<P, W>
 where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-    F: FieldVar<P::BaseField, ConstraintF<P>>,
-    F: TwoBitLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>
-        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>,
+    BF<P>: FieldWithVar,
+    BFVar<P>: TwoBitLookupGadget<ConstraintF<P>, TableConstant = BF<P>>
+        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = BF<P>>,
+
+    for<'a> &'a BFVar<P>: FieldOpsBounds<'a, BF<P>, BFVar<P>>,
     P: TEModelParameters,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<P>>];
 
-    type OutputVar = F;
+    type OutputVar = BFVar<P>;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters, input))]
-    fn evaluate(
+    fn evaluate_gadget(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
@@ -90,60 +81,52 @@ where
     }
 }
 
-pub struct TwoToOneCRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+impl<P, W> TwoToOneCRHWithGadget<ConstraintF<P>> for TwoToOneCRH<P, W>
 where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-{
-    #[doc(hidden)]
-    _params: PhantomData<P>,
-    #[doc(hidden)]
-    _base_field: PhantomData<F>,
-}
+    BF<P>: FieldWithVar,
+    BFVar<P>: TwoBitLookupGadget<ConstraintF<P>, TableConstant = BF<P>>
+        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = BF<P>>,
 
-impl<P, F, W> TwoToOneCRHSchemeGadget<TwoToOneCRH<P, W>, ConstraintF<P>> for TwoToOneCRHGadget<P, F>
-where
-    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-    F: FieldVar<P::BaseField, ConstraintF<P>>,
-    F: TwoBitLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>
-        + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>,
+    for<'a> &'a BFVar<P>: FieldOpsBounds<'a, BF<P>, BFVar<P>>,
     P: TEModelParameters,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<P>>];
-    type OutputVar = F;
+    type OutputVar = BFVar<P>;
     type ParametersVar = ParametersVar<P, W>;
 
     #[tracing::instrument(target = "r1cs", skip(parameters))]
-    fn evaluate(
+    fn evaluate_gadget(
         parameters: &Self::ParametersVar,
-        left_input: &Self::InputVar,
-        right_input: &Self::InputVar,
+        left: &Self::InputVar,
+        right: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let input_size_bytes = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS / 8;
+        let input_size_bytes = bowe_hopwood::CRH::<P, W>::INPUT_SIZE_BITS / 8;
 
         // assume equality of left and right length
-        assert_eq!(left_input.len(), right_input.len());
+        assert_eq!(left.len(), right.len());
         // assume sum of left and right length is at most the CRH length limit
-        assert!(left_input.len() + right_input.len() <= input_size_bytes);
+        assert!(left.len() + right.len() <= input_size_bytes);
 
-        let num_trailing_zeros = input_size_bytes - (left_input.len() + right_input.len());
-        let chained_input: Vec<_> = left_input
-            .to_vec()
+        let num_trailing_zeros = input_size_bytes - (left.len() + right.len());
+        let chained: Vec<_> = left
             .into_iter()
-            .chain(right_input.to_vec().into_iter())
+            .chain(right.into_iter())
+            .cloned()
             .chain(iter::repeat(UInt8::constant(0u8)).take(num_trailing_zeros))
             .collect();
-        CRHGadget::<P, F>::evaluate(parameters, &chained_input)
+        CRH::<P, W>::evaluate_gadget(parameters, &chained)
     }
 
-    fn compress(
+    #[tracing::instrument(target = "r1cs", skip(parameters, left, right))]
+    fn compress_gadget(
         parameters: &Self::ParametersVar,
-        left_input: &Self::OutputVar,
-        right_input: &Self::OutputVar,
+        left: &Self::OutputVar,
+        right: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let left_input_bytes = left_input.to_bytes()?;
-        let right_input_bytes = right_input.to_bytes()?;
-        Self::evaluate(parameters, &left_input_bytes, &right_input_bytes)
+        let left = left.to_bytes()?;
+        let right = right.to_bytes()?;
+        Self::evaluate_gadget(parameters, &left, &right)
     }
 }
 
@@ -170,20 +153,17 @@ where
 mod test {
     use ark_std::rand::Rng;
 
-    use crate::crh::bowe_hopwood;
-    use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
-    use crate::{CRHScheme, CRHSchemeGadget};
-    use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
+    use crate::crh::{pedersen, TwoToOneCRH, TwoToOneCRHGadget};
+    use crate::{crh::bowe_hopwood, Gadget};
+    use crate::{CRHGadget, CRH};
+    use ark_ed_on_bls12_381::{EdwardsParameters, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::test_rng;
 
     type TestCRH = bowe_hopwood::CRH<EdwardsParameters, Window>;
-    type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsParameters, FqVar>;
 
     type TestTwoToOneCRH = bowe_hopwood::TwoToOneCRH<EdwardsParameters, Window>;
-    type TestTwoToOneCRHGadget =
-        bowe_hopwood::constraints::TwoToOneCRHGadget<EdwardsParameters, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
@@ -219,18 +199,17 @@ mod test {
         let parameters = TestCRH::setup(rng).unwrap();
         let primitive_result = TestCRH::evaluate(&parameters, input.as_slice()).unwrap();
 
-        let parameters_var =
-            <TestCRHGadget as CRHSchemeGadget<TestCRH, Fr>>::ParametersVar::new_witness(
-                ark_relations::ns!(cs, "parameters_var"),
-                || Ok(&parameters),
-            )
-            .unwrap();
+        let parameters_var = <Gadget<TestCRH> as CRHGadget<Fr>>::ParametersVar::new_witness(
+            ark_relations::ns!(cs, "parameters_var"),
+            || Ok(&parameters),
+        )
+        .unwrap();
         println!(
             "number of constraints for input + params: {}",
             cs.num_constraints()
         );
 
-        let result_var = TestCRHGadget::evaluate(&parameters_var, &input_var).unwrap();
+        let result_var = Gadget::<TestCRH>::evaluate(&parameters_var, &input_var).unwrap();
 
         println!("number of constraints total: {}", cs.num_constraints());
 
@@ -245,25 +224,21 @@ mod test {
 
         // Max input size is 63 bytes. That leaves 31 for the left half, 31 for the right, and 1
         // byte of padding.
-        let (left_input, left_input_var) = generate_u8_input(cs.clone(), 31, rng);
-        let (right_input, right_input_var) = generate_u8_input(cs.clone(), 31, rng);
+        let (left, left_var) = generate_u8_input(cs.clone(), 31, rng);
+        let (right, right_var) = generate_u8_input(cs.clone(), 31, rng);
         let parameters = TestTwoToOneCRH::setup(rng).unwrap();
         let primitive_result =
-            TestTwoToOneCRH::evaluate(&parameters, left_input.as_slice(), right_input.as_slice())
-                .unwrap();
+            TestTwoToOneCRH::evaluate(&parameters, left.as_slice(), right.as_slice()).unwrap();
 
-        let parameters_var = <TestTwoToOneCRHGadget as TwoToOneCRHSchemeGadget<
-            TestTwoToOneCRH,
-            Fr,
-        >>::ParametersVar::new_witness(
-            ark_relations::ns!(cs, "parameters_var"),
-            || Ok(&parameters),
-        )
-        .unwrap();
+        let parameters_var =
+            <Gadget<TestTwoToOneCRH> as TwoToOneCRHGadget<Fr>>::ParametersVar::new_witness(
+                ark_relations::ns!(cs, "parameters_var"),
+                || Ok(&parameters),
+            )
+            .unwrap();
 
         let result_var =
-            TestTwoToOneCRHGadget::evaluate(&parameters_var, &left_input_var, &right_input_var)
-                .unwrap();
+            Gadget::<TestTwoToOneCRH>::evaluate(&parameters_var, &left_var, &right_var).unwrap();
 
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());

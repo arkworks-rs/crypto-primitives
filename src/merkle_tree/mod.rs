@@ -1,12 +1,11 @@
 #![allow(clippy::needless_range_loop)]
 
+use crate::CRH;
 /// Defines a trait to chain two types of CRHs.
-use crate::crh::TwoToOneCRHScheme;
-use crate::{CRHScheme, Error};
+use crate::{crh::TwoToOneCRH, Error};
 use ark_ff::ToBytes;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::borrow::Borrow;
-use ark_std::hash::Hash;
 use ark_std::vec::Vec;
 
 #[cfg(test)]
@@ -18,32 +17,28 @@ pub mod constraints;
 /// Convert the hash digest in different layers by converting previous layer's output to
 /// `TargetType`, which is a `Borrow` to next layer's input.
 pub trait DigestConverter<From, To: ?Sized> {
-    type TargetType: Borrow<To>;
-    fn convert(item: From) -> Result<Self::TargetType, Error>;
+    type Target: Borrow<To>;
+    fn convert(item: &From) -> Result<Self::Target, Error>;
 }
 
 /// A trivial converter where digest of previous layer's hash is the same as next layer's input.
-pub struct IdentityDigestConverter<T> {
-    _prev_layer_digest: T,
-}
+pub struct IdentityDigestConverter;
 
-impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
-    type TargetType = T;
-    fn convert(item: T) -> Result<T, Error> {
-        Ok(item)
+impl<T: Clone> DigestConverter<T, T> for IdentityDigestConverter {
+    type Target = T;
+    fn convert(item: &T) -> Result<T, Error> {
+        Ok(item.clone())
     }
 }
 
 /// Convert previous layer's digest to bytes and use bytes as input for next layer's digest.
 /// TODO: `ToBytes` trait will be deprecated in future versions.
-pub struct ByteDigestConverter<T: CanonicalSerialize + ToBytes> {
-    _prev_layer_digest: T,
-}
+pub struct ByteDigestConverter;
 
-impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestConverter<T> {
-    type TargetType = Vec<u8>;
+impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestConverter {
+    type Target = Vec<u8>;
 
-    fn convert(item: T) -> Result<Self::TargetType, Error> {
+    fn convert(item: &T) -> Result<Self::Target, Error> {
         // TODO: In some tests, `serialize` is not consistent with constraints. Try fix those.
         Ok(crate::to_unchecked_bytes!(item)?)
     }
@@ -51,48 +46,29 @@ impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestCon
 
 /// Merkle tree have three types of hashes.
 /// * `LeafHash`: Convert leaf to leaf digest
-/// * `TwoLeavesToOneHash`: Convert two leaf digests to one inner digest. This one can be a wrapped
-/// version `TwoHashesToOneHash`, which first converts leaf digest to inner digest.
-/// * `TwoHashesToOneHash`: Compress two inner digests to one inner digest
+/// * `TwoLeavesToOneHash`: Convert two leaf digests to one inner digest.
+/// This can be a wrapped version `TwoToOneHash`, which first converts a leaf digest to an inner digest.
 pub trait Config {
     type Leaf: ?Sized; // merkle tree does not store the leaf
                        // leaf layer
-    type LeafDigest: ToBytes
-        + Clone
-        + Eq
-        + core::fmt::Debug
-        + Hash
-        + Default
-        + CanonicalSerialize
-        + CanonicalDeserialize;
-    // transition between leaf layer to inner layer
-    type LeafInnerDigestConverter: DigestConverter<
-        Self::LeafDigest,
-        <Self::TwoToOneHash as TwoToOneCRHScheme>::Input,
-    >;
-    // inner layer
-    type InnerDigest: ToBytes
-        + Clone
-        + Eq
-        + core::fmt::Debug
-        + Hash
-        + Default
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+                       // Tom's Note: in the future, if we want different hash function, we can simply add more
+                       // types of digest here and specify a digest converter. Same for constraints.
 
-    // Tom's Note: in the future, if we want different hash function, we can simply add more
-    // types of digest here and specify a digest converter. Same for constraints.
-
-    /// leaf -> leaf digest
-    /// If leaf hash digest and inner hash digest are different, we can create a new
-    /// leaf hash which wraps the original leaf hash and convert its output to `Digest`.
-    type LeafHash: CRHScheme<Input = Self::Leaf, Output = Self::LeafDigest>;
+    type LeafHash: CRH<Input = Self::Leaf>;
     /// 2 inner digest -> inner digest
-    type TwoToOneHash: TwoToOneCRHScheme<Output = Self::InnerDigest>;
+    type TwoToOneHash: TwoToOneCRH;
+
+    type LeafToInnerConverter: DigestConverter<
+        LeafDigest<Self>,
+        <Self::TwoToOneHash as TwoToOneCRH>::Input,
+    >;
 }
 
-pub type TwoToOneParam<P> = <<P as Config>::TwoToOneHash as TwoToOneCRHScheme>::Parameters;
-pub type LeafParam<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
+pub type LeafDigest<C> = <<C as Config>::LeafHash as CRH>::Output;
+pub type TwoToOneDigest<C> = <<C as Config>::TwoToOneHash as TwoToOneCRH>::Output;
+
+pub type TwoToOneParams<P> = <<P as Config>::TwoToOneHash as TwoToOneCRH>::Parameters;
+pub type LeafParams<P> = <<P as Config>::LeafHash as CRH>::Parameters;
 
 /// Stores the hashes of a particular path (in order) from root to leaf.
 /// For example:
@@ -113,9 +89,9 @@ pub type LeafParam<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
     Default(bound = "P: Config")
 )]
 pub struct Path<P: Config> {
-    pub leaf_sibling_hash: P::LeafDigest,
+    pub leaf_sibling_hash: LeafDigest<P>,
     /// The sibling of path node ordered from higher layer to lower layer (does not include root node).
-    pub auth_path: Vec<P::InnerDigest>,
+    pub auth_path: Vec<TwoToOneDigest<P>>,
     /// stores the leaf index of the node
     pub leaf_index: usize,
 }
@@ -140,9 +116,9 @@ impl<P: Config> Path<P> {
     /// `verify` infers the tree height by setting `tree_height = self.auth_path.len() + 2`
     pub fn verify<L: Borrow<P::Leaf>>(
         &self,
-        leaf_hash_params: &LeafParam<P>,
-        two_to_one_params: &TwoToOneParam<P>,
-        root_hash: &P::InnerDigest,
+        leaf_hash_params: &LeafParams<P>,
+        two_to_one_params: &TwoToOneParams<P>,
+        root_hash: &TwoToOneDigest<P>,
         leaf: L,
     ) -> Result<bool, crate::Error> {
         // calculate leaf hash
@@ -152,8 +128,8 @@ impl<P: Config> Path<P> {
             select_left_right_child(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
 
         // leaf layer to inner layer conversion
-        let left_child = P::LeafInnerDigestConverter::convert(left_child)?;
-        let right_child = P::LeafInnerDigestConverter::convert(right_child)?;
+        let left_child = P::LeafToInnerConverter::convert(&left_child)?;
+        let right_child = P::LeafToInnerConverter::convert(&right_child)?;
 
         let mut curr_path_node =
             P::TwoToOneHash::evaluate(&two_to_one_params, left_child, right_child)?;
@@ -214,13 +190,13 @@ fn select_left_right_child<L: Clone>(
 pub struct MerkleTree<P: Config> {
     /// stores the non-leaf nodes in level order. The first element is the root node.
     /// The ith nodes (starting at 1st) children are at indices `2*i`, `2*i+1`
-    non_leaf_nodes: Vec<P::InnerDigest>,
+    non_leaf_nodes: Vec<TwoToOneDigest<P>>,
     /// store the hash of leaf nodes from left to right
-    leaf_nodes: Vec<P::LeafDigest>,
+    leaf_nodes: Vec<LeafDigest<P>>,
     /// Store the inner hash parameters
-    two_to_one_hash_param: TwoToOneParam<P>,
+    two_to_one_hash_param: TwoToOneParams<P>,
     /// Store the leaf hash parameters
-    leaf_hash_param: LeafParam<P>,
+    leaf_hash_param: LeafParams<P>,
     /// Stores the height of the MerkleTree
     height: usize,
 }
@@ -229,19 +205,19 @@ impl<P: Config> MerkleTree<P> {
     /// Create an empty merkle tree such that all leaves are zero-filled.
     /// Consider using a sparse merkle tree if you need the tree to be low memory
     pub fn blank(
-        leaf_hash_param: &LeafParam<P>,
-        two_to_one_hash_param: &TwoToOneParam<P>,
+        leaf_hash_param: &LeafParams<P>,
+        two_to_one_hash_param: &TwoToOneParams<P>,
         height: usize,
     ) -> Result<Self, crate::Error> {
         // use empty leaf digest
-        let leaves_digest = vec![P::LeafDigest::default(); 1 << (height - 1)];
+        let leaves_digest = vec![LeafDigest::<P>::default(); 1 << (height - 1)];
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
     pub fn new<L: Borrow<P::Leaf>>(
-        leaf_hash_param: &LeafParam<P>,
-        two_to_one_hash_param: &TwoToOneParam<P>,
+        leaf_hash_param: &LeafParams<P>,
+        two_to_one_hash_param: &TwoToOneParams<P>,
         leaves: impl IntoIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
         let mut leaves_digests = Vec::new();
@@ -255,9 +231,9 @@ impl<P: Config> MerkleTree<P> {
     }
 
     pub fn new_with_leaf_digest(
-        leaf_hash_param: &LeafParam<P>,
-        two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves_digest: Vec<P::LeafDigest>,
+        leaf_hash_param: &LeafParams<P>,
+        two_to_one_hash_param: &TwoToOneParams<P>,
+        leaves_digest: Vec<LeafDigest<P>>,
     ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaves_digest.len();
         assert!(
@@ -268,10 +244,10 @@ impl<P: Config> MerkleTree<P> {
 
         let tree_height = tree_height(leaf_nodes_size);
 
-        let hash_of_empty: P::InnerDigest = P::InnerDigest::default();
+        let hash_of_empty = TwoToOneDigest::<P>::default();
 
         // initialize the merkle tree as array of nodes in level order
-        let mut non_leaf_nodes: Vec<P::InnerDigest> = (0..non_leaf_nodes_size)
+        let mut non_leaf_nodes: Vec<TwoToOneDigest<P>> = (0..non_leaf_nodes_size)
             .map(|_| hash_of_empty.clone())
             .collect();
 
@@ -296,8 +272,8 @@ impl<P: Config> MerkleTree<P> {
                 // compute hash
                 non_leaf_nodes[current_index] = P::TwoToOneHash::evaluate(
                     &two_to_one_hash_param,
-                    P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone())?,
-                    P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone())?,
+                    P::LeafToInnerConverter::convert(&leaves_digest[left_leaf_index].clone())?,
+                    P::LeafToInnerConverter::convert(&leaves_digest[right_leaf_index].clone())?,
                 )?
             }
         }
@@ -328,7 +304,7 @@ impl<P: Config> MerkleTree<P> {
     }
 
     /// Returns the root of the Merkle tree.
-    pub fn root(&self) -> P::InnerDigest {
+    pub fn root(&self) -> TwoToOneDigest<P> {
         self.non_leaf_nodes[0].clone()
     }
 
@@ -380,12 +356,12 @@ impl<P: Config> MerkleTree<P> {
         &self,
         index: usize,
         new_leaf: T,
-    ) -> Result<(P::LeafDigest, Vec<P::InnerDigest>), crate::Error> {
+    ) -> Result<(LeafDigest<P>, Vec<TwoToOneDigest<P>>), crate::Error> {
         // calculate the hash of leaf
-        let new_leaf_hash: P::LeafDigest = P::LeafHash::evaluate(&self.leaf_hash_param, new_leaf)?;
+        let new_leaf_hash: LeafDigest<P> = P::LeafHash::evaluate(&self.leaf_hash_param, new_leaf)?;
 
         // calculate leaf sibling hash and locate its position (left or right)
-        let (leaf_left, leaf_right) = if index & 1 == 0 {
+        let (left_leaf, right_leaf) = if index & 1 == 0 {
             // leaf on left
             (&new_leaf_hash, &self.leaf_nodes[index + 1])
         } else {
@@ -397,8 +373,8 @@ impl<P: Config> MerkleTree<P> {
         {
             path_bottom_to_top.push(P::TwoToOneHash::evaluate(
                 &self.two_to_one_hash_param,
-                P::LeafInnerDigestConverter::convert(leaf_left.clone())?,
-                P::LeafInnerDigestConverter::convert(leaf_right.clone())?,
+                P::LeafToInnerConverter::convert(&left_leaf)?,
+                P::LeafToInnerConverter::convert(&right_leaf)?,
             )?);
         }
 
@@ -458,7 +434,7 @@ impl<P: Config> MerkleTree<P> {
         &mut self,
         index: usize,
         new_leaf: &P::Leaf,
-        asserted_new_root: &P::InnerDigest,
+        asserted_new_root: &TwoToOneDigest<P>,
     ) -> Result<bool, crate::Error> {
         let new_leaf = new_leaf.borrow();
         assert!(index < self.leaf_nodes.len(), "index out of range");

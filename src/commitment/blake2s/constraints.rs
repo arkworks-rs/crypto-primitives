@@ -1,7 +1,7 @@
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::{
-    commitment::{blake2s, CommitmentGadget},
+    commitment::{blake2s, CommitmentWithGadget},
     prf::blake2s::constraints::{evaluate_blake2s, OutputVar},
     Vec,
 };
@@ -16,15 +16,13 @@ pub struct ParametersVar;
 #[derive(Clone)]
 pub struct RandomnessVar<F: Field>(pub Vec<UInt8<F>>);
 
-pub struct CommGadget;
-
-impl<F: PrimeField> CommitmentGadget<blake2s::Commitment, F> for CommGadget {
+impl<F: PrimeField> CommitmentWithGadget<F> for blake2s::Commitment {
     type OutputVar = OutputVar<F>;
     type ParametersVar = ParametersVar;
     type RandomnessVar = RandomnessVar<F>;
 
     #[tracing::instrument(target = "r1cs", skip(input, r))]
-    fn commit(
+    fn commit_gadget(
         _: &Self::ParametersVar,
         input: &[UInt8<F>],
         r: &Self::RandomnessVar,
@@ -72,12 +70,10 @@ impl<ConstraintF: PrimeField> AllocVar<[u8; 32], ConstraintF> for RandomnessVar<
 #[cfg(test)]
 mod test {
     use crate::commitment::{
-        blake2s::{
-            constraints::{CommGadget, RandomnessVar},
-            Commitment,
-        },
+        blake2s::{constraints::RandomnessVar, Commitment},
         CommitmentGadget, CommitmentScheme,
     };
+    use crate::Gadget;
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
@@ -92,7 +88,6 @@ mod test {
         let rng = &mut ark_std::test_rng();
 
         type TestCOMM = Commitment;
-        type TestCOMMGadget = CommGadget;
 
         let mut randomness = [0u8; 32];
         rng.fill(&mut randomness);
@@ -112,17 +107,13 @@ mod test {
         let randomness_var = RandomnessVar(randomness_var);
 
         let parameters_var =
-            <TestCOMMGadget as CommitmentGadget<TestCOMM, Fr>>::ParametersVar::new_witness(
+            <Gadget<TestCOMM> as CommitmentGadget<Fr>>::ParametersVar::new_witness(
                 ark_relations::ns!(cs, "gadget_parameters"),
                 || Ok(&parameters),
             )
             .unwrap();
-        let result_var = <TestCOMMGadget as CommitmentGadget<TestCOMM, Fr>>::commit(
-            &parameters_var,
-            &input_var,
-            &randomness_var,
-        )
-        .unwrap();
+        let result_var =
+            Gadget::<TestCOMM>::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
         for i in 0..32 {
             assert_eq!(primitive_result[i], result_var.0[i].value().unwrap());

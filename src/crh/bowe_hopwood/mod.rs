@@ -12,7 +12,7 @@ use ark_std::{
 use rayon::prelude::*;
 
 use super::pedersen;
-use crate::crh::{CRHScheme, TwoToOneCRHScheme};
+use crate::crh::{TwoToOneCRH as TwoToOneCRHTrait, CRH as CRHTrait};
 use ark_ec::{
     twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
 };
@@ -39,6 +39,8 @@ pub struct CRH<P: TEModelParameters, W: pedersen::Window> {
 }
 
 impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
+    pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         let mut generators = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -62,14 +64,15 @@ pub struct TwoToOneCRH<P: TEModelParameters, W: pedersen::Window> {
 }
 
 impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH<P, W> {
-    const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
-    const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+    pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
+    pub(crate) const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
+
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         CRH::<P, W>::create_generators(rng)
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> CRHTrait for CRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -183,7 +186,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCRH<P, W> {
+impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHTrait for TwoToOneCRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -195,29 +198,29 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCR
 
     /// A simple implementation method: just concat the left input and right input together
     ///
-    /// `evaluate` requires that `left_input` and `right_input` are of equal length.
+    /// `evaluate` requires that `left` and `right` are of equal length.
     fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
-        let left_input = left_input.borrow();
-        let right_input = right_input.borrow();
+        let left = left.borrow();
+        let right = right.borrow();
         assert_eq!(
-            left_input.len(),
-            right_input.len(),
+            left.len(),
+            right.len(),
             "left and right input should be of equal length"
         );
         // check overflow
 
-        debug_assert!(left_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
-        debug_assert!(right_input.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
+        debug_assert!(left.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
+        debug_assert!(right.len() * 8 <= Self::HALF_INPUT_SIZE_BITS);
 
         let mut buffer = vec![0u8; Self::INPUT_SIZE_BITS / 8];
 
         buffer
             .iter_mut()
-            .zip(left_input.iter().chain(right_input.iter()))
+            .zip(left.iter().chain(right.iter()))
             .for_each(|(b, l_b)| *b = *l_b);
 
         CRH::<P, W>::evaluate(parameters, buffer)
@@ -225,13 +228,13 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCR
 
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
         Self::evaluate(
             parameters,
-            crate::to_unchecked_bytes!(left_input)?,
-            crate::to_unchecked_bytes!(right_input)?,
+            crate::to_unchecked_bytes!(left)?,
+            crate::to_unchecked_bytes!(right)?,
         )
     }
 }
@@ -250,7 +253,7 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 mod test {
     use crate::{
         crh::{bowe_hopwood, pedersen::Window},
-        CRHScheme,
+        CRH,
     };
     use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_std::test_rng;

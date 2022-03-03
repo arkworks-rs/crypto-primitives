@@ -1,7 +1,7 @@
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-use crate::encryption::AsymmetricEncryptionScheme;
+use crate::encryption::AsymmetricEnc;
 use crate::Error;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{fields::PrimeField, UniformRand};
@@ -36,7 +36,7 @@ pub type Ciphertext<C> = (
     <C as ProjectiveCurve>::Affine,
 );
 
-impl<C: ProjectiveCurve> AsymmetricEncryptionScheme for ElGamal<C>
+impl<C: ProjectiveCurve> AsymmetricEnc for ElGamal<C>
 where
     C::ScalarField: PrimeField,
 {
@@ -111,7 +111,7 @@ mod test {
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
 
     use crate::encryption::elgamal::{ElGamal, Randomness};
-    use crate::encryption::AsymmetricEncryptionScheme;
+    use crate::encryption::AsymmetricEnc;
 
     #[test]
     fn test_elgamal_encryption() {

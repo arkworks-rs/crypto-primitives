@@ -3,7 +3,7 @@ use ark_ff::bytes::ToBytes;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
-use super::{pedersen, CRHScheme, TwoToOneCRHScheme};
+use super::{pedersen, TwoToOneCRH, CRH};
 use ark_ec::{
     models::{ModelParameters, TEModelParameters},
     twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
@@ -45,10 +45,10 @@ pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pede
     _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
+impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRH
     for PedersenCRHCompressor<C, I, W>
 {
-    type Input = <pedersen::CRH<C, W> as CRHScheme>::Input;
+    type Input = <pedersen::CRH<C, W> as CRH>::Input;
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
@@ -80,10 +80,10 @@ pub struct PedersenTwoToOneCRHCompressor<
     _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHScheme
+impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRH
     for PedersenTwoToOneCRHCompressor<C, I, W>
 {
-    type Input = <pedersen::TwoToOneCRH<C, W> as TwoToOneCRHScheme>::Input;
+    type Input = <pedersen::TwoToOneCRH<C, W> as TwoToOneCRH>::Input;
     type Output = I::Output;
     type Parameters = pedersen::Parameters<C>;
 
@@ -93,14 +93,12 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHSch
 
     fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "PedersenCRHCompressor::Eval");
         let result = I::injective_map(&pedersen::TwoToOneCRH::<C, W>::evaluate(
-            parameters,
-            left_input,
-            right_input,
+            parameters, left, right,
         )?)?;
         end_timer!(eval_time);
         Ok(result)
@@ -108,14 +106,14 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHSch
 
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
         // convert output to input
         Self::evaluate(
             parameters,
-            crate::to_unchecked_bytes!(left_input)?,
-            crate::to_unchecked_bytes!(right_input)?,
+            crate::to_unchecked_bytes!(left)?,
+            crate::to_unchecked_bytes!(right)?,
         )
     }
 }

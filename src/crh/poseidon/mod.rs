@@ -1,5 +1,5 @@
-use crate::crh::TwoToOneCRHScheme;
-use crate::{CRHScheme, Error};
+use crate::crh::{TwoToOneCRH as TwoToOneCRHTrait, CRH as CRHTrait};
+use crate::Error;
 use ark_ff::PrimeField;
 use ark_sponge::poseidon::{PoseidonParameters, PoseidonSponge};
 use ark_sponge::{Absorb, CryptographicSponge};
@@ -14,7 +14,7 @@ pub struct CRH<F: PrimeField + Absorb> {
     field_phantom: PhantomData<F>,
 }
 
-impl<F: PrimeField + Absorb> CRHScheme for CRH<F> {
+impl<F: PrimeField + Absorb> CRHTrait for CRH<F> {
     type Input = [F];
     type Output = F;
     type Parameters = PoseidonParameters<F>;
@@ -42,7 +42,7 @@ pub struct TwoToOneCRH<F: PrimeField + Absorb> {
     field_phantom: PhantomData<F>,
 }
 
-impl<F: PrimeField + Absorb> TwoToOneCRHScheme for TwoToOneCRH<F> {
+impl<F: PrimeField + Absorb> TwoToOneCRHTrait for TwoToOneCRH<F> {
     type Input = F;
     type Output = F;
     type Parameters = PoseidonParameters<F>;
@@ -55,23 +55,23 @@ impl<F: PrimeField + Absorb> TwoToOneCRHScheme for TwoToOneCRH<F> {
 
     fn evaluate<T: Borrow<Self::Input>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
-        Self::compress(parameters, left_input, right_input)
+        Self::compress(parameters, left, right)
     }
 
     fn compress<T: Borrow<Self::Output>>(
         parameters: &Self::Parameters,
-        left_input: T,
-        right_input: T,
+        left: T,
+        right: T,
     ) -> Result<Self::Output, Error> {
-        let left_input = left_input.borrow();
-        let right_input = right_input.borrow();
+        let left = left.borrow();
+        let right = right.borrow();
 
         let mut sponge = PoseidonSponge::new(parameters);
-        sponge.absorb(left_input);
-        sponge.absorb(right_input);
+        sponge.absorb(left);
+        sponge.absorb(right);
         let res = sponge.squeeze_field_elements::<F>(1);
         Ok(res[0])
     }
