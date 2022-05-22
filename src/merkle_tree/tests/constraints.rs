@@ -3,7 +3,7 @@ mod byte_mt_tests {
 
     use crate::merkle_tree::constraints::{BytesVarDigestConverter, ConfigGadget};
     use crate::merkle_tree::{ByteDigestConverter, Config};
-    use crate::{CRHScheme, CRHSchemeGadget, MerkleTree, PathVar};
+    use crate::{CRHScheme, CRHSchemeGadget, IncrementalMerkleTree, MerkleTree, PathVar};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
     #[allow(unused)]
     use ark_r1cs_std::prelude::*;
@@ -50,6 +50,7 @@ mod byte_mt_tests {
     }
 
     type JubJubMerkleTree = MerkleTree<JubJubMerkleTreeParams>;
+    type JubJubIncrementalMerkleTree = IncrementalMerkleTree<JubJubMerkleTreeParams>;
 
     /// Generate a merkle tree, its constraints, and test its constraints
     fn merkle_tree_test(
@@ -216,6 +217,112 @@ mod byte_mt_tests {
         }
     }
 
+    /// Generate a merkle tree, its constraints, and test its constraints
+    fn incremental_merkle_tree_test(
+        updates: &[Vec<u8>],
+        use_bad_root: bool,
+        tree_height: usize,
+    ) -> () {
+        let mut rng = ark_std::test_rng();
+
+        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
+        let two_to_one_crh_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
+        let mut tree = JubJubIncrementalMerkleTree::blank(
+            &leaf_crh_params,
+            &two_to_one_crh_params,
+            tree_height,
+        )
+        .unwrap();
+        for leaf in updates {
+            let cs = ConstraintSystem::<Fq>::new_ref();
+            tree.append(leaf.as_slice()).unwrap();
+            let proof = tree.current_proof();
+            assert!(proof
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_crh_params,
+                    &tree.root(),
+                    leaf.as_slice()
+                )
+                .unwrap());
+
+            // Allocate Merkle Tree Root
+            let root = <LeafHG as CRHSchemeGadget<LeafH, _>>::OutputVar::new_witness(
+                ark_relations::ns!(cs, "new_digest"),
+                || {
+                    if use_bad_root {
+                        Ok(<LeafH as CRHScheme>::Output::default())
+                    } else {
+                        Ok(tree.root())
+                    }
+                },
+            )
+            .unwrap();
+
+            let constraints_from_digest = cs.num_constraints();
+            println!("constraints from digest: {}", constraints_from_digest);
+
+            // Allocate Parameters for CRH
+            let leaf_crh_params_var =
+                <LeafHG as CRHSchemeGadget<LeafH, _>>::ParametersVar::new_constant(
+                    ark_relations::ns!(cs, "leaf_crh_parameter"),
+                    &leaf_crh_params,
+                )
+                .unwrap();
+            let two_to_one_crh_params_var =
+                <CompressHG as TwoToOneCRHSchemeGadget<CompressH, _>>::ParametersVar::new_constant(
+                    ark_relations::ns!(cs, "two_to_one_crh_parameter"),
+                    &two_to_one_crh_params,
+                )
+                .unwrap();
+
+            let constraints_from_params = cs.num_constraints() - constraints_from_digest;
+            println!("constraints from parameters: {}", constraints_from_params);
+
+            // Allocate Leaf
+            let leaf_g = UInt8::new_input_vec(cs.clone(), leaf).unwrap();
+
+            let constraints_from_leaf =
+                cs.num_constraints() - constraints_from_params - constraints_from_digest;
+            println!("constraints from leaf: {}", constraints_from_leaf);
+
+            // Allocate Merkle Tree Path
+            let cw: PathVar<JubJubMerkleTreeParams, Fq, JubJubMerkleTreeParamsVar> =
+                PathVar::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(&proof)).unwrap();
+
+            let constraints_from_path = cs.num_constraints()
+                - constraints_from_params
+                - constraints_from_digest
+                - constraints_from_leaf;
+            println!("constraints from path: {}", constraints_from_path);
+
+            assert!(cs.is_satisfied().unwrap());
+            assert!(cw
+                .verify_membership(
+                    &leaf_crh_params_var,
+                    &two_to_one_crh_params_var,
+                    &root,
+                    &leaf_g,
+                )
+                .unwrap()
+                .value()
+                .unwrap());
+            let setup_constraints = constraints_from_leaf
+                + constraints_from_digest
+                + constraints_from_params
+                + constraints_from_path;
+            println!(
+                "number of constraints: {}",
+                cs.num_constraints() - setup_constraints
+            );
+
+            assert!(
+                cs.is_satisfied().unwrap(),
+                "verification constraints not satisfied"
+            );
+        }
+    }
+
     #[test]
     fn good_root_test() {
         let mut leaves = Vec::new();
@@ -224,6 +331,15 @@ mod byte_mt_tests {
             leaves.push(input);
         }
         merkle_tree_test(&leaves, false, Some((3usize, vec![7u8; 30])));
+    }
+
+    #[test]
+    fn good_root_test_for_imt() {
+        let mut updates = Vec::new();
+        for i in 0..4u8 {
+            updates.push(vec![i; 30]);
+        }
+        incremental_merkle_tree_test(&updates, false, 3);
     }
 
     #[test]
@@ -236,6 +352,16 @@ mod byte_mt_tests {
         }
         merkle_tree_test(&leaves, true, None);
     }
+
+    #[test]
+    #[should_panic]
+    fn bad_root_test_for_imt() {
+        let mut updates = Vec::new();
+        for i in 0..4u8 {
+            updates.push(vec![i; 30]);
+        }
+        incremental_merkle_tree_test(&updates, true, 3);
+    }
 }
 
 mod field_mt_tests {
@@ -243,7 +369,7 @@ mod field_mt_tests {
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter};
-    use crate::{CRHSchemeGadget, MerkleTree, PathVar};
+    use crate::{CRHSchemeGadget, IncrementalMerkleTree, MerkleTree, PathVar};
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::uint32::UInt32;
@@ -281,6 +407,7 @@ mod field_mt_tests {
     }
 
     type FieldMT = MerkleTree<FieldMTConfig>;
+    type FieldIMT = IncrementalMerkleTree<FieldMTConfig>;
 
     fn merkle_tree_test(
         leaves: &[Vec<F>],
@@ -455,6 +582,100 @@ mod field_mt_tests {
         }
     }
 
+    fn incremental_merkle_tree_test(updates: &[Vec<F>], use_bad_root: bool, tree_height: usize) {
+        let leaf_crh_params = poseidon_parameters();
+        let two_to_one_params = leaf_crh_params.clone();
+        let mut tree = FieldIMT::blank(&leaf_crh_params, &two_to_one_params, tree_height).unwrap();
+
+        for leaf in updates {
+            let cs = ConstraintSystem::<F>::new_ref();
+            tree.append(leaf.as_slice()).unwrap();
+            let proof = tree.current_proof();
+            let root = tree.root();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
+                .unwrap());
+            // Allocate MT root
+            let root = FpVar::new_witness(cs.clone(), || {
+                if use_bad_root {
+                    Ok(root + F::one())
+                } else {
+                    Ok(root)
+                }
+            })
+            .unwrap();
+
+            let constraints_from_digest = cs.num_constraints();
+            println!("constraints from digest: {}", constraints_from_digest);
+
+            let leaf_crh_params_var = <HG as CRHSchemeGadget<H, _>>::ParametersVar::new_constant(
+                ark_relations::ns!(cs, "leaf_crh_params"),
+                &leaf_crh_params,
+            )
+            .unwrap();
+
+            let two_to_one_crh_params_var =
+                <TwoToOneHG as TwoToOneCRHSchemeGadget<TwoToOneH, _>>::ParametersVar::new_constant(
+                    ark_relations::ns!(cs, "two_to_one_params"),
+                    &leaf_crh_params,
+                )
+                .unwrap();
+
+            let constraints_from_params = cs.num_constraints() - constraints_from_digest;
+            println!("constraints from parameters: {}", constraints_from_params);
+
+            // Allocate Leaf
+            let leaf_g: Vec<_> = leaf
+                .iter()
+                .map(|x| FpVar::new_input(cs.clone(), || Ok(*x)).unwrap())
+                .collect();
+
+            let constraints_from_leaf =
+                cs.num_constraints() - constraints_from_params - constraints_from_digest;
+            println!("constraints from leaf: {}", constraints_from_leaf);
+
+            // Allocate MT Path
+            let cw = PathVar::<FieldMTConfig, F, FieldMTConfigVar>::new_witness(
+                ark_relations::ns!(cs, "new_witness"),
+                || Ok(&proof),
+            )
+            .unwrap();
+
+            let constraints_from_path = cs.num_constraints()
+                - constraints_from_params
+                - constraints_from_digest
+                - constraints_from_leaf;
+            println!("constraints from path: {}", constraints_from_path);
+            assert!(cs.is_satisfied().unwrap());
+
+            assert!(cw
+                .verify_membership(
+                    &leaf_crh_params_var,
+                    &two_to_one_crh_params_var,
+                    &root,
+                    &leaf_g
+                )
+                .unwrap()
+                .value()
+                .unwrap());
+
+            let setup_constraints = constraints_from_leaf
+                + constraints_from_digest
+                + constraints_from_params
+                + constraints_from_path;
+
+            println!(
+                "number of constraints for verification: {}",
+                cs.num_constraints() - setup_constraints
+            );
+
+            assert!(
+                cs.is_satisfied().unwrap(),
+                "verification constraints not satisfied"
+            );
+        }
+    }
+
     #[test]
     fn good_root_test() {
         let mut rng = test_rng();
@@ -469,6 +690,19 @@ mod field_mt_tests {
     }
 
     #[test]
+    fn good_root_test_for_imt() {
+        let mut rng = test_rng();
+        let mut rand_leaves = || (0..2).map(|_| F::rand(&mut rng)).collect();
+
+        let mut leaves: Vec<Vec<_>> = Vec::new();
+        for _ in 0..128u8 {
+            leaves.push(rand_leaves())
+        }
+
+        incremental_merkle_tree_test(&leaves, false, 8);
+    }
+
+    #[test]
     #[should_panic]
     fn bad_root_test() {
         let mut rng = test_rng();
@@ -480,5 +714,19 @@ mod field_mt_tests {
         }
 
         merkle_tree_test(&leaves, true, Some((3, rand_leaves())))
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_root_test_for_imt() {
+        let mut rng = test_rng();
+        let mut rand_leaves = || (0..2).map(|_| F::rand(&mut rng)).collect();
+
+        let mut leaves: Vec<Vec<_>> = Vec::new();
+        for _ in 0..128u8 {
+            leaves.push(rand_leaves())
+        }
+
+        incremental_merkle_tree_test(&leaves, true, 8);
     }
 }
