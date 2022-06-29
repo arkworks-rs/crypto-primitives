@@ -47,3 +47,16 @@ ark-ed-on-bls12-381 = { version = "^0.3.0", default-features = false, features =
 ark-bls12-377 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt4-298 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
+
+[patch.crates-io]
+ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra" }
+ark-std = { git = "https://github.com/arkworks-rs/std" }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }
+ark-sponge = { git = "https://github.com/arkworks-rs/sponge" }
+ark-bls12-377 = { git = "https://github.com/arkworks-rs/curves" }
+ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves" }
+ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/curves" }
+ark-mnt4-298 = { git = "https://github.com/arkworks-rs/curves" }
+ark-mnt6-298 = { git = "https://github.com/arkworks-rs/curves" }
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std" }
