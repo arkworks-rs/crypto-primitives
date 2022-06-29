@@ -77,7 +77,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
-            let upper_limit = F::modulus_minus_one_div_two();
+            let upper_limit = F::MODULUS_MINUS_ONE_DIV_TWO;
             let mut c = 0;
             let mut range = F::BigInt::from(2_u64);
             while range < upper_limit {

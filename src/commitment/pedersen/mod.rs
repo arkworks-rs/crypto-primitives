@@ -1,6 +1,6 @@
 use crate::{CRHScheme, Error, Vec};
 use ark_ec::ProjectiveCurve;
-use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
+use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, PrimeField, ToConstraintField};
 use ark_std::io::{Result as IoResult, Write};
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
@@ -54,7 +54,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
             W::WINDOW_SIZE,
             W::NUM_WINDOWS * W::WINDOW_SIZE
         ));
-        let num_powers = <C::ScalarField as PrimeField>::Params::MODULUS_BITS as usize;
+        let num_powers = <C::ScalarField as PrimeField>::MODULUS_BIT_SIZE as usize;
         let randomness_generator = pedersen::CRH::<C, W>::generator_powers(num_powers, rng);
         let generators = pedersen::CRH::<C, W>::create_generators(rng);
         end_timer!(time);
@@ -96,7 +96,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
         let randomize_time = start_timer!(|| "Randomize");
 
         // Compute h^r.
-        for (bit, power) in BitIteratorLE::new(randomness.0.into_repr())
+        for (bit, power) in BitIteratorLE::new(randomness.0.into_bigint())
             .into_iter()
             .zip(&parameters.randomness_generator)
         {
