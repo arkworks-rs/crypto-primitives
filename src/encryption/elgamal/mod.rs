@@ -3,9 +3,10 @@ pub mod constraints;
 
 use crate::encryption::AsymmetricEncryptionScheme;
 use crate::Error;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
 use ark_ff::{fields::PrimeField, UniformRand};
 use ark_std::marker::PhantomData;
+use ark_std::ops::Mul;
 use ark_std::rand::Rng;
 
 pub struct ElGamal<C: ProjectiveCurve> {

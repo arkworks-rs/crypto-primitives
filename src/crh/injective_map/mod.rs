@@ -1,13 +1,11 @@
 use crate::{CryptoError, Error};
-use ark_ff::bytes::ToBytes;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
 use super::{pedersen, CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
-    models::{ModelParameters, TEModelParameters},
-    twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
-    ProjectiveCurve,
+    twisted_edwards::{Affine as TEAffine, Projective as TEProjective, TECurveConfig},
+    CurveConfig, ProjectiveCurve,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
@@ -16,22 +14,15 @@ use ark_std::vec::Vec;
 pub mod constraints;
 
 pub trait InjectiveMap<C: ProjectiveCurve> {
-    type Output: ToBytes
-        + Clone
-        + Eq
-        + Hash
-        + Default
-        + Debug
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+    type Output: Clone + Eq + Hash + Default + Debug + CanonicalSerialize + CanonicalDeserialize;
 
     fn injective_map(ge: &C::Affine) -> Result<Self::Output, CryptoError>;
 }
 
 pub struct TECompressor;
 
-impl<P: TEModelParameters> InjectiveMap<TEProjective<P>> for TECompressor {
-    type Output = <P as ModelParameters>::BaseField;
+impl<P: TECurveConfig> InjectiveMap<TEProjective<P>> for TECompressor {
+    type Output = <P as CurveConfig>::BaseField;
 
     fn injective_map(ge: &TEAffine<P>) -> Result<Self::Output, CryptoError> {
         debug_assert!(ge.is_in_correct_subgroup_assuming_on_curve());

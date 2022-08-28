@@ -123,7 +123,7 @@ mod field_mt_tests {
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter};
     use crate::MerkleTree;
-    use ark_std::{test_rng, One, UniformRand};
+    use ark_std::{test_rng, vec::Vec, One, UniformRand};
 
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;

@@ -1,7 +1,8 @@
 use crate::{CRHScheme, Error, Vec};
 use ark_ec::ProjectiveCurve;
-use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
-use ark_std::io::{Result as IoResult, Write};
+use ark_ff::{BitIteratorLE, Field, PrimeField, ToConstraintField};
+use ark_serialize::{CanonicalSerialize, SerializationError};
+use ark_std::io::Write;
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 use ark_std::UniformRand;
@@ -25,7 +26,7 @@ pub struct Commitment<C: ProjectiveCurve, W: Window> {
     window: PhantomData<W>,
 }
 
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize)]
 #[derivative(Clone, PartialEq, Debug, Eq, Default)]
 pub struct Randomness<C: ProjectiveCurve>(pub C::ScalarField);
 
@@ -33,12 +34,6 @@ impl<C: ProjectiveCurve> UniformRand for Randomness<C> {
     #[inline]
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
         Randomness(UniformRand::rand(rng))
-    }
-}
-
-impl<C: ProjectiveCurve> ToBytes for Randomness<C> {
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write(writer)
     }
 }
 
@@ -54,7 +49,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
             W::WINDOW_SIZE,
             W::NUM_WINDOWS * W::WINDOW_SIZE
         ));
-        let num_powers = <C::ScalarField as PrimeField>::Params::MODULUS_BITS as usize;
+        let num_powers = <C::ScalarField as PrimeField>::MODULUS_BIT_SIZE as usize;
         let randomness_generator = pedersen::CRH::<C, W>::generator_powers(num_powers, rng);
         let generators = pedersen::CRH::<C, W>::create_generators(rng);
         end_timer!(time);
@@ -96,7 +91,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
         let randomize_time = start_timer!(|| "Randomize");
 
         // Compute h^r.
-        for (bit, power) in BitIteratorLE::new(randomness.0.into_repr())
+        for (bit, power) in BitIteratorLE::new(randomness.0.into_bigint())
             .into_iter()
             .zip(&parameters.randomness_generator)
         {

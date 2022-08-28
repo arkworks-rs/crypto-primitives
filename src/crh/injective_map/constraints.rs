@@ -9,7 +9,7 @@ use core::{fmt::Debug, marker::PhantomData};
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
 use crate::CRHSchemeGadget;
 use ark_ec::{
-    models::{ModelParameters, TEModelParameters},
+    models::{ModelParameters, TECurveConfig},
     twisted_edwards_extended::GroupProjective as TEProjective,
     ProjectiveCurve,
 };
@@ -48,7 +48,7 @@ impl<F, P> InjectiveMapGadget<TEProjective<P>, TECompressor, TEVar<P, FpVar<F>>>
     for TECompressorGadget
 where
     F: PrimeField + SquareRootField,
-    P: TEModelParameters + ModelParameters<BaseField = F>,
+    P: TECurveConfig + ModelParameters<BaseField = F>,
 {
     type OutputVar = FpVar<F>;
 

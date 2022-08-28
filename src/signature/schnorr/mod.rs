@@ -1,11 +1,12 @@
 use crate::{Error, SignatureScheme, Vec};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{
-    bytes::ToBytes,
     fields::{Field, PrimeField},
-    to_bytes, One, ToConstraintField, UniformRand, Zero,
+    One, ToConstraintField, UniformRand, Zero,
 };
-use ark_std::io::{Result as IoResult, Write};
+use ark_serialize::{CanonicalSerialize, SerializationError};
+use ark_std::io::Write;
+use ark_std::ops::Mul;
 use ark_std::rand::Rng;
 use ark_std::{hash::Hash, marker::PhantomData};
 use digest::Digest;
@@ -28,15 +29,8 @@ pub struct Parameters<C: ProjectiveCurve, H: Digest> {
 
 pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, CanonicalSerialize)]
 pub struct SecretKey<C: ProjectiveCurve>(pub C::ScalarField);
-
-impl<C: ProjectiveCurve> ToBytes for SecretKey<C> {
-    #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write(writer)
-    }
-}
 
 #[derive(Clone, Default, Debug)]
 pub struct Signature<C: ProjectiveCurve> {
@@ -98,9 +92,9 @@ where
 
             // Hash everything to get verifier challenge.
             let mut hash_input = Vec::new();
-            hash_input.extend_from_slice(&parameters.salt);
-            hash_input.extend_from_slice(&to_bytes![prover_commitment]?);
-            hash_input.extend_from_slice(message);
+            parameters.salt.serialize(&mut hash_input)?;
+            prover_commitment.serialize(&mut hash_input)?;
+            message.serialize(&mut hash_input)?;
 
             // Compute the supposed verifier response: e := H(salt || r || msg);
             if let Some(verifier_challenge) =
@@ -139,9 +133,9 @@ where
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
         let mut hash_input = Vec::new();
-        hash_input.extend_from_slice(&parameters.salt);
-        hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
-        hash_input.extend_from_slice(&message);
+        parameters.salt.serialize(&mut hash_input)?;
+        claimed_prover_commitment.serialize(&mut hash_input)?;
+        message.serialize(&mut hash_input)?;
 
         let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
             C::ScalarField::from_random_bytes(&D::digest(&hash_input))

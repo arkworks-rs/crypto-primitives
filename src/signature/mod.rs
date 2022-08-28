@@ -1,5 +1,5 @@
 use crate::Error;
-use ark_ff::bytes::ToBytes;
+use ark_serialize::CanonicalSerialize;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
 
@@ -12,8 +12,8 @@ pub mod schnorr;
 
 pub trait SignatureScheme {
     type Parameters: Clone + Send + Sync;
-    type PublicKey: ToBytes + Hash + Eq + Clone + Default + Send + Sync;
-    type SecretKey: ToBytes + Clone + Default;
+    type PublicKey: CanonicalSerialize + Hash + Eq + Clone + Default + Send + Sync;
+    type SecretKey: CanonicalSerialize + Clone + Default;
     type Signature: Clone + Default + Send + Sync;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error>;
@@ -53,10 +53,9 @@ pub trait SignatureScheme {
 #[cfg(test)]
 mod test {
     use crate::signature::{schnorr, *};
-    use ark_ec::group::Group;
+    use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_ff::to_bytes;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::{test_rng, vec::Vec, UniformRand};
     use blake2::Blake2s;
 
     fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
@@ -95,10 +94,12 @@ mod test {
             message.as_bytes(),
             "Bad message".as_bytes(),
         );
-        let random_scalar = to_bytes!(<JubJub as Group>::ScalarField::rand(rng)).unwrap();
+        let mut random_scalar_bytes = Vec::new();
+        let random_scalar = <JubJub as ProjectiveCurve>::ScalarField::rand(rng);
+        random_scalar.serialize(&mut random_scalar_bytes).unwrap();
         randomize_and_verify::<schnorr::Schnorr<JubJub, Blake2s>>(
             message.as_bytes(),
-            &random_scalar.as_slice(),
+            &random_scalar_bytes.as_slice(),
         );
     }
 }
