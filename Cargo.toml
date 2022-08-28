@@ -46,6 +46,31 @@ ark-bls12-377 = { version = "^0.3.0", default-features = false, features = [ "cu
 ark-mnt4-298 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
 
+[profile.release]
+opt-level = 3
+lto = "thin"
+incremental = true
+panic = 'abort'
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = "thin"
+incremental = true
+debug-assertions = false
+
+[profile.dev]
+opt-level = 0
+panic = 'abort'
+
+[profile.test]
+opt-level = 3
+lto = "thin"
+incremental = true
+debug-assertions = true
+debug = true
+
 [patch.crates-io]
 ark-ec = { git = "https://github.com/arkworks-rs/algebra" }
 ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
