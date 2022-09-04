@@ -3,7 +3,7 @@
 /// Defines a trait to chain two types of CRHs.
 use crate::crh::TwoToOneCRHScheme;
 use crate::{CRHScheme, Error};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;

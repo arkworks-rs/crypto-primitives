@@ -14,7 +14,7 @@ use rayon::prelude::*;
 use super::pedersen;
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
-    twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig, ProjectiveCurve,
+    twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig, CurveGroup, Group,
 };
 use ark_ff::{biginteger::BigInteger, fields::PrimeField};
 use ark_serialize::CanonicalSerialize;

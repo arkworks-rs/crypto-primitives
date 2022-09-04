@@ -5,21 +5,22 @@ use crate::encryption::elgamal::{
     Ciphertext, ElGamal, Parameters, Plaintext, PublicKey, Randomness,
 };
 use crate::encryption::AsymmetricEncryptionGadget;
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::{
     fields::{Field, PrimeField},
-    to_bytes, Zero,
+    Zero,
 };
+use ark_serialize::CanonicalSerialize;
 use ark_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
 
-pub type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
+pub type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 
 #[derive(Clone, Debug)]
 pub struct RandomnessVar<F: Field>(Vec<UInt8<F>>);
 
 impl<C, F> AllocVar<Randomness<C>, F> for RandomnessVar<F>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     F: PrimeField,
 {
     fn new_variable<T: Borrow<Randomness<C>>>(
@@ -27,7 +28,12 @@ where
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let r = to_bytes![&f().map(|b| b.borrow().0).unwrap_or(C::ScalarField::zero())].unwrap();
+        let mut r = Vec::new();
+        let _ = &f()
+            .map(|b| b.borrow().0)
+            .unwrap_or(C::ScalarField::zero())
+            .serialize_compressed(&mut r)
+            .unwrap();
         match mode {
             AllocationMode::Constant => Ok(Self(UInt8::constant_vec(&r))),
             AllocationMode::Input => UInt8::new_input_vec(cs, &r).map(Self),
@@ -37,8 +43,8 @@ where
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct ParametersVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+pub struct ParametersVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -49,7 +55,7 @@ where
 
 impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for ParametersVar<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -67,8 +73,8 @@ where
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct PlaintextVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+pub struct PlaintextVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -79,7 +85,7 @@ where
 
 impl<C, GG> AllocVar<Plaintext<C>, ConstraintF<C>> for PlaintextVar<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -97,8 +103,8 @@ where
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct PublicKeyVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+pub struct PublicKeyVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -109,7 +115,7 @@ where
 
 impl<C, GG> AllocVar<PublicKey<C>, ConstraintF<C>> for PublicKeyVar<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -127,8 +133,8 @@ where
 }
 
 #[derive(Derivative, Debug)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct OutputVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+pub struct OutputVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -140,7 +146,7 @@ where
 
 impl<C, GG> AllocVar<Ciphertext<C>, ConstraintF<C>> for OutputVar<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -164,7 +170,7 @@ where
 
 impl<C, GC> EqGadget<ConstraintF<C>> for OutputVar<C, GC>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GC: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
@@ -174,7 +180,7 @@ where
     }
 }
 
-pub struct ElGamalEncGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+pub struct ElGamalEncGadget<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -185,7 +191,7 @@ where
 
 impl<C, GG> AsymmetricEncryptionGadget<ElGamal<C>, ConstraintF<C>> for ElGamalEncGadget<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
     ConstraintF<C>: PrimeField,

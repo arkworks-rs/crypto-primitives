@@ -1,11 +1,10 @@
 use crate::{Error, SignatureScheme, Vec};
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{
     fields::{Field, PrimeField},
     One, ToConstraintField, UniformRand, Zero,
 };
-use ark_serialize::{CanonicalSerialize, SerializationError};
-use ark_std::io::Write;
+use ark_serialize::CanonicalSerialize;
 use ark_std::ops::Mul;
 use ark_std::rand::Rng;
 use ark_std::{hash::Hash, marker::PhantomData};
@@ -14,31 +13,31 @@ use digest::Digest;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-pub struct Schnorr<C: ProjectiveCurve, D: Digest> {
+pub struct Schnorr<C: CurveGroup, D: Digest> {
     _group: PhantomData<C>,
     _hash: PhantomData<D>,
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, H: Digest"), Debug)]
-pub struct Parameters<C: ProjectiveCurve, H: Digest> {
+#[derivative(Clone(bound = "C: CurveGroup, H: Digest"), Debug)]
+pub struct Parameters<C: CurveGroup, H: Digest> {
     _hash: PhantomData<H>,
     pub generator: C::Affine,
     pub salt: [u8; 32],
 }
 
-pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
+pub type PublicKey<C> = <C as CurveGroup>::Affine;
 
 #[derive(Clone, Default, Debug, CanonicalSerialize)]
-pub struct SecretKey<C: ProjectiveCurve>(pub C::ScalarField);
+pub struct SecretKey<C: CurveGroup>(pub C::ScalarField);
 
 #[derive(Clone, Default, Debug)]
-pub struct Signature<C: ProjectiveCurve> {
+pub struct Signature<C: CurveGroup> {
     pub prover_response: C::ScalarField,
     pub verifier_challenge: C::ScalarField,
 }
 
-impl<C: ProjectiveCurve + Hash, D: Digest + Send + Sync> SignatureScheme for Schnorr<C, D>
+impl<C: CurveGroup + Hash, D: Digest + Send + Sync> SignatureScheme for Schnorr<C, D>
 where
     C::ScalarField: PrimeField,
 {
@@ -92,9 +91,9 @@ where
 
             // Hash everything to get verifier challenge.
             let mut hash_input = Vec::new();
-            parameters.salt.serialize(&mut hash_input)?;
-            prover_commitment.serialize(&mut hash_input)?;
-            message.serialize(&mut hash_input)?;
+            parameters.salt.serialize_compressed(&mut hash_input)?;
+            prover_commitment.serialize_compressed(&mut hash_input)?;
+            message.serialize_compressed(&mut hash_input)?;
 
             // Compute the supposed verifier response: e := H(salt || r || msg);
             if let Some(verifier_challenge) =
@@ -133,9 +132,9 @@ where
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
         let mut hash_input = Vec::new();
-        parameters.salt.serialize(&mut hash_input)?;
-        claimed_prover_commitment.serialize(&mut hash_input)?;
-        message.serialize(&mut hash_input)?;
+        parameters.salt.serialize_compressed(&mut hash_input)?;
+        claimed_prover_commitment.serialize_compressed(&mut hash_input)?;
+        message.serialize_compressed(&mut hash_input)?;
 
         let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
             C::ScalarField::from_random_bytes(&D::digest(&hash_input))
@@ -165,10 +164,10 @@ where
         {
             encoded.double_in_place();
             if bit {
-                encoded.add_assign_mixed(&base)
+                encoded.add_assign(&base)
             }
         }
-        encoded.add_assign_mixed(&randomized_pk);
+        encoded.add_assign(&randomized_pk);
 
         end_timer!(rand_pk_time);
 
@@ -214,11 +213,11 @@ pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     bits
 }
 
-impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>, D: Digest>
+impl<ConstraintF: Field, C: CurveGroup + ToConstraintField<ConstraintF>, D: Digest>
     ToConstraintField<ConstraintF> for Parameters<C, D>
 {
     #[inline]
     fn to_field_elements(&self) -> Option<Vec<ConstraintF>> {
-        self.generator.into_projective().to_field_elements()
+        self.generator.into_group().to_field_elements()
     }
 }

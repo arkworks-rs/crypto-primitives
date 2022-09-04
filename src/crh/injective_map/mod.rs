@@ -5,7 +5,7 @@ use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 use super::{pedersen, CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
     twisted_edwards::{Affine as TEAffine, Projective as TEProjective, TECurveConfig},
-    CurveConfig, ProjectiveCurve,
+    CurveConfig, CurveGroup,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
@@ -13,7 +13,7 @@ use ark_std::vec::Vec;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-pub trait InjectiveMap<C: ProjectiveCurve> {
+pub trait InjectiveMap<C: CurveGroup> {
     type Output: Clone + Eq + Hash + Default + Debug + CanonicalSerialize + CanonicalDeserialize;
 
     fn injective_map(ge: &C::Affine) -> Result<Self::Output, CryptoError>;
@@ -30,13 +30,13 @@ impl<P: TECurveConfig> InjectiveMap<TEProjective<P>> for TECompressor {
     }
 }
 
-pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> {
+pub struct PedersenCRHCompressor<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
     _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
+impl<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
     for PedersenCRHCompressor<C, I, W>
 {
     type Input = <pedersen::CRH<C, W> as CRHScheme>::Input;
@@ -61,17 +61,13 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
     }
 }
 
-pub struct PedersenTwoToOneCRHCompressor<
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    W: pedersen::Window,
-> {
+pub struct PedersenTwoToOneCRHCompressor<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
     _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHScheme
+impl<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHScheme
     for PedersenTwoToOneCRHCompressor<C, I, W>
 {
     type Input = <pedersen::TwoToOneCRH<C, W> as TwoToOneCRHScheme>::Input;

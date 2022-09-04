@@ -1,3 +1,5 @@
+use ark_ec::twisted_edwards::{Projective as TEProjective, TECurveConfig};
+use ark_ec::CurveConfig;
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
 use crate::{
@@ -8,9 +10,6 @@ use crate::{
     },
     Vec,
 };
-use ark_ec::{
-    twisted_edwards_extended::GroupProjective as TEProjective, ModelParameters, TECurveConfig,
-};
 use ark_ff::Field;
 use ark_r1cs_std::{
     alloc::AllocVar, groups::curves::twisted_edwards::AffineVar, prelude::*, uint8::UInt8,
@@ -20,7 +19,7 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use crate::crh::bowe_hopwood::{TwoToOneCRH, CRH};
 use ark_r1cs_std::bits::boolean::Boolean;
 
-type ConstraintF<P> = <<P as ModelParameters>::BaseField as Field>::BasePrimeField;
+type ConstraintF<P> = <<P as CurveConfig>::BaseField as Field>::BasePrimeField;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P: TECurveConfig, W: Window"))]
