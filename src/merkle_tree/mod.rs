@@ -3,8 +3,7 @@
 /// Defines a trait to chain two types of CRHs.
 use crate::crh::TwoToOneCRHScheme;
 use crate::{CRHScheme, Error};
-use ark_ff::ToBytes;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
@@ -36,16 +35,16 @@ impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
 
 /// Convert previous layer's digest to bytes and use bytes as input for next layer's digest.
 /// TODO: `ToBytes` trait will be deprecated in future versions.
-pub struct ByteDigestConverter<T: CanonicalSerialize + ToBytes> {
+pub struct ByteDigestConverter<T: CanonicalSerialize> {
     _prev_layer_digest: T,
 }
 
-impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestConverter<T> {
+impl<T: CanonicalSerialize> DigestConverter<T, [u8]> for ByteDigestConverter<T> {
     type TargetType = Vec<u8>;
 
     fn convert(item: T) -> Result<Self::TargetType, Error> {
         // TODO: In some tests, `serialize` is not consistent with constraints. Try fix those.
-        Ok(crate::to_unchecked_bytes!(item)?)
+        Ok(crate::to_uncompressed_bytes!(item)?)
     }
 }
 
@@ -57,8 +56,7 @@ impl<T: CanonicalSerialize + ToBytes> DigestConverter<T, [u8]> for ByteDigestCon
 pub trait Config {
     type Leaf: ?Sized; // merkle tree does not store the leaf
                        // leaf layer
-    type LeafDigest: ToBytes
-        + Clone
+    type LeafDigest: Clone
         + Eq
         + core::fmt::Debug
         + Hash
@@ -71,8 +69,7 @@ pub trait Config {
         <Self::TwoToOneHash as TwoToOneCRHScheme>::Input,
     >;
     // inner layer
-    type InnerDigest: ToBytes
-        + Clone
+    type InnerDigest: Clone
         + Eq
         + core::fmt::Debug
         + Hash

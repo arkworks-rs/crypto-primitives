@@ -1,13 +1,11 @@
 use crate::{CryptoError, Error};
-use ark_ff::bytes::ToBytes;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
 use super::{pedersen, CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
-    models::{ModelParameters, TEModelParameters},
-    twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
-    ProjectiveCurve,
+    twisted_edwards::{Affine as TEAffine, Projective as TEProjective, TECurveConfig},
+    CurveConfig, CurveGroup,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
@@ -15,23 +13,16 @@ use ark_std::vec::Vec;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-pub trait InjectiveMap<C: ProjectiveCurve> {
-    type Output: ToBytes
-        + Clone
-        + Eq
-        + Hash
-        + Default
-        + Debug
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+pub trait InjectiveMap<C: CurveGroup> {
+    type Output: Clone + Eq + Hash + Default + Debug + CanonicalSerialize + CanonicalDeserialize;
 
     fn injective_map(ge: &C::Affine) -> Result<Self::Output, CryptoError>;
 }
 
 pub struct TECompressor;
 
-impl<P: TEModelParameters> InjectiveMap<TEProjective<P>> for TECompressor {
-    type Output = <P as ModelParameters>::BaseField;
+impl<P: TECurveConfig> InjectiveMap<TEProjective<P>> for TECompressor {
+    type Output = <P as CurveConfig>::BaseField;
 
     fn injective_map(ge: &TEAffine<P>) -> Result<Self::Output, CryptoError> {
         debug_assert!(ge.is_in_correct_subgroup_assuming_on_curve());
@@ -39,13 +30,13 @@ impl<P: TEModelParameters> InjectiveMap<TEProjective<P>> for TECompressor {
     }
 }
 
-pub struct PedersenCRHCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> {
+pub struct PedersenCRHCompressor<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
     _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
+impl<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
     for PedersenCRHCompressor<C, I, W>
 {
     type Input = <pedersen::CRH<C, W> as CRHScheme>::Input;
@@ -70,17 +61,13 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CRHScheme
     }
 }
 
-pub struct PedersenTwoToOneCRHCompressor<
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    W: pedersen::Window,
-> {
+pub struct PedersenTwoToOneCRHCompressor<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
     _window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHScheme
+impl<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHScheme
     for PedersenTwoToOneCRHCompressor<C, I, W>
 {
     type Input = <pedersen::TwoToOneCRH<C, W> as TwoToOneCRHScheme>::Input;
@@ -114,8 +101,8 @@ impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> TwoToOneCRHSch
         // convert output to input
         Self::evaluate(
             parameters,
-            crate::to_unchecked_bytes!(left_input)?,
-            crate::to_unchecked_bytes!(right_input)?,
+            crate::to_uncompressed_bytes!(left_input)?,
+            crate::to_uncompressed_bytes!(right_input)?,
         )
     }
 }

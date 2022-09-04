@@ -10,14 +10,14 @@ use ark_r1cs_std::R1CSVar;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_sponge::constraints::CryptographicSpongeVar;
 use ark_sponge::poseidon::constraints::PoseidonSpongeVar;
-use ark_sponge::poseidon::PoseidonParameters;
+use ark_sponge::poseidon::PoseidonConfig;
 use ark_sponge::Absorb;
 use ark_std::borrow::Borrow;
 use ark_std::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct CRHParametersVar<F: PrimeField + Absorb> {
-    pub parameters: PoseidonParameters<F>,
+    pub parameters: PoseidonConfig<F>,
 }
 
 pub struct CRHGadget<F: PrimeField + Absorb> {
@@ -94,8 +94,8 @@ impl<F: PrimeField + Absorb> TwoToOneCRHGadgetTrait<TwoToOneCRH<F>, F> for TwoTo
     }
 }
 
-impl<F: PrimeField + Absorb> AllocVar<PoseidonParameters<F>, F> for CRHParametersVar<F> {
-    fn new_variable<T: Borrow<PoseidonParameters<F>>>(
+impl<F: PrimeField + Absorb> AllocVar<PoseidonConfig<F>, F> for CRHParametersVar<F> {
+    fn new_variable<T: Borrow<PoseidonConfig<F>>>(
         _cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         _mode: AllocationMode,
@@ -121,7 +121,7 @@ mod test {
         R1CSVar,
     };
     use ark_relations::r1cs::ConstraintSystem;
-    use ark_sponge::poseidon::PoseidonParameters;
+    use ark_sponge::poseidon::PoseidonConfig;
     use ark_std::UniformRand;
 
     #[test]
@@ -152,7 +152,7 @@ mod test {
             test_b.push(Fr::rand(&mut test_rng));
         }
 
-        let params = PoseidonParameters::<Fr>::new(8, 24, 31, mds, ark);
+        let params = PoseidonConfig::<Fr>::new(8, 24, 31, mds, ark, 2, 1);
         let crh_a = CRH::<Fr>::evaluate(&params, test_a.clone()).unwrap();
         let crh_b = CRH::<Fr>::evaluate(&params, test_b.clone()).unwrap();
         let crh = TwoToOneCRH::<Fr>::compress(&params, crh_a, crh_b).unwrap();
