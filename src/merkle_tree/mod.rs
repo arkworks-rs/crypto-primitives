@@ -44,7 +44,7 @@ impl<T: CanonicalSerialize> DigestConverter<T, [u8]> for ByteDigestConverter<T> 
 
     fn convert(item: T) -> Result<Self::TargetType, Error> {
         // TODO: In some tests, `serialize` is not consistent with constraints. Try fix those.
-        Ok(crate::to_unchecked_bytes!(item)?)
+        Ok(crate::to_uncompressed_bytes!(item)?)
     }
 }
 

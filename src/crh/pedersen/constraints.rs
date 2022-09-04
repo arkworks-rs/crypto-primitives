@@ -71,6 +71,7 @@ where
             .flat_map(|b| b.to_bits_le().unwrap())
             .collect();
         let input_in_bits = input_in_bits.chunks(W::WINDOW_SIZE);
+
         let result =
             GG::precomputed_base_multiscalar_mul_le(&parameters.params.generators, input_in_bits)?;
         Ok(result)
@@ -126,6 +127,7 @@ where
         // convert output to bytes
         let left_input = left_input.to_bytes()?;
         let right_input = right_input.to_bytes()?;
+        println!("constraints: {} {}", left_input.len(), right_input.len());
         Self::evaluate(parameters, &left_input, &right_input)
     }
 }
@@ -246,7 +248,7 @@ mod test {
                 .unwrap();
 
         let primitive_result = primitive_result;
-        assert_eq!(primitive_result, result_var.value().unwrap());
+        assert_eq!(primitive_result, result_var.value().unwrap().into_affine());
         assert!(cs.is_satisfied().unwrap());
     }
 }

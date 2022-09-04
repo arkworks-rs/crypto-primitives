@@ -41,7 +41,7 @@ mod bytes_mt_tests {
         let mut rng = ark_std::test_rng();
         let mut leaves: Vec<_> = leaves
             .iter()
-            .map(|leaf| crate::to_unchecked_bytes!(leaf).unwrap())
+            .map(|leaf| crate::to_uncompressed_bytes!(leaf).unwrap())
             .collect();
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
@@ -64,7 +64,7 @@ mod bytes_mt_tests {
 
         // test merkle tree update functionality
         for (i, v) in update_query {
-            let v = crate::to_unchecked_bytes!(v).unwrap();
+            let v = crate::to_uncompressed_bytes!(v).unwrap();
             tree.update(*i, &v).unwrap();
             leaves[*i] = v.clone();
         }
