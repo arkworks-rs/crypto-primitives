@@ -127,7 +127,6 @@ where
         // convert output to bytes
         let left_input = left_input.to_bytes()?;
         let right_input = right_input.to_bytes()?;
-        println!("constraints: {} {}", left_input.len(), right_input.len());
         Self::evaluate(parameters, &left_input, &right_input)
     }
 }

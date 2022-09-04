@@ -159,7 +159,6 @@ impl<C: CurveGroup, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
     ) -> Result<Self::Output, Error> {
         let left_input = left_input.borrow();
         let right_input = right_input.borrow();
-        println!("{} {}", left_input.len(), right_input.len());
         assert_eq!(
             left_input.len(),
             right_input.len(),
