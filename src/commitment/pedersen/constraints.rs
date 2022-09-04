@@ -132,7 +132,7 @@ where
         let _ = &f()
             .map(|b| b.borrow().0)
             .unwrap_or(C::ScalarField::zero())
-            .serialize_compressed(&mut r)
+            .serialize_uncompressed(&mut r)
             .unwrap();
         match mode {
             AllocationMode::Constant => Ok(Self(UInt8::constant_vec(&r))),
