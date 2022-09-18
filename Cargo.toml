@@ -83,6 +83,6 @@ ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/curves" }
 ark-bls12-377 = { git = "https://github.com/arkworks-rs/curves" }
 ark-mnt4-298 = { git = "https://github.com/arkworks-rs/curves" }
 ark-mnt6-298 = { git = "https://github.com/arkworks-rs/curves" }
-ark-sponge = { git = "https://github.com/arkworks-rs/sponge", branch = "update-serialize" }
+ark-sponge = { git = "https://github.com/arkworks-rs/sponge" }
 ark-relations = {git = "https://github.com/arkworks-rs/snark", branch = "sync-algebra" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark", branch = "sync-algebra" }
