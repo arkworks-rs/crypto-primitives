@@ -1,6 +1,6 @@
 [package]
 name = "ark-crypto-primitives"
-version = "0.3.0"
+version = "0.4.0-alpha"
 authors = [ "arkworks contributors" ]
 description = "A library of useful cryptographic primitives"
 homepage = "https://arkworks.rs"
@@ -15,19 +15,19 @@ edition = "2018"
 ################################# Dependencies ################################
 
 [dependencies]
-ark-ff = { version = "^0.3.0", default-features = false }
-ark-ec = { version = "^0.3.0", default-features = false }
-ark-std = { version = "^0.3.0", default-features = false }
-ark-relations = { version = "^0.3.0", default-features = false }
-ark-serialize = { version = "^0.3.0", default-features = false, features = [ "derive" ] }
-ark-sponge = { version = "^0.3.0", default-features = false }
+ark-ff = { version = "0.4.0-alpha", default-features = false }
+ark-ec = { version = "0.4.0-alpha", default-features = false }
+ark-std = { version = "0.4.0-alpha", default-features = false }
+ark-relations = { version = "0.4.0-alpha", default-features = false }
+ark-serialize = { version = "0.4.0-alpha", default-features = false, features = [ "derive" ] }
+ark-sponge = { version = "0.4.0-alpha", default-features = false }
 
 blake2 = { version = "0.9", default-features = false }
 sha2 = { version = "0.9", default-features = false }
 digest = "0.9"
 
-ark-r1cs-std = { version = "^0.3.0", optional = true, default-features = false }
-ark-snark = { version = "^0.3.0", default-features = false }
+ark-r1cs-std = { version = "0.4.0-alpha", optional = true, default-features = false }
+ark-snark = { version = "0.4.0-alpha", default-features = false }
 
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
@@ -41,10 +41,10 @@ parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/para
 r1cs = [ "ark-r1cs-std", "tracing", "ark-sponge/r1cs" ]
 
 [dev-dependencies]
-ark-ed-on-bls12-381 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
-ark-bls12-377 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt4-298 = { version = "^0.3.0", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt6-298 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-381 = { version = "0.4.0-alpha", default-features = false, features = [ "r1cs" ] }
+ark-bls12-377 = { version = "0.4.0-alpha", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt4-298 = { version = "0.4.0-alpha", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt6-298 = { version = "0.4.0-alpha", default-features = false, features = [ "r1cs" ] }
 
 [profile.release]
 opt-level = 3
@@ -70,19 +70,3 @@ lto = "thin"
 incremental = true
 debug-assertions = true
 debug = true
-
-[patch.crates-io]
-ark-ec = { git = "https://github.com/arkworks-rs/algebra" }
-ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
-ark-poly = { git = "https://github.com/arkworks-rs/algebra" }
-ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }
-ark-serialize-derive = {git = "https://github.com/arkworks-rs/algebra"}
-ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std" }
-ark-std = { git = "https://github.com/arkworks-rs/std" }
-ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/curves" }
-ark-bls12-377 = { git = "https://github.com/arkworks-rs/curves" }
-ark-mnt4-298 = { git = "https://github.com/arkworks-rs/curves" }
-ark-mnt6-298 = { git = "https://github.com/arkworks-rs/curves" }
-ark-sponge = { git = "https://github.com/arkworks-rs/sponge" }
-ark-relations = {git = "https://github.com/arkworks-rs/snark", branch = "sync-algebra" }
-ark-snark = { git = "https://github.com/arkworks-rs/snark", branch = "sync-algebra" }
