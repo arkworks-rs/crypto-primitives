@@ -186,7 +186,7 @@ impl<ConstraintF: PrimeField> Sha384Gadget<ConstraintF> {
         };
 
         // Padding starts with a 1 followed by some number of zeros (0x80 = 0b10000000)
-        let mut pending = vec![UInt8::constant(0); 136];
+        let mut pending = vec![UInt8::constant(0); 144];
         pending[0] = UInt8::constant(0x80);
 
         // We'll either append to the 112+16 = 128 byte boundary or the 240+16=256 byte boundary,
