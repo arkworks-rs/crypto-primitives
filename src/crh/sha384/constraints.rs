@@ -1,6 +1,5 @@
-// This file was adapted from
-// the sha384 code which was adapted from
-// https://github.com/nanpuyue/sha384/blob/bf6656b7dc72e76bb617445a8865f906670e585b/src/lib.rs
+// This file was adapted from the sha256 code which was adapted from
+// https://github.com/nanpuyue/sha256/blob/bf6656b7dc72e76bb617445a8865f906670e585b/src/lib.rs
 // See LICENSE-MIT in the root directory for a copy of the license
 // Thank you!
 
