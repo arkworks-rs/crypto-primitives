@@ -248,11 +248,8 @@ impl<P: TECurveConfig> Debug for Parameters<P> {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        crh::{bowe_hopwood, pedersen::Window},
-        CRHScheme,
-    };
-    use ark_ed_on_bls12_381::EdwardsParameters;
+    use crate::crh::{bowe_hopwood, pedersen::Window, CRHScheme};
+    use ark_ed_on_bls12_381::EdwardsConfig;
     use ark_std::test_rng;
 
     #[test]
@@ -265,8 +262,8 @@ mod test {
         }
 
         let rng = &mut test_rng();
-        let params = bowe_hopwood::CRH::<EdwardsParameters, TestWindow>::setup(rng).unwrap();
-        let _ = bowe_hopwood::CRH::<EdwardsParameters, TestWindow>::evaluate(&params, [1, 2, 3])
-            .unwrap();
+        let params = bowe_hopwood::CRH::<EdwardsConfig, TestWindow>::setup(rng).unwrap();
+        let _ =
+            bowe_hopwood::CRH::<EdwardsConfig, TestWindow>::evaluate(&params, [1, 2, 3]).unwrap();
     }
 }

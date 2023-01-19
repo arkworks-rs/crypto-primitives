@@ -171,18 +171,17 @@ mod test {
 
     use crate::crh::bowe_hopwood;
     use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
-    use crate::{CRHScheme, CRHSchemeGadget};
-    use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsParameters, Fq as Fr};
+    use crate::crh::{CRHScheme, CRHSchemeGadget};
+    use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsConfig, Fq as Fr};
     use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::test_rng;
 
-    type TestCRH = bowe_hopwood::CRH<EdwardsParameters, Window>;
-    type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsParameters, FqVar>;
+    type TestCRH = bowe_hopwood::CRH<EdwardsConfig, Window>;
+    type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsConfig, FqVar>;
 
-    type TestTwoToOneCRH = bowe_hopwood::TwoToOneCRH<EdwardsParameters, Window>;
-    type TestTwoToOneCRHGadget =
-        bowe_hopwood::constraints::TwoToOneCRHGadget<EdwardsParameters, FqVar>;
+    type TestTwoToOneCRH = bowe_hopwood::TwoToOneCRH<EdwardsConfig, Window>;
+    type TestTwoToOneCRHGadget = bowe_hopwood::constraints::TwoToOneCRHGadget<EdwardsConfig, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;

@@ -1,4 +1,4 @@
-use crate::{Error, SignatureScheme, Vec};
+use crate::{signature::SignatureScheme, Error, Vec};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{
     fields::{Field, PrimeField},
