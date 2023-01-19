@@ -2,17 +2,17 @@ use crate::crh::poseidon::{TwoToOneCRH, CRH};
 use crate::crh::{
     CRHSchemeGadget as CRHGadgetTrait, TwoToOneCRHSchemeGadget as TwoToOneCRHGadgetTrait,
 };
-use crate::{crh::CRHScheme, Vec};
 use crate::sponge::constraints::CryptographicSpongeVar;
 use crate::sponge::poseidon::constraints::PoseidonSpongeVar;
 use crate::sponge::poseidon::PoseidonConfig;
+use crate::{crh::CRHScheme, Vec};
 
+use crate::sponge::Absorb;
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::R1CSVar;
 use ark_relations::r1cs::{Namespace, SynthesisError};
-use crate::sponge::Absorb;
 use ark_std::borrow::Borrow;
 use ark_std::marker::PhantomData;
 
@@ -113,8 +113,9 @@ impl<F: PrimeField + Absorb> AllocVar<PoseidonConfig<F>, F> for CRHParametersVar
 mod test {
     use crate::crh::poseidon::constraints::{CRHGadget, CRHParametersVar, TwoToOneCRHGadget};
     use crate::crh::poseidon::{TwoToOneCRH, CRH};
-    use crate::crh::{TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
     use crate::crh::{CRHScheme, CRHSchemeGadget};
+    use crate::crh::{TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
+    use crate::sponge::poseidon::PoseidonConfig;
     use ark_bls12_377::Fr;
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::{
@@ -122,7 +123,6 @@ mod test {
         R1CSVar,
     };
     use ark_relations::r1cs::ConstraintSystem;
-    use crate::sponge::poseidon::PoseidonConfig;
     use ark_std::UniformRand;
 
     #[test]

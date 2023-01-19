@@ -370,7 +370,9 @@ impl<CF: PrimeField> SpongeExt for PoseidonSponge<CF> {
 mod test {
     use crate::sponge::poseidon::PoseidonDefaultConfigField;
     use crate::sponge::test::Fr;
-    use crate::sponge::{poseidon::PoseidonSponge, CryptographicSponge, FieldBasedCryptographicSponge};
+    use crate::sponge::{
+        poseidon::PoseidonSponge, CryptographicSponge, FieldBasedCryptographicSponge,
+    };
     use ark_ff::MontFp;
 
     #[test]

@@ -181,8 +181,7 @@ mod test {
     type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsConfig, FqVar>;
 
     type TestTwoToOneCRH = bowe_hopwood::TwoToOneCRH<EdwardsConfig, Window>;
-    type TestTwoToOneCRHGadget =
-        bowe_hopwood::constraints::TwoToOneCRHGadget<EdwardsConfig, FqVar>;
+    type TestTwoToOneCRHGadget = bowe_hopwood::constraints::TwoToOneCRHGadget<EdwardsConfig, FqVar>;
 
     #[derive(Clone, PartialEq, Eq, Hash)]
     pub(super) struct Window;
