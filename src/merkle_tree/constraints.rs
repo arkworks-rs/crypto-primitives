@@ -1,6 +1,6 @@
 use crate::crh::TwoToOneCRHSchemeGadget;
 use crate::merkle_tree::{Config, IdentityDigestConverter};
-use crate::{CRHSchemeGadget, Path};
+use crate::{crh::CRHSchemeGadget, merkle_tree::Path};
 use ark_ff::Field;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::boolean::Boolean;

@@ -1,4 +1,4 @@
-use crate::{CRHScheme, Error, Vec};
+use crate::{crh::CRHScheme, Error, Vec};
 use ark_ec::CurveGroup;
 use ark_ff::{BitIteratorLE, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;

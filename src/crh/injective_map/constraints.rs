@@ -7,7 +7,7 @@ use crate::crh::{
 use ark_std::{fmt::Debug, marker::PhantomData};
 
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
-use crate::CRHSchemeGadget;
+use crate::crh::CRHSchemeGadget;
 use ark_ec::{
     twisted_edwards::{Projective as TEProjective, TECurveConfig},
     CurveConfig, CurveGroup,

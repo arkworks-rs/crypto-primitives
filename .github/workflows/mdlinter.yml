@@ -17,14 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Lint Code Base
-        uses: docker://github/super-linter:latest
+        uses: github/super-linter/slim@v4
         env:
-          LINTER_RULES_PATH: .github
-          VALIDATE_ALL_CODEBASE: true
+          VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_MD: true
-          MARKDOWN_CONFIG_FILE: .markdownlint.yml
           VALIDATE_PROTOBUF: false
           VALIDATE_JSCPD: false
           # use Python Pylint as the only linter to avoid conflicts
@@ -32,3 +29,4 @@ jobs:
           VALIDATE_PYTHON_FLAKE8: false
           VALIDATE_PYTHON_ISORT: false
           VALIDATE_PYTHON_MYPY: false
+          VALIDATE_YAML: false
