@@ -41,7 +41,7 @@ mod bytes_mt_tests {
         let mut rng = ark_std::test_rng();
         let mut leaves: Vec<_> = leaves
             .iter()
-            .map(|leaf| crate::to_unchecked_bytes!(leaf).unwrap())
+            .map(|leaf| crate::to_uncompressed_bytes!(leaf).unwrap())
             .collect();
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
@@ -64,7 +64,7 @@ mod bytes_mt_tests {
 
         // test merkle tree update functionality
         for (i, v) in update_query {
-            let v = crate::to_unchecked_bytes!(v).unwrap();
+            let v = crate::to_uncompressed_bytes!(v).unwrap();
             tree.update(*i, &v).unwrap();
             leaves[*i] = v.clone();
         }
@@ -121,11 +121,11 @@ mod bytes_mt_tests {
 mod field_mt_tests {
     use crate::{
         crh::poseidon,
-        merkle_tree::{tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter},
+        merkle_tree::{tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter, MerkleTree},
         MerkleTree,
     };
-    use ark_std::vec::Vec;
-    use ark_std::{test_rng, One, UniformRand};
+    use ark_std::{test_rng, vec::Vec, One, UniformRand};
+    
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;

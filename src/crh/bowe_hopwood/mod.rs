@@ -14,7 +14,7 @@ use rayon::prelude::*;
 use super::pedersen;
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
-    twisted_edwards_extended::GroupProjective as TEProjective, ProjectiveCurve, TEModelParameters,
+    twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig, CurveGroup, Group,
 };
 use ark_ff::{biginteger::BigInteger, fields::PrimeField};
 use ark_serialize::CanonicalSerialize;
@@ -29,16 +29,16 @@ pub const CHUNK_SIZE: usize = 3;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""), Default(bound = ""))]
-pub struct Parameters<P: TEModelParameters> {
+pub struct Parameters<P: TECurveConfig> {
     pub generators: Vec<Vec<TEProjective<P>>>,
 }
 
-pub struct CRH<P: TEModelParameters, W: pedersen::Window> {
+pub struct CRH<P: TECurveConfig, W: pedersen::Window> {
     group: PhantomData<P>,
     window: PhantomData<W>,
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
+impl<P: TECurveConfig, W: pedersen::Window> CRH<P, W> {
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
         let mut generators = Vec::new();
         for _ in 0..W::NUM_WINDOWS {
@@ -56,12 +56,12 @@ impl<P: TEModelParameters, W: pedersen::Window> CRH<P, W> {
     }
 }
 
-pub struct TwoToOneCRH<P: TEModelParameters, W: pedersen::Window> {
+pub struct TwoToOneCRH<P: TECurveConfig, W: pedersen::Window> {
     group: PhantomData<P>,
     window: PhantomData<W>,
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH<P, W> {
+impl<P: TECurveConfig, W: pedersen::Window> TwoToOneCRH<P, W> {
     const INPUT_SIZE_BITS: usize = pedersen::CRH::<TEProjective<P>, W>::INPUT_SIZE_BITS;
     const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<TEProjective<P>>> {
@@ -69,7 +69,7 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
+impl<P: TECurveConfig, W: pedersen::Window> CRHScheme for CRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -77,7 +77,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
-            let upper_limit = F::modulus_minus_one_div_two();
+            let upper_limit = F::MODULUS_MINUS_ONE_DIV_TWO;
             let mut c = 0;
             let mut range = F::BigInt::from(2_u64);
             while range < upper_limit {
@@ -183,7 +183,7 @@ impl<P: TEModelParameters, W: pedersen::Window> CRHScheme for CRH<P, W> {
     }
 }
 
-impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCRH<P, W> {
+impl<P: TECurveConfig, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCRH<P, W> {
     type Input = [u8];
 
     type Output = P::BaseField;
@@ -230,13 +230,13 @@ impl<P: TEModelParameters, W: pedersen::Window> TwoToOneCRHScheme for TwoToOneCR
     ) -> Result<Self::Output, Error> {
         Self::evaluate(
             parameters,
-            crate::to_unchecked_bytes!(left_input)?,
-            crate::to_unchecked_bytes!(right_input)?,
+            crate::to_uncompressed_bytes!(left_input)?,
+            crate::to_uncompressed_bytes!(right_input)?,
         )
     }
 }
 
-impl<P: TEModelParameters> Debug for Parameters<P> {
+impl<P: TECurveConfig> Debug for Parameters<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         writeln!(f, "Bowe-Hopwood-Pedersen Hash Parameters {{")?;
         for (i, g) in self.generators.iter().enumerate() {
@@ -248,11 +248,8 @@ impl<P: TEModelParameters> Debug for Parameters<P> {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        crh::{bowe_hopwood, pedersen::Window},
-        CRHScheme,
-    };
-    use ark_ed_on_bls12_381::EdwardsParameters;
+    use crate::crh::{bowe_hopwood, pedersen::Window, CRHScheme};
+    use ark_ed_on_bls12_381::EdwardsConfig;
     use ark_std::test_rng;
 
     #[test]
@@ -265,8 +262,8 @@ mod test {
         }
 
         let rng = &mut test_rng();
-        let params = bowe_hopwood::CRH::<EdwardsParameters, TestWindow>::setup(rng).unwrap();
-        let _ = bowe_hopwood::CRH::<EdwardsParameters, TestWindow>::evaluate(&params, [1, 2, 3])
-            .unwrap();
+        let params = bowe_hopwood::CRH::<EdwardsConfig, TestWindow>::setup(rng).unwrap();
+        let _ =
+            bowe_hopwood::CRH::<EdwardsConfig, TestWindow>::evaluate(&params, [1, 2, 3]).unwrap();
     }
 }

@@ -1,10 +1,10 @@
-use ark_sponge::poseidon::PoseidonParameters;
+use crate::sponge::poseidon::PoseidonConfig;
 use ark_std::str::FromStr;
 use ark_std::{One, Zero};
 
 type F = ark_ed_on_bls12_381::Fr;
 
-pub(crate) fn poseidon_parameters() -> PoseidonParameters<ark_ed_on_bls12_381::Fr> {
+pub(crate) fn poseidon_parameters() -> PoseidonConfig<ark_ed_on_bls12_381::Fr> {
     let full_rounds = 8;
     let partial_rounds = 29;
     let alpha = 17;
@@ -651,7 +651,7 @@ pub(crate) fn poseidon_parameters() -> PoseidonParameters<ark_ed_on_bls12_381::F
         vec![F::zero(), F::one(), F::one()],
     ];
 
-    PoseidonParameters::<F>::new(full_rounds, partial_rounds, alpha, mds, ark)
+    PoseidonConfig::<F>::new(full_rounds, partial_rounds, alpha, mds, ark, 2, 1)
 }
 
 #[cfg(feature = "r1cs")]

@@ -1,12 +1,12 @@
 #![allow(clippy::upper_case_acronyms)]
 
-use ark_ff::bytes::ToBytes;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
 pub mod bowe_hopwood;
 pub mod injective_map;
 pub mod pedersen;
 pub mod poseidon;
+pub mod sha256;
 
 use crate::Error;
 
@@ -22,8 +22,7 @@ pub use constraints::*;
 /// variable length CRH may also implement this trait in future.
 pub trait CRHScheme {
     type Input: ?Sized;
-    type Output: ToBytes
-        + Clone
+    type Output: Clone
         + Eq
         + core::fmt::Debug
         + Hash
@@ -44,8 +43,7 @@ pub trait TwoToOneCRHScheme {
     /// Raw Input type of TwoToOneCRH
     type Input: ?Sized;
     /// Raw Output type of TwoToOneCRH
-    type Output: ToBytes
-        + Clone
+    type Output: Clone
         + Eq
         + core::fmt::Debug
         + Hash

@@ -3,40 +3,38 @@ pub mod constraints;
 
 use crate::encryption::AsymmetricEncryptionScheme;
 use crate::Error;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{CurveGroup, Group};
 use ark_ff::{fields::PrimeField, UniformRand};
 use ark_std::marker::PhantomData;
+use ark_std::ops::Mul;
 use ark_std::rand::Rng;
 
-pub struct ElGamal<C: ProjectiveCurve> {
+pub struct ElGamal<C: CurveGroup> {
     _group: PhantomData<C>,
 }
 
-pub struct Parameters<C: ProjectiveCurve> {
+pub struct Parameters<C: CurveGroup> {
     pub generator: C::Affine,
 }
 
-pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
+pub type PublicKey<C> = <C as CurveGroup>::Affine;
 
-pub struct SecretKey<C: ProjectiveCurve>(pub C::ScalarField);
+pub struct SecretKey<C: CurveGroup>(pub C::ScalarField);
 
-pub struct Randomness<C: ProjectiveCurve>(pub C::ScalarField);
+pub struct Randomness<C: CurveGroup>(pub C::ScalarField);
 
-impl<C: ProjectiveCurve> UniformRand for Randomness<C> {
+impl<C: CurveGroup> UniformRand for Randomness<C> {
     #[inline]
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
-        Randomness(<C as ProjectiveCurve>::ScalarField::rand(rng))
+        Randomness(<C as Group>::ScalarField::rand(rng))
     }
 }
 
-pub type Plaintext<C> = <C as ProjectiveCurve>::Affine;
+pub type Plaintext<C> = <C as CurveGroup>::Affine;
 
-pub type Ciphertext<C> = (
-    <C as ProjectiveCurve>::Affine,
-    <C as ProjectiveCurve>::Affine,
-);
+pub type Ciphertext<C> = (<C as CurveGroup>::Affine, <C as CurveGroup>::Affine);
 
-impl<C: ProjectiveCurve> AsymmetricEncryptionScheme for ElGamal<C>
+impl<C: CurveGroup> AsymmetricEncryptionScheme for ElGamal<C>
 where
     C::ScalarField: PrimeField,
 {
@@ -59,7 +57,7 @@ where
         rng: &mut R,
     ) -> Result<(Self::PublicKey, Self::SecretKey), Error> {
         // get a random element from the scalar field
-        let secret_key: <C as ProjectiveCurve>::ScalarField = C::ScalarField::rand(rng);
+        let secret_key: <C as Group>::ScalarField = C::ScalarField::rand(rng);
 
         // compute secret_key*generator to derive the public key
         let public_key = pp.generator.mul(secret_key).into();
@@ -82,7 +80,7 @@ where
         // compute c2 = m + s
         let c2 = *message + s;
 
-        Ok((c1, c2))
+        Ok((c1, c2.into_affine()))
     }
 
     fn decrypt(
@@ -90,17 +88,17 @@ where
         sk: &Self::SecretKey,
         ciphertext: &Self::Ciphertext,
     ) -> Result<Self::Plaintext, Error> {
-        let c1: <C as ProjectiveCurve>::Affine = ciphertext.0;
-        let c2: <C as ProjectiveCurve>::Affine = ciphertext.1;
+        let c1: <C as CurveGroup>::Affine = ciphertext.0;
+        let c2: <C as CurveGroup>::Affine = ciphertext.1;
 
         // compute s = secret_key * c1
         let s = c1.mul(sk.0);
         let s_inv = -s;
 
         // compute message = c2 - s
-        let m = c2 + s_inv.into_affine();
+        let m = c2 + s_inv;
 
-        Ok(m)
+        Ok(m.into_affine())
     }
 }
 

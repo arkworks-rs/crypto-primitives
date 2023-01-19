@@ -7,7 +7,7 @@ use crate::commitment::{
 };
 
 pub use crate::crh::injective_map::constraints::InjectiveMapGadget;
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::{
     groups::{CurveVar, GroupOpsBounds},
@@ -17,11 +17,11 @@ use ark_relations::r1cs::SynthesisError;
 
 use ark_std::marker::PhantomData;
 
-type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
+type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 
 pub struct CommitmentCompressorGadget<C, I, W, GG, IG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     I: InjectiveMap<C>,
     W: Window,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -37,7 +37,7 @@ impl<C, I, GG, IG, W>
     crate::commitment::CommitmentGadget<PedersenCommCompressor<C, I, W>, ConstraintF<C>>
     for CommitmentCompressorGadget<C, I, W, GG, IG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     I: InjectiveMap<C>,
     GG: CurveVar<C, ConstraintF<C>>,
     ConstraintF<C>: PrimeField,

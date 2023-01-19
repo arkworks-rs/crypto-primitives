@@ -1,10 +1,14 @@
-use ark_ff::{BigInteger, FpParameters, PrimeField};
-use ark_nonnative_field::params::{get_params, OptimizationType};
-use ark_nonnative_field::{AllocatedNonNativeFieldVar, NonNativeFieldVar};
+use ark_ff::{BigInteger, PrimeField};
 use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::{
     bits::boolean::Boolean,
-    fields::fp::{AllocatedFp, FpVar},
+    fields::{
+        fp::{AllocatedFp, FpVar},
+        nonnative::{
+            params::{get_params, OptimizationType},
+            AllocatedNonNativeFieldVar, NonNativeFieldVar,
+        },
+    },
     R1CSVar,
 };
 use ark_relations::r1cs::OptimizationGoal;
@@ -160,8 +164,8 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             // convert the elements into booleans (little-endian)
             let mut res = Vec::<Vec<Boolean<CF>>>::new();
             for elem in obj.iter() {
-                let mut bits = elem.into_repr().to_bits_le();
-                bits.truncate(F::size_in_bits());
+                let mut bits = elem.into_bigint().to_bits_le();
+                bits.truncate(F::MODULUS_BIT_SIZE as usize);
 
                 let mut booleans = Vec::<Boolean<CF>>::new();
                 for bit in bits.iter() {
@@ -190,9 +194,9 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
         // Step 1: obtain the bits of the F field elements (little-endian)
         let mut src_bits = Vec::<bool>::new();
         for elem in obj.borrow().iter() {
-            let mut bits = elem.into_repr().to_bits_le();
-            bits.truncate(F::size_in_bits());
-            for _ in bits.len()..F::size_in_bits() {
+            let mut bits = elem.into_bigint().to_bits_le();
+            bits.truncate(F::MODULUS_BIT_SIZE as usize);
+            for _ in bits.len()..F::MODULUS_BIT_SIZE as usize {
                 bits.push(false);
             }
             bits.reverse();
@@ -204,9 +208,9 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
         // Deciding how many bits can be embedded,
         //  if CF has the same number of bits as F, but is larger,
         //  then it is okay to put the entire field element in.
-        let capacity = if CF::size_in_bits() == F::size_in_bits() {
-            let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
-            let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
+        let capacity = if CF::MODULUS_BIT_SIZE == F::MODULUS_BIT_SIZE {
+            let fq = <CF as PrimeField>::MODULUS;
+            let fr = <F as PrimeField>::MODULUS;
 
             let fq_u64: &[u64] = fq.as_ref();
             let fr_u64: &[u64] = fr.as_ref();
@@ -224,18 +228,18 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
             }
 
             if fq_not_smaller_than_fr {
-                CF::size_in_bits()
+                CF::MODULUS_BIT_SIZE as usize
             } else {
-                CF::size_in_bits() - 1
+                CF::MODULUS_BIT_SIZE as usize - 1
             }
         } else {
-            CF::size_in_bits() - 1
+            CF::MODULUS_BIT_SIZE as usize - 1
         };
 
         // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean<CF>>::new();
         for chunk in src_bits.chunks(capacity) {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits_be(chunk)).unwrap(); // big endian
+            let elem = CF::from_bigint(<CF as PrimeField>::BigInt::from_bits_be(chunk)).unwrap(); // big endian
 
             let elem_gadget = FpVar::<CF>::new_input(ns!(cs, "input"), || Ok(elem))?;
 
@@ -248,7 +252,7 @@ impl<F: PrimeField, CF: PrimeField> AllocVar<Vec<F>, CF> for BooleanInputVar<F, 
 
         // Step 4: unpack them back to bits
         let res = src_booleans
-            .chunks(F::size_in_bits())
+            .chunks(F::MODULUS_BIT_SIZE as usize)
             .map(|f| {
                 let mut res = f.to_vec();
                 res.reverse();
@@ -268,9 +272,9 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
         // Step 1: obtain the bits of the F field elements
         let mut src_bits = Vec::<bool>::new();
         for (_, elem) in src.iter().enumerate() {
-            let mut bits = elem.into_repr().to_bits_le();
-            bits.truncate(F::size_in_bits());
-            for _ in bits.len()..F::size_in_bits() {
+            let mut bits = elem.into_bigint().to_bits_le();
+            bits.truncate(F::MODULUS_BIT_SIZE as usize);
+            for _ in bits.len()..F::MODULUS_BIT_SIZE as usize {
                 bits.push(false);
             }
             bits.reverse();
@@ -280,9 +284,9 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
 
         // Step 2: repack the bits as CF field elements
         // Deciding how many bits can be embedded.
-        let capacity = if CF::size_in_bits() == F::size_in_bits() {
-            let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
-            let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
+        let capacity = if CF::MODULUS_BIT_SIZE == F::MODULUS_BIT_SIZE {
+            let fq = <CF as PrimeField>::MODULUS;
+            let fr = <F as PrimeField>::MODULUS;
 
             let fq_u64: &[u64] = fq.as_ref();
             let fr_u64: &[u64] = fr.as_ref();
@@ -300,18 +304,18 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             }
 
             if fq_not_smaller_than_fr {
-                CF::size_in_bits()
+                CF::MODULUS_BIT_SIZE as usize
             } else {
-                CF::size_in_bits() - 1
+                CF::MODULUS_BIT_SIZE as usize - 1
             }
         } else {
-            CF::size_in_bits() - 1
+            CF::MODULUS_BIT_SIZE as usize - 1
         };
 
         // Step 3: directly pack the bits
         let mut dest = Vec::<CF>::new();
         for chunk in src_bits.chunks(capacity) {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInt::from_bits_be(chunk)).unwrap(); // big endian
+            let elem = CF::from_bigint(<CF as PrimeField>::BigInt::from_bits_be(chunk)).unwrap(); // big endian
             dest.push(elem);
         }
 
@@ -329,9 +333,9 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
 
         // Step 2: repack the bits as F field elements
         // Deciding how many bits can be embedded.
-        let capacity = if CF::size_in_bits() == F::size_in_bits() {
-            let fq = <<CF as PrimeField>::Params as FpParameters>::MODULUS;
-            let fr = <<F as PrimeField>::Params as FpParameters>::MODULUS;
+        let capacity = if CF::MODULUS_BIT_SIZE == F::MODULUS_BIT_SIZE {
+            let fq = <CF as PrimeField>::MODULUS;
+            let fr = <F as PrimeField>::MODULUS;
 
             let fq_u64: &[u64] = fq.as_ref();
             let fr_u64: &[u64] = fr.as_ref();
@@ -349,12 +353,12 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             }
 
             if fr_not_smaller_than_fq {
-                F::size_in_bits()
+                F::MODULUS_BIT_SIZE as usize
             } else {
-                F::size_in_bits() - 1
+                F::MODULUS_BIT_SIZE as usize - 1
             }
         } else {
-            F::size_in_bits() - 1
+            F::MODULUS_BIT_SIZE as usize - 1
         };
 
         // Step 3: group them based on the used capacity of F
@@ -468,7 +472,11 @@ where
             OptimizationGoal::Weight => OptimizationType::Weight,
         };
 
-        let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
+        let params = get_params(
+            F::MODULUS_BIT_SIZE as usize,
+            CF::MODULUS_BIT_SIZE as usize,
+            optimization_type,
+        );
 
         let obj = f()?;
 
@@ -499,7 +507,7 @@ where
             field_bits.reverse();
 
             let bit_per_top_limb =
-                F::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb;
+                F::MODULUS_BIT_SIZE as usize - (params.num_limbs - 1) * params.bits_per_limb;
             let bit_per_non_top_limb = params.bits_per_limb;
 
             // must use lc to save computation
@@ -556,7 +564,7 @@ where
             // reconstruct the field elements and check consistency
             for field_bits in boolean_allocation.val.iter() {
                 let mut field_bits = field_bits.clone();
-                field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
+                field_bits.resize(F::MODULUS_BIT_SIZE as usize, Boolean::<CF>::Constant(false));
 
                 let mut cur = F::one();
 
@@ -581,7 +589,11 @@ where
                 OptimizationGoal::Weight => OptimizationType::Weight,
             };
 
-            let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
+            let params = get_params(
+                F::MODULUS_BIT_SIZE as usize,
+                CF::MODULUS_BIT_SIZE as usize,
+                optimization_type,
+            );
 
             // Step 1: use BooleanInputVar to convert them into booleans
             let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
@@ -592,13 +604,13 @@ where
             // reconstruct the field elements and check consistency
             for field_bits in boolean_allocation.val.iter() {
                 let mut field_bits = field_bits.clone();
-                field_bits.resize(F::size_in_bits(), Boolean::<CF>::Constant(false));
+                field_bits.resize(F::MODULUS_BIT_SIZE as usize, Boolean::<CF>::Constant(false));
                 field_bits.reverse();
 
                 let mut limbs = Vec::<FpVar<CF>>::new();
 
                 let bit_per_top_limb =
-                    F::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb;
+                    F::MODULUS_BIT_SIZE as usize - (params.num_limbs - 1) * params.bits_per_limb;
                 let bit_per_non_top_limb = params.bits_per_limb;
 
                 // must use lc to save computation

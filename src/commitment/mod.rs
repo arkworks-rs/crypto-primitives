@@ -1,8 +1,7 @@
 use ark_ff::UniformRand;
+use ark_serialize::CanonicalSerialize;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash};
-
-use ark_ff::bytes::ToBytes;
 
 pub mod blake2s;
 pub mod injective_map;
@@ -16,9 +15,9 @@ pub use constraints::*;
 use crate::Error;
 
 pub trait CommitmentScheme {
-    type Output: ToBytes + Clone + Default + Eq + Hash + Debug;
+    type Output: CanonicalSerialize + Clone + Default + Eq + Hash + Debug;
     type Parameters: Clone;
-    type Randomness: Clone + ToBytes + Default + Eq + UniformRand + Debug;
+    type Randomness: CanonicalSerialize + Clone + Default + Eq + UniformRand + Debug;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
 

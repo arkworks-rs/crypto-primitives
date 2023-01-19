@@ -1,7 +1,7 @@
-use crate::{CRHScheme, Error, Vec};
-use ark_ec::ProjectiveCurve;
-use ark_ff::{bytes::ToBytes, BitIteratorLE, Field, FpParameters, PrimeField, ToConstraintField};
-use ark_std::io::{Result as IoResult, Write};
+use crate::{crh::CRHScheme, Error, Vec};
+use ark_ec::CurveGroup;
+use ark_ff::{BitIteratorLE, Field, PrimeField, ToConstraintField};
+use ark_serialize::CanonicalSerialize;
 use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 use ark_std::UniformRand;
@@ -15,34 +15,28 @@ pub use crate::crh::pedersen::Window;
 pub mod constraints;
 
 #[derive(Clone)]
-pub struct Parameters<C: ProjectiveCurve> {
+pub struct Parameters<C: CurveGroup> {
     pub randomness_generator: Vec<C>,
     pub generators: Vec<Vec<C>>,
 }
 
-pub struct Commitment<C: ProjectiveCurve, W: Window> {
+pub struct Commitment<C: CurveGroup, W: Window> {
     group: PhantomData<C>,
     window: PhantomData<W>,
 }
 
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize)]
 #[derivative(Clone, PartialEq, Debug, Eq, Default)]
-pub struct Randomness<C: ProjectiveCurve>(pub C::ScalarField);
+pub struct Randomness<C: CurveGroup>(pub C::ScalarField);
 
-impl<C: ProjectiveCurve> UniformRand for Randomness<C> {
+impl<C: CurveGroup> UniformRand for Randomness<C> {
     #[inline]
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
         Randomness(UniformRand::rand(rng))
     }
 }
 
-impl<C: ProjectiveCurve> ToBytes for Randomness<C> {
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write(writer)
-    }
-}
-
-impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
+impl<C: CurveGroup, W: Window> CommitmentScheme for Commitment<C, W> {
     type Parameters = Parameters<C>;
     type Randomness = Randomness<C>;
     type Output = C::Affine;
@@ -54,7 +48,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
             W::WINDOW_SIZE,
             W::NUM_WINDOWS * W::WINDOW_SIZE
         ));
-        let num_powers = <C::ScalarField as PrimeField>::Params::MODULUS_BITS as usize;
+        let num_powers = <C::ScalarField as PrimeField>::MODULUS_BIT_SIZE as usize;
         let randomness_generator = pedersen::CRH::<C, W>::generator_powers(num_powers, rng);
         let generators = pedersen::CRH::<C, W>::create_generators(rng);
         end_timer!(time);
@@ -96,7 +90,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
         let randomize_time = start_timer!(|| "Randomize");
 
         // Compute h^r.
-        for (bit, power) in BitIteratorLE::new(randomness.0.into_repr())
+        for (bit, power) in BitIteratorLE::new(randomness.0.into_bigint())
             .into_iter()
             .zip(&parameters.randomness_generator)
         {
@@ -111,7 +105,7 @@ impl<C: ProjectiveCurve, W: Window> CommitmentScheme for Commitment<C, W> {
     }
 }
 
-impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>>
+impl<ConstraintF: Field, C: CurveGroup + ToConstraintField<ConstraintF>>
     ToConstraintField<ConstraintF> for Parameters<C>
 {
     #[inline]

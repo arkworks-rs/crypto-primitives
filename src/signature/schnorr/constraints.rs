@@ -1,5 +1,5 @@
 use crate::Vec;
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
@@ -11,10 +11,10 @@ use core::{borrow::Borrow, marker::PhantomData};
 use crate::signature::schnorr::{Parameters, PublicKey, Schnorr};
 use digest::Digest;
 
-type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
+type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 
 #[derive(Clone)]
-pub struct ParametersVar<C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>>
+pub struct ParametersVar<C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
@@ -24,10 +24,10 @@ where
 
 #[derive(Derivative)]
 #[derivative(
-    Debug(bound = "C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>"),
-    Clone(bound = "C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>")
+    Debug(bound = "C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>"),
+    Clone(bound = "C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>")
 )]
-pub struct PublicKeyVar<C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>>
+pub struct PublicKeyVar<C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
@@ -36,7 +36,7 @@ where
     _group: PhantomData<*const C>,
 }
 
-pub struct SchnorrRandomizePkGadget<C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>>
+pub struct SchnorrRandomizePkGadget<C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
@@ -49,7 +49,7 @@ where
 impl<C, GC, D> SigRandomizePkGadget<Schnorr<C, D>, ConstraintF<C>>
     for SchnorrRandomizePkGadget<C, GC>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GC: CurveVar<C, ConstraintF<C>>,
     D: Digest + Send + Sync,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
@@ -78,7 +78,7 @@ where
 
 impl<C, GC, D> AllocVar<Parameters<C, D>, ConstraintF<C>> for ParametersVar<C, GC>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GC: CurveVar<C, ConstraintF<C>>,
     D: Digest,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
@@ -98,7 +98,7 @@ where
 
 impl<C, GC> AllocVar<PublicKey<C>, ConstraintF<C>> for PublicKeyVar<C, GC>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GC: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
@@ -117,7 +117,7 @@ where
 
 impl<C, GC> EqGadget<ConstraintF<C>> for PublicKeyVar<C, GC>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GC: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
@@ -149,7 +149,7 @@ where
 
 impl<C, GC> ToBytesGadget<ConstraintF<C>> for PublicKeyVar<C, GC>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GC: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
