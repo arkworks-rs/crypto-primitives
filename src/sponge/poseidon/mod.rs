@@ -1,4 +1,4 @@
-use crate::{
+use crate::sponge::{
     field_cast, squeeze_field_elements_with_sizes_default_impl, Absorb, CryptographicSponge,
     DuplexSpongeMode, FieldBasedCryptographicSponge, FieldElementSize, SpongeExt,
 };
@@ -368,9 +368,9 @@ impl<CF: PrimeField> SpongeExt for PoseidonSponge<CF> {
 
 #[cfg(test)]
 mod test {
-    use crate::poseidon::PoseidonDefaultConfigField;
-    use crate::test::Fr;
-    use crate::{poseidon::PoseidonSponge, CryptographicSponge, FieldBasedCryptographicSponge};
+    use crate::sponge::poseidon::PoseidonDefaultConfigField;
+    use crate::sponge::test::Fr;
+    use crate::sponge::{poseidon::PoseidonSponge, CryptographicSponge, FieldBasedCryptographicSponge};
     use ark_ff::MontFp;
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::{Absorb, CryptographicSponge, FieldElementSize};
+use crate::sponge::{Absorb, CryptographicSponge, FieldElementSize};
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::bits::boolean::Boolean;

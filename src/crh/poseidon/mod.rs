@@ -1,5 +1,5 @@
 use crate::crh::TwoToOneCRHScheme;
-use crate::{CRHScheme, Error};
+use crate::{crh::CRHScheme, Error};
 use ark_ff::PrimeField;
 use crate::sponge::poseidon::{PoseidonConfig, PoseidonSponge};
 use crate::sponge::{Absorb, CryptographicSponge};

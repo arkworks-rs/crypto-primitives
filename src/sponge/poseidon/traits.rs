@@ -1,5 +1,5 @@
-use crate::poseidon::grain_lfsr::PoseidonGrainLFSR;
-use crate::poseidon::PoseidonConfig;
+use crate::sponge::poseidon::grain_lfsr::PoseidonGrainLFSR;
+use crate::sponge::poseidon::PoseidonConfig;
 use ark_ff::{fields::models::*, FpConfig, PrimeField};
 use ark_std::{vec, vec::Vec};
 
@@ -156,8 +156,8 @@ impl<const N: usize, P: PoseidonDefaultConfig<N>> PoseidonDefaultConfigField for
 
 #[cfg(test)]
 mod test {
-    use crate::poseidon::PoseidonDefaultConfigField;
-    use crate::test::*;
+    use crate::sponge::poseidon::PoseidonDefaultConfigField;
+    use crate::sponge::test::*;
     use ark_ff::MontFp;
 
     #[test]

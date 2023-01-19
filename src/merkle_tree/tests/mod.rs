@@ -121,8 +121,7 @@ mod bytes_mt_tests {
 mod field_mt_tests {
     use crate::crh::poseidon;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
-    use crate::merkle_tree::{Config, IdentityDigestConverter};
-    use crate::MerkleTree;
+    use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
     use ark_std::{test_rng, vec::Vec, One, UniformRand};
 
     type F = ark_ed_on_bls12_381::Fr;

@@ -355,8 +355,8 @@ macro_rules! collect_sponge_field_elements {
 
 #[cfg(test)]
 mod tests {
-    use crate::field_cast;
-    use crate::test::Fr;
+    use crate::sponge::field_cast;
+    use crate::sponge::test::Fr;
     use ark_std::{test_rng, vec::Vec, UniformRand};
 
     #[test]

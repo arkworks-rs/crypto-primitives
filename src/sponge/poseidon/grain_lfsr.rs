@@ -190,8 +190,8 @@ impl PoseidonGrainLFSR {
 
 #[cfg(test)]
 mod test {
-    use crate::poseidon::grain_lfsr::PoseidonGrainLFSR;
-    use crate::test::Fr;
+    use crate::sponge::poseidon::grain_lfsr::PoseidonGrainLFSR;
+    use crate::sponge::test::Fr;
     use ark_ff::MontFp;
 
     #[test]

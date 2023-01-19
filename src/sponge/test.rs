@@ -1,4 +1,4 @@
-use crate::poseidon::{PoseidonDefaultConfig, PoseidonDefaultConfigEntry};
+use crate::sponge::poseidon::{PoseidonDefaultConfig, PoseidonDefaultConfigEntry};
 use ark_ff::fields::Fp256;
 use ark_ff::{MontBackend, MontConfig};
 
