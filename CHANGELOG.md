@@ -23,7 +23,7 @@
 
 ### Improvements
 
-### Bug fixes
+### Bugfixes
 
 ## v0.3.0
 
@@ -39,7 +39,7 @@
 
 ### Improvements
 
-### Bug fixes
+### Bugfixes
 
 ## v0.2.0
 
@@ -55,6 +55,6 @@
 
 ### Improvements
 
-### Bug fixes
+### Bugfixes
 
 ## v0.1.0 (Initial release of arkworks/crypto-primitives)
