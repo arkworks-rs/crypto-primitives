@@ -2,15 +2,14 @@
 
 ## Pending
 
-- [\#77](https://github.com/arkworks-rs/crypto-primitives/pull/77) Implement SHA-256 CRH.
-- [\#76](https://github.com/arkworks-rs/crypto-primitives/pull/79) Fix Pedersen padding bug.
-
 ### Breaking changes
 
 - [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of the Bowe-Hopwood-Pedersen CRH to a single field element, in line with the Zcash specification.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle tree's `Config` requires a user-defined converter to turn leaf hash output to inner hash output.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Rename the CRH trait as `CRHScheme` and the CRHGadget trait to `CRHSchemeGadget`.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Use `ark-sponge` to instantiate Poseidon.
+- [\#76](https://github.com/arkworks-rs/crypto-primitives/pull/79) Fix Pedersen padding bug.
+- [\#77](https://github.com/arkworks-rs/crypto-primitives/pull/77) Implement SHA-256 CRH.
 - [\#86](https://github.com/arkworks-rs/crypto-primitives/pull/86)
     - Moves `ark-sponge` here.
     - Updates dependencies and version number to `0.4`.
