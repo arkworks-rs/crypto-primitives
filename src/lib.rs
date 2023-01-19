@@ -20,11 +20,11 @@ mod macros;
 pub mod commitment;
 pub mod crh;
 pub mod merkle_tree;
-
 pub mod encryption;
 pub mod prf;
 pub mod signature;
 pub mod snark;
+pub mod sponge;
 
 pub use self::{
     commitment::CommitmentScheme,

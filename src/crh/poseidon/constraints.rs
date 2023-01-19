@@ -3,15 +3,16 @@ use crate::crh::{
     CRHSchemeGadget as CRHGadgetTrait, TwoToOneCRHSchemeGadget as TwoToOneCRHGadgetTrait,
 };
 use crate::{CRHScheme, Vec};
+use crate::sponge::constraints::CryptographicSpongeVar;
+use crate::sponge::poseidon::constraints::PoseidonSpongeVar;
+use crate::sponge::poseidon::PoseidonConfig;
+
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::R1CSVar;
 use ark_relations::r1cs::{Namespace, SynthesisError};
-use ark_sponge::constraints::CryptographicSpongeVar;
-use ark_sponge::poseidon::constraints::PoseidonSpongeVar;
-use ark_sponge::poseidon::PoseidonConfig;
-use ark_sponge::Absorb;
+use crate::sponge::Absorb;
 use ark_std::borrow::Borrow;
 use ark_std::marker::PhantomData;
 
