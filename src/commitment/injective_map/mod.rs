@@ -3,19 +3,19 @@ use ark_std::marker::PhantomData;
 
 use super::{pedersen, CommitmentScheme};
 pub use crate::crh::injective_map::InjectiveMap;
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_std::rand::Rng;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-pub struct PedersenCommCompressor<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> {
+pub struct PedersenCommCompressor<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> {
     _group: PhantomData<C>,
     _compressor: PhantomData<I>,
     _comm: pedersen::Commitment<C, W>,
 }
 
-impl<C: ProjectiveCurve, I: InjectiveMap<C>, W: pedersen::Window> CommitmentScheme
+impl<C: CurveGroup, I: InjectiveMap<C>, W: pedersen::Window> CommitmentScheme
     for PedersenCommCompressor<C, I, W>
 {
     type Output = I::Output;

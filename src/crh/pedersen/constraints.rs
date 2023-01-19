@@ -5,7 +5,7 @@ use crate::{
     },
     Vec,
 };
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
@@ -15,8 +15,8 @@ use crate::crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget};
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct CRHParametersVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+pub struct CRHParametersVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -25,8 +25,8 @@ where
     _group_g: PhantomData<GG>,
 }
 
-type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
-pub struct CRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
+type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
+pub struct CRHGadget<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>, W: Window>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -40,7 +40,7 @@ where
 
 impl<C, GG, W> CRHSchemeGadget<CRH<C, W>, ConstraintF<C>> for CRHGadget<C, GG, W>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -72,6 +72,7 @@ where
 
         // Compute the Pedersen CRH. Chunk the input bits into correctly sized windows
         let input_in_bits = input_in_bits.chunks(W::WINDOW_SIZE);
+
         let result =
             GG::precomputed_base_multiscalar_mul_le(&parameters.params.generators, input_in_bits)?;
 
@@ -79,7 +80,7 @@ where
     }
 }
 
-pub struct TwoToOneCRHGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
+pub struct TwoToOneCRHGadget<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>, W: Window>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -94,7 +95,7 @@ where
 impl<C, GG, W> TwoToOneCRHSchemeGadget<TwoToOneCRH<C, W>, ConstraintF<C>>
     for TwoToOneCRHGadget<C, GG, W>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -134,7 +135,7 @@ where
 
 impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for CRHParametersVar<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -157,7 +158,7 @@ mod test {
     use crate::crh::{
         pedersen, CRHScheme, CRHSchemeGadget, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget,
     };
-    use ark_ec::ProjectiveCurve;
+    use ark_ec::CurveGroup;
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
@@ -197,8 +198,8 @@ mod test {
     fn generate_affine<R: Rng>(
         cs: ConstraintSystemRef<Fr>,
         rng: &mut R,
-    ) -> (<JubJub as ProjectiveCurve>::Affine, EdwardsVar) {
-        let val = <JubJub as ProjectiveCurve>::Affine::rand(rng);
+    ) -> (<JubJub as CurveGroup>::Affine, EdwardsVar) {
+        let val = <JubJub as CurveGroup>::Affine::rand(rng);
         let val_var = EdwardsVar::new_witness(cs.clone(), || Ok(val.clone())).unwrap();
         (val, val_var)
     }
@@ -248,7 +249,7 @@ mod test {
                 .unwrap();
 
         let primitive_result = primitive_result;
-        assert_eq!(primitive_result, result_var.value().unwrap());
+        assert_eq!(primitive_result, result_var.value().unwrap().into_affine());
         assert!(cs.is_satisfied().unwrap());
     }
 }

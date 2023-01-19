@@ -1,7 +1,7 @@
 use crate::crh::TwoToOneCRHScheme;
 use crate::{CRHScheme, Error};
 use ark_ff::PrimeField;
-use ark_sponge::poseidon::{PoseidonParameters, PoseidonSponge};
+use ark_sponge::poseidon::{PoseidonConfig, PoseidonSponge};
 use ark_sponge::{Absorb, CryptographicSponge};
 use ark_std::borrow::Borrow;
 use ark_std::marker::PhantomData;
@@ -17,7 +17,7 @@ pub struct CRH<F: PrimeField + Absorb> {
 impl<F: PrimeField + Absorb> CRHScheme for CRH<F> {
     type Input = [F];
     type Output = F;
-    type Parameters = PoseidonParameters<F>;
+    type Parameters = PoseidonConfig<F>;
 
     fn setup<R: Rng>(_rng: &mut R) -> Result<Self::Parameters, Error> {
         // automatic generation of parameters are not implemented yet
@@ -45,7 +45,7 @@ pub struct TwoToOneCRH<F: PrimeField + Absorb> {
 impl<F: PrimeField + Absorb> TwoToOneCRHScheme for TwoToOneCRH<F> {
     type Input = F;
     type Output = F;
-    type Parameters = PoseidonParameters<F>;
+    type Parameters = PoseidonConfig<F>;
 
     fn setup<R: Rng>(_rng: &mut R) -> Result<Self::Parameters, Error> {
         // automatic generation of parameters are not implemented yet

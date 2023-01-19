@@ -3,21 +3,22 @@ use crate::{
     crh::pedersen::Window,
     Vec,
 };
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::{
     fields::{Field, PrimeField},
-    to_bytes, Zero,
+    Zero,
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_serialize::CanonicalSerialize;
 
 use ark_r1cs_std::prelude::*;
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
-type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
+type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>"))]
-pub struct ParametersVar<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>>
+#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+pub struct ParametersVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -29,7 +30,7 @@ where
 #[derive(Clone, Debug)]
 pub struct RandomnessVar<F: Field>(Vec<UInt8<F>>);
 
-pub struct CommGadget<C: ProjectiveCurve, GG: CurveVar<C, ConstraintF<C>>, W: Window>
+pub struct CommGadget<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>, W: Window>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -44,7 +45,7 @@ where
 impl<C, GG, W> crate::commitment::CommitmentGadget<Commitment<C, W>, ConstraintF<C>>
     for CommGadget<C, GG, W>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     W: Window,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -98,7 +99,7 @@ where
 
 impl<C, GG> AllocVar<Parameters<C>, ConstraintF<C>> for ParametersVar<C, GG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
@@ -117,7 +118,7 @@ where
 
 impl<C, F> AllocVar<Randomness<C>, F> for RandomnessVar<F>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     F: PrimeField,
 {
     fn new_variable<T: Borrow<Randomness<C>>>(
@@ -125,7 +126,12 @@ where
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let r = to_bytes![&f().map(|b| b.borrow().0).unwrap_or(C::ScalarField::zero())].unwrap();
+        let mut r = Vec::new();
+        let _ = &f()
+            .map(|b| b.borrow().0)
+            .unwrap_or(C::ScalarField::zero())
+            .serialize_uncompressed(&mut r)
+            .unwrap();
         match mode {
             AllocationMode::Constant => Ok(Self(UInt8::constant_vec(&r))),
             AllocationMode::Input => UInt8::new_input_vec(cs, &r).map(Self),

@@ -8,7 +8,7 @@ use ark_std::{
 use rayon::prelude::*;
 
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::{Field, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
 use ark_std::borrow::Borrow;
@@ -23,16 +23,16 @@ pub trait Window: Clone {
 }
 
 #[derive(Clone, Default)]
-pub struct Parameters<C: ProjectiveCurve> {
+pub struct Parameters<C: CurveGroup> {
     pub generators: Vec<Vec<C>>,
 }
 
-pub struct CRH<C: ProjectiveCurve, W: Window> {
+pub struct CRH<C: CurveGroup, W: Window> {
     group: PhantomData<C>,
     window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
+impl<C: CurveGroup, W: Window> CRH<C, W> {
     pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
         let mut generators_powers = Vec::new();
@@ -53,7 +53,7 @@ impl<C: ProjectiveCurve, W: Window> CRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> CRHScheme for CRH<C, W> {
+impl<C: CurveGroup, W: Window> CRHScheme for CRH<C, W> {
     type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
@@ -126,12 +126,12 @@ impl<C: ProjectiveCurve, W: Window> CRHScheme for CRH<C, W> {
     }
 }
 
-pub struct TwoToOneCRH<C: ProjectiveCurve, W: Window> {
+pub struct TwoToOneCRH<C: CurveGroup, W: Window> {
     group: PhantomData<C>,
     window: PhantomData<W>,
 }
 
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRH<C, W> {
+impl<C: CurveGroup, W: Window> TwoToOneCRH<C, W> {
     pub(crate) const INPUT_SIZE_BITS: usize = W::WINDOW_SIZE * W::NUM_WINDOWS;
     const HALF_INPUT_SIZE_BITS: usize = Self::INPUT_SIZE_BITS / 2;
     pub fn create_generators<R: Rng>(rng: &mut R) -> Vec<Vec<C>> {
@@ -143,7 +143,7 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRH<C, W> {
     }
 }
 
-impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
+impl<C: CurveGroup, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
     type Input = [u8];
     type Output = C::Affine;
     type Parameters = Parameters<C>;
@@ -188,8 +188,8 @@ impl<C: ProjectiveCurve, W: Window> TwoToOneCRHScheme for TwoToOneCRH<C, W> {
     ) -> Result<Self::Output, Error> {
         Self::evaluate(
             parameters,
-            crate::to_unchecked_bytes!(left_input)?,
-            crate::to_unchecked_bytes!(right_input)?,
+            crate::to_uncompressed_bytes!(left_input)?,
+            crate::to_uncompressed_bytes!(right_input)?,
         )
     }
 }
@@ -205,7 +205,7 @@ pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     bits
 }
 
-impl<C: ProjectiveCurve> Debug for Parameters<C> {
+impl<C: CurveGroup> Debug for Parameters<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         writeln!(f, "Pedersen Hash Parameters {{")?;
         for (i, g) in self.generators.iter().enumerate() {
@@ -215,7 +215,7 @@ impl<C: ProjectiveCurve> Debug for Parameters<C> {
     }
 }
 
-impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>>
+impl<ConstraintF: Field, C: CurveGroup + ToConstraintField<ConstraintF>>
     ToConstraintField<ConstraintF> for Parameters<C>
 {
     #[inline]

@@ -1,3 +1,5 @@
+use ark_ec::twisted_edwards::{Projective as TEProjective, TECurveConfig};
+use ark_ec::CurveConfig;
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
 use crate::{
@@ -8,9 +10,6 @@ use crate::{
     },
     Vec,
 };
-use ark_ec::{
-    twisted_edwards_extended::GroupProjective as TEProjective, ModelParameters, TEModelParameters,
-};
 use ark_ff::Field;
 use ark_r1cs_std::{
     alloc::AllocVar, groups::curves::twisted_edwards::AffineVar, prelude::*, uint8::UInt8,
@@ -20,17 +19,17 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use crate::crh::bowe_hopwood::{TwoToOneCRH, CRH};
 use ark_r1cs_std::bits::boolean::Boolean;
 
-type ConstraintF<P> = <<P as ModelParameters>::BaseField as Field>::BasePrimeField;
+type ConstraintF<P> = <<P as CurveConfig>::BaseField as Field>::BasePrimeField;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "P: TEModelParameters, W: Window"))]
-pub struct ParametersVar<P: TEModelParameters, W: Window> {
+#[derivative(Clone(bound = "P: TECurveConfig, W: Window"))]
+pub struct ParametersVar<P: TECurveConfig, W: Window> {
     params: Parameters<P>,
     #[doc(hidden)]
     _window: PhantomData<W>,
 }
 
-pub struct CRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+pub struct CRHGadget<P: TECurveConfig, F: FieldVar<P::BaseField, ConstraintF<P>>>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
 {
@@ -46,7 +45,7 @@ where
     F: FieldVar<P::BaseField, ConstraintF<P>>,
     F: TwoBitLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>
         + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>,
-    P: TEModelParameters,
+    P: TECurveConfig,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<P>>];
@@ -90,7 +89,7 @@ where
     }
 }
 
-pub struct TwoToOneCRHGadget<P: TEModelParameters, F: FieldVar<P::BaseField, ConstraintF<P>>>
+pub struct TwoToOneCRHGadget<P: TECurveConfig, F: FieldVar<P::BaseField, ConstraintF<P>>>
 where
     for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
 {
@@ -106,7 +105,7 @@ where
     F: FieldVar<P::BaseField, ConstraintF<P>>,
     F: TwoBitLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>
         + ThreeBitCondNegLookupGadget<ConstraintF<P>, TableConstant = P::BaseField>,
-    P: TEModelParameters,
+    P: TECurveConfig,
     W: Window,
 {
     type InputVar = [UInt8<ConstraintF<P>>];
@@ -149,7 +148,7 @@ where
 
 impl<P, W> AllocVar<Parameters<P>, ConstraintF<P>> for ParametersVar<P, W>
 where
-    P: TEModelParameters,
+    P: TECurveConfig,
     W: Window,
 {
     #[tracing::instrument(target = "r1cs", skip(_cs, f))]

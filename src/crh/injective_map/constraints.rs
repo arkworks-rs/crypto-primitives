@@ -4,16 +4,15 @@ use crate::crh::{
     pedersen::{constraints as ped_constraints, Window},
     TwoToOneCRHSchemeGadget,
 };
-use core::{fmt::Debug, marker::PhantomData};
+use ark_std::{fmt::Debug, marker::PhantomData};
 
 use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
 use crate::CRHSchemeGadget;
 use ark_ec::{
-    models::{ModelParameters, TEModelParameters},
-    twisted_edwards_extended::GroupProjective as TEProjective,
-    ProjectiveCurve,
+    twisted_edwards::{Projective as TEProjective, TECurveConfig},
+    CurveConfig, CurveGroup,
 };
-use ark_ff::fields::{Field, PrimeField, SquareRootField};
+use ark_ff::fields::{Field, PrimeField};
 use ark_r1cs_std::{
     fields::fp::FpVar,
     groups::{curves::twisted_edwards::AffineVar as TEVar, CurveVar},
@@ -21,13 +20,10 @@ use ark_r1cs_std::{
 };
 use ark_relations::r1cs::SynthesisError;
 
-type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
+type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 
-pub trait InjectiveMapGadget<
-    C: ProjectiveCurve,
-    I: InjectiveMap<C>,
-    GG: CurveVar<C, ConstraintF<C>>,
-> where
+pub trait InjectiveMapGadget<C: CurveGroup, I: InjectiveMap<C>, GG: CurveVar<C, ConstraintF<C>>>
+where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
     type OutputVar: EqGadget<ConstraintF<C>>
@@ -47,8 +43,8 @@ pub struct TECompressorGadget;
 impl<F, P> InjectiveMapGadget<TEProjective<P>, TECompressor, TEVar<P, FpVar<F>>>
     for TECompressorGadget
 where
-    F: PrimeField + SquareRootField,
-    P: TEModelParameters + ModelParameters<BaseField = F>,
+    F: PrimeField,
+    P: TECurveConfig + CurveConfig<BaseField = F>,
 {
     type OutputVar = FpVar<F>;
 
@@ -59,7 +55,7 @@ where
 
 pub struct PedersenCRHCompressorGadget<C, I, W, GG, IG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     I: InjectiveMap<C>,
     W: Window,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -77,7 +73,7 @@ where
 impl<C, I, GG, IG, W> constraints::CRHSchemeGadget<PedersenCRHCompressor<C, I, W>, ConstraintF<C>>
     for PedersenCRHCompressorGadget<C, I, W, GG, IG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     I: InjectiveMap<C>,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -103,7 +99,7 @@ where
 
 pub struct PedersenTwoToOneCRHCompressorGadget<C, I, W, GG, IG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     I: InjectiveMap<C>,
     W: Window,
     GG: CurveVar<C, ConstraintF<C>>,
@@ -122,7 +118,7 @@ impl<C, I, GG, IG, W>
     constraints::TwoToOneCRHSchemeGadget<PedersenTwoToOneCRHCompressor<C, I, W>, ConstraintF<C>>
     for PedersenTwoToOneCRHCompressorGadget<C, I, W, GG, IG>
 where
-    C: ProjectiveCurve,
+    C: CurveGroup,
     I: InjectiveMap<C>,
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
