@@ -19,7 +19,7 @@ use sha2::digest::Digest;
 
 impl CRHScheme for Sha384 {
     type Input = [u8];
-    // This is always 32 bytes. It has to be a Vec to impl CanonicalSerialize
+    // This is always 48 bytes. It has to be a Vec to impl CanonicalSerialize
     type Output = Vec<u8>;
     // There are no parameters for SHA384
     type Parameters = ();
