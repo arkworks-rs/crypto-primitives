@@ -21,8 +21,6 @@ mod macros;
 
 #[cfg(feature = "commitment")]
 pub mod commitment;
-#[cfg(feature = "commitment")]
-pub use commitment::CommitmentScheme;
 
 #[cfg(feature = "crh")]
 pub mod crh;
