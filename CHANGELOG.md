@@ -4,6 +4,16 @@
 
 ### Breaking changes
 
+### Features
+
+### Improvements
+
+### Bugfixes
+
+## v0.4.0
+
+### Breaking changes
+
 - [\#56](https://github.com/arkworks-rs/crypto-primitives/pull/56) Compress the output of the Bowe-Hopwood-Pedersen CRH to a single field element, in line with the Zcash specification.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle tree's `Config` requires a user-defined converter to turn leaf hash output to inner hash output.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Rename the CRH trait as `CRHScheme` and the CRHGadget trait to `CRHSchemeGadget`.
