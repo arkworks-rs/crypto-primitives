@@ -14,6 +14,8 @@
     - Moves `ark-sponge` here.
     - Updates dependencies and version number to `0.4`.
     - Adds feature flags to enable downstream users to select exactly those components that they're interested in.
+- [\#103](https://github.com/arkworks-rs/crypto-primitives/pull/103) Removes `cp-benches` and moves contents to `benches`
+- [\#104](https://github.com/arkworks-rs/crypto-primitives/pull/104) Updates `digest`, `blake2`, `sha2` to `0.10`. Changes API for `Blake2sWithParameterBlock`.
 
 ### Features
 
