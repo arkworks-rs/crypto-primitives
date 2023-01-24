@@ -86,24 +86,24 @@ debug = true
 
 [[bench]]
 name = "pedersen_crh"
-path = "benches/crypto_primitives/crh.rs"
+path = "benches/crh.rs"
 harness = false
 required-features = [ "crh" ]
 
 [[bench]]
 name = "pedersen_comm"
-path = "benches/crypto_primitives/comm.rs"
+path = "benches/comm.rs"
 harness = false
 required-features = [ "commitment" ]
 
 [[bench]]
 name = "blake2s_prf"
-path = "benches/crypto_primitives/prf.rs"
+path = "benches/prf.rs"
 harness = false
 required-features = [ "prf" ]
 
 [[bench]]
 name = "schnorr_sig"
-path = "benches/crypto_primitives/signature.rs"
+path = "benches/signature.rs"
 harness = false
 required-features = [ "signature" ]
