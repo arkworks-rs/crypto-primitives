@@ -11,6 +11,7 @@ categories = ["cryptography"]
 include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 license = "MIT/Apache-2.0"
 edition = "2021"
+resolver = "2"
 
 ################################# Dependencies ################################
 
@@ -38,7 +39,7 @@ std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std" ]
 print-trace = [ "ark-std/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
 r1cs = [ "ark-r1cs-std", "tracing" ]
-crh = []
+crh = [ "sponge" ]
 sponge = []
 commitment = ["crh"]
 merkle_tree = ["crh"]
@@ -48,10 +49,13 @@ snark = []
 signature = []
 
 [dev-dependencies]
+ark-ed-on-bls12-377 = { version = "^0.4.0", default-features = false }
 ark-ed-on-bls12-381 = { version = "^0.4.0", default-features = false, features = [ "r1cs" ] }
 ark-bls12-377 = { version = "^0.4.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt4-298 = { version = "^0.4.0", default-features = false, features = [ "curve", "r1cs" ] }
 ark-mnt6-298 = { version = "^0.4.0", default-features = false, features = [ "r1cs" ] }
+criterion = { version = "0.4" }
+
 
 [profile.release]
 opt-level = 3
@@ -77,3 +81,29 @@ lto = "thin"
 incremental = true
 debug-assertions = true
 debug = true
+
+################################# Benchmarks ##################################
+
+[[bench]]
+name = "pedersen_crh"
+path = "benches/crypto_primitives/crh.rs"
+harness = false
+required-features = [ "crh" ]
+
+[[bench]]
+name = "pedersen_comm"
+path = "benches/crypto_primitives/comm.rs"
+harness = false
+required-features = [ "commitment" ]
+
+[[bench]]
+name = "blake2s_prf"
+path = "benches/crypto_primitives/prf.rs"
+harness = false
+required-features = [ "prf" ]
+
+[[bench]]
+name = "schnorr_sig"
+path = "benches/crypto_primitives/signature.rs"
+harness = false
+required-features = [ "signature" ]
