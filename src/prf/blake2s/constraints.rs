@@ -396,7 +396,8 @@ mod test {
 
     use crate::prf::blake2s::{constraints::evaluate_blake2s, Blake2s as B2SPRF};
     use ark_relations::r1cs::ConstraintSystem;
-    use blake2::VarBlake2s;
+    use blake2::Blake2s256;
+    use digest::{Digest, FixedOutput};
 
     use super::Blake2sGadget;
     use ark_r1cs_std::prelude::*;
@@ -483,15 +484,13 @@ mod test {
         let mut rng = ark_std::test_rng();
 
         for input_len in (0..32).chain((32..256).filter(|a| a % 8 == 0)) {
-            use digest::*;
-            let mut h = VarBlake2s::new_keyed(&[], 32);
+            let mut h = Blake2s256::new();
 
             let data: Vec<u8> = (0..input_len).map(|_| rng.gen()).collect();
 
             h.update(&data);
 
-            let mut hash_result = Vec::with_capacity(digest::VariableOutput::output_size(&h));
-            h.finalize_variable(|res| hash_result.extend_from_slice(res));
+            let hash_result = h.finalize_fixed();
 
             let cs = ConstraintSystem::<Fr>::new_ref();
 

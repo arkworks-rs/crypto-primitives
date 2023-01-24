@@ -56,7 +56,7 @@ mod test {
     use ark_ec::Group;
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_std::{test_rng, vec::Vec, UniformRand};
-    use blake2::Blake2s;
+    use blake2::Blake2s256 as Blake2s;
 
     fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
         let rng = &mut test_rng();
