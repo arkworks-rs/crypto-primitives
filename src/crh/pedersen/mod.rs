@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::CurveGroup;
 use ark_ff::{Field, ToConstraintField};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
 
