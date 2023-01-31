@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::CurveGroup;
 use ark_ff::{Field, ToConstraintField};
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
 
@@ -22,7 +22,7 @@ pub trait Window: Clone {
     const NUM_WINDOWS: usize;
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Parameters<C: CurveGroup> {
     pub generators: Vec<Vec<C>>,
 }
