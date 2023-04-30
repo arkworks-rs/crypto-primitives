@@ -12,7 +12,7 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::crh::pedersen::{TwoToOneCRH, CRH};
 use crate::crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget};
-use core::{borrow::Borrow, marker::PhantomData};
+use core::{borrow::Borrow, iter, marker::PhantomData};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
@@ -54,26 +54,28 @@ where
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
-        let mut padded_input = input.to_vec();
-        // Pad the input if it is not the current length.
-        if input.len() * 8 < W::WINDOW_SIZE * W::NUM_WINDOWS {
-            let current_length = input.len();
-            for _ in current_length..(W::WINDOW_SIZE * W::NUM_WINDOWS / 8) {
-                padded_input.push(UInt8::constant(0u8));
-            }
-        }
-        assert_eq!(padded_input.len() * 8, W::WINDOW_SIZE * W::NUM_WINDOWS);
+        assert!((input.len() * 8) <= (W::WINDOW_SIZE * W::NUM_WINDOWS));
+
+        // Convert input bytes to little-endian bits
+        let mut input_in_bits: Vec<Boolean<_>> = input
+            .iter()
+            .flat_map(|byte| byte.to_bits_le().unwrap())
+            .collect();
+
+        // Pad input to `W::WINDOW_SIZE * W::NUM_WINDOWS`.
+        let padding_size = (W::WINDOW_SIZE * W::NUM_WINDOWS) - input_in_bits.len();
+        input_in_bits.extend(iter::repeat(Boolean::FALSE).take(padding_size));
+
+        // Sanity checks
+        assert_eq!(input_in_bits.len(), W::WINDOW_SIZE * W::NUM_WINDOWS);
         assert_eq!(parameters.params.generators.len(), W::NUM_WINDOWS);
 
-        // Allocate new variable for the result.
-        let input_in_bits: Vec<Boolean<_>> = padded_input
-            .iter()
-            .flat_map(|b| b.to_bits_le().unwrap())
-            .collect();
+        // Compute the Pedersen CRH. Chunk the input bits into correctly sized windows
         let input_in_bits = input_in_bits.chunks(W::WINDOW_SIZE);
 
         let result =
             GG::precomputed_base_multiscalar_mul_le(&parameters.params.generators, input_in_bits)?;
+
         Ok(result)
     }
 }
@@ -174,8 +176,8 @@ mod test {
     pub(super) struct Window;
 
     impl pedersen::Window for Window {
-        const WINDOW_SIZE: usize = 128;
-        const NUM_WINDOWS: usize = 8;
+        const WINDOW_SIZE: usize = 127;
+        const NUM_WINDOWS: usize = 9;
     }
 
     fn generate_u8_input<R: Rng>(

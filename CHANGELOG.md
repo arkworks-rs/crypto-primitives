@@ -2,7 +2,17 @@
 
 ## Pending
 
-- Implemented SHA-256 CRH
+### Breaking changes
+
+### Features
+
+- [\#107](https://github.com/arkworks-rs/crypto-primitives/pull/107) Impl `CanonicalSerialize` and `CanonicalDeserialize` for `ark_crypto_primitives::crh::pedersen::Parameters`
+
+### Improvements
+
+### Bugfixes
+
+## v0.4.0
 
 ### Breaking changes
 
@@ -10,10 +20,14 @@
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Merkle tree's `Config` requires a user-defined converter to turn leaf hash output to inner hash output.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Rename the CRH trait as `CRHScheme` and the CRHGadget trait to `CRHSchemeGadget`.
 - [\#60](https://github.com/arkworks-rs/crypto-primitives/pull/60) Use `ark-sponge` to instantiate Poseidon.
+- [\#76](https://github.com/arkworks-rs/crypto-primitives/pull/79) Fix Pedersen padding bug.
+- [\#77](https://github.com/arkworks-rs/crypto-primitives/pull/77) Implement SHA-256 CRH.
 - [\#86](https://github.com/arkworks-rs/crypto-primitives/pull/86)
     - Moves `ark-sponge` here.
     - Updates dependencies and version number to `0.4`.
     - Adds feature flags to enable downstream users to select exactly those components that they're interested in.
+- [\#103](https://github.com/arkworks-rs/crypto-primitives/pull/103) Removes `cp-benches` and moves contents to `benches`
+- [\#104](https://github.com/arkworks-rs/crypto-primitives/pull/104) Updates `digest`, `blake2`, `sha2` to `0.10`. Changes API for `Blake2sWithParameterBlock`.
 
 ### Features
 
