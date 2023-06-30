@@ -17,7 +17,7 @@ use ark_ec::{
     twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig, CurveGroup, Group,
 };
 use ark_ff::{biginteger::BigInteger, fields::PrimeField};
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
 use ark_std::UniformRand;
@@ -27,7 +27,7 @@ pub mod constraints;
 
 pub const CHUNK_SIZE: usize = 3;
 
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(Clone(bound = ""), Default(bound = ""))]
 pub struct Parameters<P: TECurveConfig> {
     pub generators: Vec<Vec<TEProjective<P>>>,
