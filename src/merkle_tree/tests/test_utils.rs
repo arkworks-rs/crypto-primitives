@@ -1,4 +1,4 @@
-use ark_sponge::poseidon::PoseidonConfig;
+use crate::sponge::poseidon::PoseidonConfig;
 use ark_std::str::FromStr;
 use ark_std::{One, Zero};
 

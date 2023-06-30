@@ -1,9 +1,9 @@
 mod byte_mt_tests {
     use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
 
+    use crate::crh::{CRHScheme, CRHSchemeGadget};
     use crate::merkle_tree::constraints::{BytesVarDigestConverter, ConfigGadget};
-    use crate::merkle_tree::{ByteDigestConverter, Config};
-    use crate::{CRHScheme, CRHSchemeGadget, MerkleTree, PathVar};
+    use crate::merkle_tree::{constraints::PathVar, ByteDigestConverter, Config, MerkleTree};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
     #[allow(unused)]
     use ark_r1cs_std::prelude::*;
@@ -239,11 +239,10 @@ mod byte_mt_tests {
 }
 
 mod field_mt_tests {
-    use crate::crh::{poseidon, TwoToOneCRHSchemeGadget};
+    use crate::crh::{poseidon, CRHSchemeGadget, TwoToOneCRHSchemeGadget};
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
-    use crate::merkle_tree::{Config, IdentityDigestConverter};
-    use crate::{CRHSchemeGadget, MerkleTree, PathVar};
+    use crate::merkle_tree::{constraints::PathVar, Config, IdentityDigestConverter, MerkleTree};
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::uint32::UInt32;

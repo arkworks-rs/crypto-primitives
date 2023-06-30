@@ -11,35 +11,37 @@
 #[macro_use]
 extern crate ark_std;
 
+#[allow(unused_imports)]
 #[macro_use]
 extern crate derivative;
 
+#[allow(unused_imports)]
 pub(crate) use ark_std::{borrow::ToOwned, boxed::Box, vec::Vec};
 mod macros;
 
+#[cfg(feature = "commitment")]
 pub mod commitment;
+
+#[cfg(feature = "crh")]
 pub mod crh;
+
+#[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;
 
+#[cfg(feature = "encryption")]
 pub mod encryption;
+
+#[cfg(feature = "prf")]
 pub mod prf;
+
+#[cfg(feature = "signature")]
 pub mod signature;
+
+#[cfg(feature = "snark")]
 pub mod snark;
 
-pub use self::{
-    commitment::CommitmentScheme,
-    crh::CRHScheme,
-    merkle_tree::{MerkleTree, Path},
-    prf::PRF,
-    signature::SignatureScheme,
-    snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK},
-};
-
-#[cfg(feature = "r1cs")]
-pub use self::{
-    commitment::CommitmentGadget, crh::CRHSchemeGadget, merkle_tree::constraints::PathVar,
-    prf::PRFGadget, signature::SigRandomizePkGadget, snark::SNARKGadget,
-};
+#[cfg(feature = "sponge")]
+pub mod sponge;
 
 pub type Error = Box<dyn ark_std::error::Error>;
 
