@@ -3,6 +3,7 @@ use crate::sponge::{
     DuplexSpongeMode, FieldBasedCryptographicSponge, FieldElementSize, SpongeExt,
 };
 use ark_ff::{BigInteger, PrimeField};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::any::TypeId;
 use ark_std::vec;
 use ark_std::vec::Vec;
@@ -20,7 +21,7 @@ pub use traits::*;
 mod grain_lfsr;
 
 /// Config and RNG used
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PoseidonConfig<F: PrimeField> {
     /// Number of rounds in a full-round operation.
     pub full_rounds: usize,
