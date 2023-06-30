@@ -19,8 +19,7 @@ use sha2::digest::Digest;
 
 impl CRHScheme for Sha512 {
     type Input = [u8];
-    // This is always 64 bytes. It has to be a Vec to impl CanonicalSerialize
-    type Output = Vec<u8>;
+    type Output = [u8; 64];
     // There are no parameters for SHA512
     type Parameters = ();
 
@@ -40,8 +39,7 @@ impl CRHScheme for Sha512 {
 
 impl TwoToOneCRHScheme for Sha512 {
     type Input = [u8];
-    // This is always 32 bytes. It has to be a Vec to impl CanonicalSerialize
-    type Output = Vec<u8>;
+    type Output = [u8; 64];
     // There are no parameters for SHA512
     type Parameters = ();
 
