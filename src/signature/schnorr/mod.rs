@@ -2,7 +2,7 @@ use crate::{signature::SignatureScheme, Error, Vec};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{
     fields::{Field, PrimeField},
-    One, ToConstraintField, UniformRand, Zero,
+    AdditiveGroup, One, ToConstraintField, UniformRand, Zero,
 };
 use ark_serialize::CanonicalSerialize;
 use ark_std::ops::Mul;
