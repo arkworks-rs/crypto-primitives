@@ -457,7 +457,6 @@ impl<P: Config> MerkleTree<P> {
         new_leaf: &P::Leaf,
         asserted_new_root: &P::InnerDigest,
     ) -> Result<bool, crate::Error> {
-        let new_leaf = new_leaf.borrow();
         assert!(index < self.leaf_nodes.len(), "index out of range");
         let (updated_leaf_hash, mut updated_path) = self.updated_path(index, new_leaf)?;
         if &updated_path[0] != asserted_new_root {
