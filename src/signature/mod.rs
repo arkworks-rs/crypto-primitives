@@ -53,7 +53,7 @@ pub trait SignatureScheme {
 #[cfg(test)]
 mod test {
     use crate::signature::{schnorr, *};
-    use ark_ec::Group;
+    use ark_ec::AdditiveGroup;
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_std::{test_rng, vec::Vec, UniformRand};
     use blake2::Blake2s256 as Blake2s;
@@ -95,7 +95,7 @@ mod test {
             "Bad message".as_bytes(),
         );
         let mut random_scalar_bytes = Vec::new();
-        let random_scalar = <JubJub as Group>::ScalarField::rand(rng);
+        let random_scalar = <JubJub as AdditiveGroup>::Scalar::rand(rng);
         random_scalar
             .serialize_compressed(&mut random_scalar_bytes)
             .unwrap();

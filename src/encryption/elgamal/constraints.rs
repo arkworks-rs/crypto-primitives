@@ -158,8 +158,8 @@ where
         let ns = cs.into();
         let cs = ns.cs();
         let prep = f().map(|g| *g.borrow());
-        let c1 = GG::new_variable(cs.clone(), || prep.map(|g| g.borrow().0), mode)?;
-        let c2 = GG::new_variable(cs.clone(), || prep.map(|g| g.borrow().1), mode)?;
+        let c1 = GG::new_variable(cs.clone(), || prep.map(|g| g.0), mode)?;
+        let c2 = GG::new_variable(cs.clone(), || prep.map(|g| g.1), mode)?;
         Ok(Self {
             c1,
             c2,

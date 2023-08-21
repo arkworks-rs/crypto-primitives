@@ -3,7 +3,7 @@ pub mod constraints;
 
 use crate::encryption::AsymmetricEncryptionScheme;
 use crate::Error;
-use ark_ec::{CurveGroup, Group};
+use ark_ec::{AdditiveGroup, CurveGroup};
 use ark_ff::{fields::PrimeField, UniformRand};
 use ark_std::marker::PhantomData;
 use ark_std::ops::Mul;
@@ -26,7 +26,7 @@ pub struct Randomness<C: CurveGroup>(pub C::ScalarField);
 impl<C: CurveGroup> UniformRand for Randomness<C> {
     #[inline]
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self {
-        Randomness(<C as Group>::ScalarField::rand(rng))
+        Randomness(<C as AdditiveGroup>::Scalar::rand(rng))
     }
 }
 
@@ -57,7 +57,7 @@ where
         rng: &mut R,
     ) -> Result<(Self::PublicKey, Self::SecretKey), Error> {
         // get a random element from the scalar field
-        let secret_key: <C as Group>::ScalarField = C::ScalarField::rand(rng);
+        let secret_key: <C as AdditiveGroup>::Scalar = C::ScalarField::rand(rng);
 
         // compute secret_key*generator to derive the public key
         let public_key = pp.generator.mul(secret_key).into();
