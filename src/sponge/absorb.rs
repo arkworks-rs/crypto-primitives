@@ -65,7 +65,7 @@ pub trait Absorb {
         }
     }
 
-    /// Specifies the conversion into a list of field elements for a batch. Append the list to `dest`.
+    /// Specifies the conversion into a list of field elements for a batch. Return the list as `Vec`.
     fn batch_to_sponge_field_elements_as_vec<F: PrimeField>(batch: &[Self]) -> Vec<F>
     where
         Self: Sized,
