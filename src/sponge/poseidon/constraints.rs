@@ -298,8 +298,8 @@ mod tests {
     use crate::sponge::poseidon::tests::poseidon_parameters_for_test;
     use crate::sponge::poseidon::PoseidonSponge;
     use crate::sponge::test::Fr;
-    use crate::sponge::{CryptographicSponge, FieldBasedCryptographicSponge};
-    use ark_ff::UniformRand;
+    use crate::sponge::{CryptographicSponge, FieldBasedCryptographicSponge, FieldElementSize};
+    use ark_ff::{Field, PrimeField, UniformRand};
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
@@ -345,5 +345,40 @@ mod tests {
 
         assert_eq!(squeeze2.value().unwrap(), squeeze1);
         assert!(cs.is_satisfied().unwrap());
+    }
+
+    #[test]
+    fn squeeze_with_sizes() {
+        let squeeze_bits = Fr::MODULUS_BIT_SIZE / 2;
+        let max_squeeze = Fr::from(2).pow(<Fr as PrimeField>::BigInt::from(squeeze_bits));
+
+        let sponge_params = poseidon_parameters_for_test();
+        let mut native_sponge = PoseidonSponge::<Fr>::new(&sponge_params);
+
+        let squeeze =
+            native_sponge.squeeze_field_elements_with_sizes::<Fr>(&[FieldElementSize::Truncated(
+                squeeze_bits as usize,
+            )])[0];
+        assert!(squeeze < max_squeeze);
+
+        let cs = ConstraintSystem::new_ref();
+        let mut constraint_sponge = PoseidonSpongeVar::<Fr>::new(cs.clone(), &sponge_params);
+
+        let (squeeze, bits) = constraint_sponge
+            .squeeze_nonnative_field_elements_with_sizes::<Fr>(&[FieldElementSize::Truncated(
+                squeeze_bits as usize,
+            )])
+            .unwrap();
+        let squeeze = &squeeze[0];
+        let bits = &bits[0];
+        assert!(squeeze.value().unwrap() < max_squeeze);
+        assert_eq!(bits.len(), squeeze_bits as usize);
+
+        // squeeze full
+        let (_, bits) = constraint_sponge
+            .squeeze_nonnative_field_elements_with_sizes::<Fr>(&[FieldElementSize::Full])
+            .unwrap();
+        let bits = &bits[0];
+        assert_eq!(bits.len() as u32, Fr::MODULUS_BIT_SIZE - 1);
     }
 }
