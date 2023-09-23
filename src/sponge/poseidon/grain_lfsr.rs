@@ -175,15 +175,7 @@ impl PoseidonGrainLFSR {
 
     fn init(&mut self) {
         for _ in 0..160 {
-            let new_bit = self.state[(self.head + 62) % 80]
-                ^ self.state[(self.head + 51) % 80]
-                ^ self.state[(self.head + 38) % 80]
-                ^ self.state[(self.head + 23) % 80]
-                ^ self.state[(self.head + 13) % 80]
-                ^ self.state[self.head];
-            self.state[self.head] = new_bit;
-            self.head += 1;
-            self.head %= 80;
+            let _ = self.update();
         }
     }
 }
