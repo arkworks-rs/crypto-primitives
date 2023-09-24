@@ -36,8 +36,10 @@ impl FieldElementSize {
             if *num_bits > (F::MODULUS_BIT_SIZE as usize) {
                 panic!("num_bits is greater than the capacity of the field.")
             }
-        };
-        (F::MODULUS_BIT_SIZE - 1) as usize
+            *num_bits
+        } else {
+            (F::MODULUS_BIT_SIZE - 1) as usize
+        }
     }
 
     /// Calculate the sum of field element sizes in `elements`.
