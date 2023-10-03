@@ -28,6 +28,12 @@ pub mod crh;
 #[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;
 
+#[cfg(feature = "cryptographic_hash")]
+pub mod cryptographic_hash;
+
+#[cfg(feature = "proof_of_work")]
+pub mod proof_of_work;
+
 #[cfg(feature = "encryption")]
 pub mod encryption;
 
