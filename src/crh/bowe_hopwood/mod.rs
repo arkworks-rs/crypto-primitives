@@ -118,8 +118,8 @@ impl<P: TECurveConfig, W: pedersen::Window> CRHScheme for CRH<P, W> {
 
         if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS * CHUNK_SIZE {
             panic!(
-                "incorrect input length {:?} for window params {:?}x{:?}x{}",
-                input.len(),
+                "incorrect input bitlength {:?} for window params {:?}x{:?}x{}",
+                input.len() * 8,
                 W::WINDOW_SIZE,
                 W::NUM_WINDOWS,
                 CHUNK_SIZE,
