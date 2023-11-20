@@ -48,11 +48,9 @@ impl<T: CanonicalSerialize> DigestConverter<T, [u8]> for ByteDigestConverter<T> 
     }
 }
 
-/// Merkle tree have three types of hashes.
+/// Merkle tree has two types of hashes.
 /// * `LeafHash`: Convert leaf to leaf digest
-/// * `TwoLeavesToOneHash`: Convert two leaf digests to one inner digest. This one can be a wrapped
-/// version `TwoHashesToOneHash`, which first converts leaf digest to inner digest.
-/// * `TwoHashesToOneHash`: Compress two inner digests to one inner digest
+/// * `TwoToOneHash`: Compress two inner digests to one inner digest
 pub trait Config {
     type Leaf: ?Sized; // merkle tree does not store the leaf
                        // leaf layer
