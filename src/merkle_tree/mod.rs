@@ -240,7 +240,6 @@ impl<P: Config> MerkleTree<P> {
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves: impl IntoIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
-        // serial
         let mut leaves_digests = Vec::new();
 
         // compute and store hash values for each leaf
@@ -259,6 +258,37 @@ impl<P: Config> MerkleTree<P> {
         leaves: impl IntoIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
         !unimplemented("Parallel Merkle Tree not implemented")
+        /*
+        perhaps useful snippet
+
+            use rayon::prelude::*; // 1.5.0
+            use std::time::*;
+            use std::thread::sleep;
+            fn main() {
+                let mut x :Vec<i32> = (0..10).collect();
+                println!("{}",x.len());
+                let mut now = Instant::now();
+                x.par_iter_mut().enumerate().for_each(|(_index,val)| {
+                    *val = 0;
+                    sleep(Duration::from_secs(1));
+                });
+                let mut elapsed_time = now.elapsed();
+                println!("Running parallel took {} seconds.", elapsed_time.as_secs());
+                for v in &x{
+                    assert_eq!(*v,0);
+                }
+                now = Instant::now();
+                x.iter_mut().enumerate().for_each(|(_index, val)| {
+                    *val = 1;
+                    sleep(Duration::from_secs(1));
+                });
+                elapsed_time = now.elapsed();
+                println!("Running serial took {} seconds.", elapsed_time.as_secs());
+                for v in &x{
+                    assert_eq!(*v,1);
+                }
+            }
+         */
     }
 
 
@@ -270,9 +300,17 @@ impl<P: Config> MerkleTree<P> {
     ) -> Result<Self, crate::Error> {
 
         if !cfg(feature="parallel"){
-
+            new_parallel(
+                leaf_hash_param,
+                two_to_one_hash_param,
+                leaves
+            )
         }else{
-            
+            new_serial(
+                leaf_hash_param,
+                two_to_one_hash_param,
+                leaves
+            )
         }
     }
 
