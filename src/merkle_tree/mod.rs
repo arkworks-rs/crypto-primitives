@@ -361,8 +361,8 @@ impl<P: Config> MerkleTree<P> {
                     .enumerate()
                     .for_each(|(i, n)| {
                         let current_index = i + start_index;
-                        let left_leaf_index = left_child(current_index);
-                        let right_leaf_index = right_child(current_index);
+                        let left_leaf_index = left_child(current_index) - upper_bound;
+                        let right_leaf_index = right_child(current_index) - upper_bound;
 
                         *n = P::TwoToOneHash::compress(
                             two_to_one_hash_param,
