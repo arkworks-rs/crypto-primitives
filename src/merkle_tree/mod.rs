@@ -9,7 +9,8 @@ use ark_std::hash::Hash;
 use ark_std::vec::Vec;
 
 #[cfg(feature = "parallel")]
-use rayon::{prelude::*,iter::Zip};
+use rayon::{prelude::*,iter::IntoParallelIterator};
+
 
 #[cfg(test)]
 mod tests;
@@ -63,7 +64,8 @@ pub trait Config {
         + Hash
         + Default
         + CanonicalSerialize
-        + CanonicalDeserialize;
+        + CanonicalDeserialize
+        + Send;
     // transition between leaf layer to inner layer
     type LeafInnerDigestConverter: DigestConverter<
         Self::LeafDigest,
@@ -76,7 +78,8 @@ pub trait Config {
         + Hash
         + Default
         + CanonicalSerialize
-        + CanonicalDeserialize;
+        + CanonicalDeserialize
+        + Send;
 
     // Tom's Note: in the future, if we want different hash function, we can simply add more
     // types of digest here and specify a digest converter. Same for constraints.
@@ -237,64 +240,55 @@ impl<P: Config> MerkleTree<P> {
     }
 
     /// Serial computation of merkle tree
-    #[cfg(not(feature = "parallel"))]
     fn new_serial<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves: impl IntoIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
-        let mut leaves_digests = Vec::new();
+        let mut leaves_digest = Vec::new();
 
         // compute and store hash values for each leaf
         for leaf in leaves.into_iter() {
-            leaves_digests.push(P::LeafHash::evaluate(leaf_hash_param, leaf)?)
+            leaves_digest.push(P::LeafHash::evaluate(leaf_hash_param, leaf)?)
         }
 
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digests)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
     /// Parallel computation of merkle tree
-    #[cfg(feature = "parallel")]
     fn new_parallel<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: impl IntoIterator<Item = L>,
+        leaves: impl IntoParallelIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
-        // !unimplemented("Parallel Merkle Tree not implemented")
+
+        //let mut leaves_digest = vec![P::LeafDigest::default(); leaves.len()];
+
+        //leaves_digest
+        //    .par_iter_mut()
+        //    .zip(leaves)
+        //    .for_each(|digest, leaf| *digest = P::LeafHash::evaluate(leaf_hash_param, leaf)?);
         
-        let mut leaves_digest = vec![P::LeafDigest::default(); leaves.len()];
-
-        leaves_digest.par_iter_mut().zip(leaves).for_each(|digest,leaf|{
-            *digest = P::LeafHash::evaluate(leaf_hash_param, leaf)?
-        });
-
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digests)
+        let leaves_digest = leaves.
+            into_par_iter().
+            map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf).unwrap())
+            .collect();
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
-
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
     pub fn new<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: impl IntoIterator<Item = L>,
+        leaves: impl IntoIterator<Item = L> + IntoParallelIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
-
-        if !cfg(feature="parallel"){
-            Self::new_parallel(
-                leaf_hash_param,
-                two_to_one_hash_param,
-                leaves
-            )
-        }else{
-            Self::new_serial(
-                leaf_hash_param,
-                two_to_one_hash_param,
-                leaves
-            )
+        if cfg!(feature = "parallel") {
+            Self::new_parallel(leaf_hash_param, two_to_one_hash_param, leaves)
+        } else {
+            Self::new_serial(leaf_hash_param, two_to_one_hash_param, leaves)
         }
     }
 
-    
     fn new_with_leaf_digest_parallel(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
@@ -313,7 +307,8 @@ impl<P: Config> MerkleTree<P> {
 
         // initialize the merkle tree as array of nodes in level order
         let mut non_leaf_nodes: Vec<P::InnerDigest> = (0..non_leaf_nodes_size)
-            .par_iter_mut().map(|_| hash_of_empty.clone())
+            .into_par_iter()
+            .map(|_| hash_of_empty.clone())
             .collect();
 
         // Compute the starting indices for each non-leaf level of the tree
@@ -329,24 +324,24 @@ impl<P: Config> MerkleTree<P> {
             let start_index = level_indices.pop().unwrap();
             let upper_bound = left_child(start_index);
             let bottom_nodes = &mut non_leaf_nodes[start_index..upper_bound];
-            
-            bottom_nodes.par_iter_mut().enumerate().for_each(|(i,n)|{
+
+            bottom_nodes.par_iter_mut().enumerate().for_each(|(i, n)| {
                 // `left_child(current_index)` and `right_child(current_index) returns the position of
                 // leaf in the whole tree (represented as a list in level order). We need to shift it
                 // by `-upper_bound` to get the index in `leaf_nodes` list.
-                
+
                 //similarly, we need to rescale i by start_index
                 //to get the index outside the slice and in the level-ordered list of nodes
-                
-                let current_index = i+start_index;
+
+                let current_index = i + start_index;
                 let left_leaf_index = left_child(current_index) - upper_bound;
                 let right_leaf_index = right_child(current_index) - upper_bound;
                 // compute hash
                 *n = P::TwoToOneHash::evaluate(
                     two_to_one_hash_param,
-                    P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone())?,
-                    P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone())?,
-                )?
+                    P::LeafInnerDigestConverter::convert(leaves_digest[left_leaf_index].clone()).unwrap(),
+                    P::LeafInnerDigestConverter::convert(leaves_digest[right_leaf_index].clone()).unwrap(),
+                ).unwrap()
             });
         }
 
@@ -354,22 +349,28 @@ impl<P: Config> MerkleTree<P> {
         level_indices.reverse();
         for &start_index in &level_indices {
             // The layer beginning `start_index` ends at `upper_bound` (exclusive).
-            let upper_bound = left_child(start_index);
-            let nodes_at_level = &mut non_leaf_nodes[start_index..upper_bound];
-            let nodes_at_prev_level = &non_leaf_nodes[upper_bound..left_child(upper_bound)];
-
-            nodes_at_level.par_iter_mut().enumerate().for_each(|(i,n)|{
-                let current_index = i+start_index;
-                let left_leaf_index = left_child(current_index);
-                let right_leaf_index = right_child(current_index);
+            
+            
+                let upper_bound = left_child(start_index);
+                //let nodes_at_level = &mut non_leaf_nodes[start_index..upper_bound];
+                //let nodes_at_prev_level = &mut non_leaf_nodes[upper_bound..left_child(upper_bound)];
                 
-                *n = P::TwoToOneHash::compress(
-                    two_to_one_hash_param,
-                    nodes_at_prev_level[left_leaf_index].clone(),
-                    nodes_at_prev_level[right_leaf_index].clone(),
-                )?
-            });
-        }
+                let (nodes_at_level, nodes_at_prev_level) = non_leaf_nodes[..].split_at_mut(upper_bound);
+                nodes_at_level[start_index..]
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(i, n)| {
+                        let current_index = i + start_index;
+                        let left_leaf_index = left_child(current_index);
+                        let right_leaf_index = right_child(current_index);
+
+                        *n = P::TwoToOneHash::compress(
+                            two_to_one_hash_param,
+                            nodes_at_prev_level[left_leaf_index].clone(),
+                            nodes_at_prev_level[right_leaf_index].clone(),
+                        ).unwrap()
+                    });
+            }
 
         Ok(MerkleTree {
             leaf_nodes: leaves_digest,
@@ -458,21 +459,12 @@ impl<P: Config> MerkleTree<P> {
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves_digest: Vec<P::LeafDigest>,
     ) -> Result<Self, crate::Error> {
-        if !cfg(feature="parallel"){
-            Self::new_with_leaf_digest_parallel(
-                leaf_hash_param,
-                two_to_one_hash_param,
-                leaves
-            )
-        }else{
-            Self::new_with_leaf_digest_serial(
-                leaf_hash_param,
-                two_to_one_hash_param,
-                leaves
-            )
+        if cfg!(feature = "parallel") {
+            Self::new_with_leaf_digest_parallel(leaf_hash_param, two_to_one_hash_param, leaves_digest)
+        } else {
+            Self::new_with_leaf_digest_serial(leaf_hash_param, two_to_one_hash_param, leaves_digest)
         }
     }
-
 
     /// Returns the root of the Merkle tree.
     pub fn root(&self) -> P::InnerDigest {
