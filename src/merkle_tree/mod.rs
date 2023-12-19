@@ -239,12 +239,16 @@ impl<P: Config> MerkleTree<P> {
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
-    /// Serial computation of merkle tree
-    fn new_serial<L: Borrow<P::Leaf>>(
+    /// Returns a new merkle tree. `leaves.len()` should be power of two.
+    #[cfg(not(feature = "parallel"))]
+    pub fn new<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves: impl IntoIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
+        
+        // Serial version of new
+        
         let mut leaves_digest = Vec::new();
 
         // compute and store hash values for each leaf
@@ -255,13 +259,16 @@ impl<P: Config> MerkleTree<P> {
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
-    /// Parallel computation of merkle tree
-    fn new_parallel<L: Borrow<P::Leaf>>(
+    /// Returns a new merkle tree. `leaves.len()` should be power of two.
+    #[cfg(feature = "parallel")]
+    pub fn new<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves: impl IntoParallelIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
-
+        
+        // Parallel version of new
+        
         //let mut leaves_digest = vec![P::LeafDigest::default(); leaves.len()];
 
         //leaves_digest
@@ -276,24 +283,27 @@ impl<P: Config> MerkleTree<P> {
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
-    /// Returns a new merkle tree. `leaves.len()` should be power of two.
-    pub fn new<L: Borrow<P::Leaf>>(
-        leaf_hash_param: &LeafParam<P>,
-        two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: impl IntoIterator<Item = L> + IntoParallelIterator<Item = L>,
-    ) -> Result<Self, crate::Error> {
-        if cfg!(feature = "parallel") {
-            Self::new_parallel(leaf_hash_param, two_to_one_hash_param, leaves)
-        } else {
-            Self::new_serial(leaf_hash_param, two_to_one_hash_param, leaves)
-        }
-    }
+//    pub fn new<L: Borrow<P::Leaf>>(
+//        leaf_hash_param: &LeafParam<P>,
+//        two_to_one_hash_param: &TwoToOneParam<P>,
+//        leaves: impl IntoIterator<Item = L> + IntoParallelIterator<Item = L>,
+//    ) -> Result<Self, crate::Error> {
+//        if cfg!(feature = "parallel") {
+//            Self::new_parallel(leaf_hash_param, two_to_one_hash_param, leaves)
+//        } else {
+//            Self::new_serial(leaf_hash_param, two_to_one_hash_param, leaves)
+//        }
+//    }
 
-    fn new_with_leaf_digest_parallel(
+    #[cfg(feature = "parallel")]
+    pub fn new_with_leaf_digest(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves_digest: Vec<P::LeafDigest>,
     ) -> Result<Self, crate::Error> {
+
+        // Parallel implementation of new_with_leaf_digest
+
         let leaf_nodes_size = leaves_digest.len();
         assert!(
             leaf_nodes_size.is_power_of_two() && leaf_nodes_size > 1,
@@ -381,11 +391,15 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
-    fn new_with_leaf_digest_serial(
+    #[cfg(not(feature = "parallel"))]
+    pub fn new_with_leaf_digest(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves_digest: Vec<P::LeafDigest>,
     ) -> Result<Self, crate::Error> {
+
+        // Serial implementation of new_with_leaf_digest
+
         let leaf_nodes_size = leaves_digest.len();
         assert!(
             leaf_nodes_size.is_power_of_two() && leaf_nodes_size > 1,
@@ -454,17 +468,17 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
-    pub fn new_with_leaf_digest(
-        leaf_hash_param: &LeafParam<P>,
-        two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves_digest: Vec<P::LeafDigest>,
-    ) -> Result<Self, crate::Error> {
-        if cfg!(feature = "parallel") {
-            Self::new_with_leaf_digest_parallel(leaf_hash_param, two_to_one_hash_param, leaves_digest)
-        } else {
-            Self::new_with_leaf_digest_serial(leaf_hash_param, two_to_one_hash_param, leaves_digest)
-        }
-    }
+    //pub fn new_with_leaf_digest(
+    //    leaf_hash_param: &LeafParam<P>,
+    //    two_to_one_hash_param: &TwoToOneParam<P>,
+    //    leaves_digest: Vec<P::LeafDigest>,
+    //) -> Result<Self, crate::Error> {
+    //    if cfg!(feature = "parallel") {
+    //        Self::new_with_leaf_digest_parallel(leaf_hash_param, two_to_one_hash_param, leaves_digest)
+    //    } else {
+    //        Self::new_with_leaf_digest_serial(leaf_hash_param, two_to_one_hash_param, leaves_digest)
+    //    }
+    //}
 
     /// Returns the root of the Merkle tree.
     pub fn root(&self) -> P::InnerDigest {
