@@ -114,7 +114,8 @@ mod field_mt_benches {
 
     pub fn merkle_tree_create(c: &mut Criterion) {
         let mut rng = test_rng();
-        let mut rand_leaves = || (0..3).map(|_| F::rand(&mut rng)).collect();
+        let field_elems_in_leaf = 3;
+        let mut rand_leaves = || (0..field_elems_in_leaf).map(|_| F::rand(&mut rng)).collect();
         let leaves: Vec<Vec<_>> = (0..NUM_LEAVES)
             .map(|_| rand_leaves()).collect();
         let leaf_crh_params = merkle_tree_utils::poseidon_parameters();
