@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate criterion;
 
-mod utils;
-
 static NUM_LEAVES: i32 = i32::pow(2, 8);
 
 mod bytes_mt_benches {
@@ -87,6 +85,7 @@ mod bytes_mt_benches {
         targets = merkle_tree_create
     }
 }
+
 mod field_mt_benches {
     use crate::utils::merkle_tree_utils;
     use ark_crypto_primitives::crh::poseidon;
