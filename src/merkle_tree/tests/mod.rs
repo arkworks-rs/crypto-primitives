@@ -12,8 +12,8 @@ mod bytes_mt_tests {
     use ark_ff::BigInteger256;
     use ark_std::{test_rng, UniformRand};
 
-    #[cfg(feature="parallel")]
-    use rayon::iter::{IntoParallelRefIterator,ParallelIterator};
+    #[cfg(feature = "parallel")]
+    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -50,16 +50,17 @@ mod bytes_mt_tests {
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
             .unwrap()
             .clone();
-        
-        #[cfg(not(feature="parallel"))]
+
+        #[cfg(not(feature = "parallel"))]
         {
             // Serial
             println!("TEST SERIAL");
             let mut tree = JubJubMerkleTree::new(
                 &leaf_crh_params.clone(),
                 &two_to_one_params.clone(),
-                leaves.iter().map(|x| x.as_slice())
-            ).unwrap();
+                leaves.iter().map(|x| x.as_slice()),
+            )
+            .unwrap();
 
             let mut root = tree.root();
             // test merkle tree functionality without update
@@ -87,14 +88,15 @@ mod bytes_mt_tests {
             }
         }
 
-        #[cfg(feature="parallel")]
+        #[cfg(feature = "parallel")]
         {
             // Parallel
             let mut tree = JubJubMerkleTree::new(
                 &leaf_crh_params.clone(),
                 &two_to_one_params.clone(),
-                leaves.par_iter().map(|x| x.as_slice())
-            ).unwrap();
+                leaves.par_iter().map(|x| x.as_slice()),
+            )
+            .unwrap();
 
             let mut root = tree.root();
             // test merkle tree functionality without update
@@ -168,8 +170,8 @@ mod field_mt_tests {
     use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
     use ark_std::{test_rng, vec::Vec, One, UniformRand};
 
-    #[cfg(feature="parallel")]
-    use rayon::iter::{IntoParallelRefIterator,ParallelIterator};
+    #[cfg(feature = "parallel")]
+    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
@@ -243,8 +245,8 @@ mod field_mt_tests {
             }
         }
 
-        #[cfg(feature="parallel")]
-        {   
+        #[cfg(feature = "parallel")]
+        {
             let mut tree = FieldMT::new(
                 &leaf_crh_params,
                 &two_to_one_params,

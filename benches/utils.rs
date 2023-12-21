@@ -1,4 +1,4 @@
-pub (crate) mod merkle_tree_utils{
+pub(crate) mod merkle_tree_utils {
     use ark_crypto_primitives::sponge::poseidon::PoseidonConfig;
     use ark_std::str::FromStr;
     use ark_std::{One, Zero};
@@ -653,5 +653,4 @@ pub (crate) mod merkle_tree_utils{
 
         PoseidonConfig::<F>::new(full_rounds, partial_rounds, alpha, mds, ark, 2, 1)
     }
-
 }
