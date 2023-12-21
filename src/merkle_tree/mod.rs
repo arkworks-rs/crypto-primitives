@@ -269,6 +269,7 @@ impl<P: Config> MerkleTree<P> {
             .into_par_iter()
             .map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf).unwrap())
             .collect();
+        
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
