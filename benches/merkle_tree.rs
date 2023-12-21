@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate criterion;
 
-static NUM_LEAVES: i32 = i32::pow(2, 8);
+static NUM_LEAVES: i32 = 1 << 20;
 
 mod bytes_mt_benches {
     use ark_crypto_primitives::crh::*;

@@ -263,11 +263,13 @@ impl<P: Config> MerkleTree<P> {
         leaves: impl IntoParallelIterator<Item = L>,
     ) -> Result<Self, crate::Error> {
         // Parallel version of new
-        let leaves_digest: Result<Vec<_>, _> = leaves
+        // TODO: Box<Error> is not Send, I have used .unwrap() but this changes semantics between
+        // parallel and serial version. We should fix this in the future.
+        let leaves_digest: Vec<_> = leaves
             .into_par_iter()
-            .map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf))
+            .map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf).unwrap())
             .collect();
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest?)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
     }
 
     #[cfg(feature = "parallel")]
