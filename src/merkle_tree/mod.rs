@@ -329,17 +329,7 @@ impl<P: Config> MerkleTree<P> {
 
             let (nodes_at_level, nodes_at_prev_level) =
                 non_leaf_nodes[..].split_at_mut(upper_bound);
-            //let nodes_at_level_iter = cfg_into_iter!(nodes_at_level[start_index..]);
-            let nodes_at_level_iter;
-            #[cfg(feature="parallel")]
-            {
-                nodes_at_level_iter = nodes_at_level[start_index..].par_iter_mut();
-            }
-            
-            #[cfg(not(feature="parallel"))]
-            {
-                nodes_at_level_iter = nodes_at_level[start_index..].iter_mut();
-            }
+            let nodes_at_level_iter = cfg_iter_mut!(nodes_at_level[start_index..]);
             
             nodes_at_level_iter
                 .enumerate()
