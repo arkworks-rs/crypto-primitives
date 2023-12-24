@@ -242,7 +242,6 @@ impl<P: Config> MerkleTree<P> {
     pub fn new<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        
         // leaves is rayon::Iter::IntoParallelIterator if parallel feature is enabled
         // else leaves is a std::iter::IntoIterator
         #[cfg(feature="parallel")]
@@ -253,9 +252,7 @@ impl<P: Config> MerkleTree<P> {
         
         // TODO: Box<Error> is not Send, I have used .unwrap() but this causes panic
         // might wish to change in the future
-
-        let leaves_iter = cfg_into_iter!(leaves); // par_iter() if cfg!(feature="parallel") else iter()
-        let leaves_digest: Vec<_> = leaves_iter
+        let leaves_digest: Vec<_> = cfg_into_iter!(leaves)  // into_par_iter() if cfg!(feature="parallel") else into_iter()
             .map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf).unwrap())
             .collect();
         

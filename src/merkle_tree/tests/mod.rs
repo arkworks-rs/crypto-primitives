@@ -10,10 +10,7 @@ mod bytes_mt_tests {
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
-    use ark_std::{test_rng, UniformRand};
-
-    #[cfg(feature="parallel")]
-    use rayon::prelude::*;
+    use ark_std::{test_rng, cfg_iter, UniformRand};
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -52,20 +49,10 @@ mod bytes_mt_tests {
             .unwrap()
             .clone();
 
-        let leaves_iter; //serial or parallel
-        #[cfg(feature="parallel")]
-        {
-            leaves_iter = leaves.par_iter();
-        }
-        #[cfg(not(feature="parallel"))]
-        {
-            leaves_iter = leaves.iter();
-        }
-
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),
-            leaves_iter.map(|x| x.as_slice()),
+            cfg_iter!(leaves).map(|x| x.as_slice()),
         )
         .unwrap();
 
@@ -138,7 +125,7 @@ mod field_mt_tests {
     use crate::crh::poseidon;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
-    use ark_std::{test_rng, vec::Vec, One, UniformRand};
+    use ark_std::{test_rng, cfg_iter, vec::Vec, One, UniformRand};
 
     #[cfg(feature="parallel")]
     use rayon::prelude::*;
@@ -164,20 +151,10 @@ mod field_mt_tests {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
         
-        let leaves_iter; //serial or parallel
-        #[cfg(feature="parallel")]
-        {
-            leaves_iter = leaves.par_iter();
-        }
-        #[cfg(not(feature="parallel"))]
-        {
-            leaves_iter = leaves.iter();
-        }
-
         let mut tree = FieldMT::new(
             &leaf_crh_params,
             &two_to_one_params,
-            leaves_iter.map(|x| x.as_slice()),
+            cfg_iter!(leaves).map(|x| x.as_slice()),
         )
         .unwrap();
 
