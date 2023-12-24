@@ -12,8 +12,8 @@ mod bytes_mt_tests {
     use ark_ff::BigInteger256;
     use ark_std::{test_rng, UniformRand};
 
-    #[cfg(feature = "parallel")]
-    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+    #[cfg(feature="parallel")]
+    use rayon::prelude::*;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -42,86 +42,56 @@ mod bytes_mt_tests {
     /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
     fn merkle_tree_test<L: CanonicalSerialize>(leaves: &[L], update_query: &[(usize, L)]) -> () {
         let mut rng = ark_std::test_rng();
-        let mut leaves: Vec<_> = leaves
-            .iter()
+
+        let mut leaves: Vec<_> = leaves.iter()
             .map(|leaf| crate::to_uncompressed_bytes!(leaf).unwrap())
             .collect();
+        
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
             .unwrap()
             .clone();
 
-        #[cfg(not(feature = "parallel"))]
+        let leaves_iter; //serial or parallel
+        #[cfg(feature="parallel")]
         {
-            // Serial
-            println!("TEST SERIAL");
-            let mut tree = JubJubMerkleTree::new(
-                &leaf_crh_params.clone(),
-                &two_to_one_params.clone(),
-                leaves.iter().map(|x| x.as_slice()),
-            )
-            .unwrap();
-
-            let mut root = tree.root();
-            // test merkle tree functionality without update
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
-
-            // test merkle tree update functionality
-            for (i, v) in update_query {
-                let v = crate::to_uncompressed_bytes!(v).unwrap();
-                tree.update(*i, &v).unwrap();
-                leaves[*i] = v.clone();
-            }
-            // update the root
-            root = tree.root();
-            // verify again
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
+            leaves_iter = leaves.par_iter();
+        }
+        #[cfg(not(feature="parallel"))]
+        {
+            leaves_iter = leaves.iter();
         }
 
-        #[cfg(feature = "parallel")]
-        {
-            // Parallel
-            let mut tree = JubJubMerkleTree::new(
-                &leaf_crh_params.clone(),
-                &two_to_one_params.clone(),
-                leaves.par_iter().map(|x| x.as_slice()),
-            )
-            .unwrap();
+        let mut tree = JubJubMerkleTree::new(
+            &leaf_crh_params.clone(),
+            &two_to_one_params.clone(),
+            leaves_iter.map(|x| x.as_slice()),
+        )
+        .unwrap();
 
-            let mut root = tree.root();
-            // test merkle tree functionality without update
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
+        let mut root = tree.root();
+        // test merkle tree functionality without update
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
+                .unwrap());
+        }
 
-            // test merkle tree update functionality
-            for (i, v) in update_query {
-                let v = crate::to_uncompressed_bytes!(v).unwrap();
-                tree.update(*i, &v).unwrap();
-                leaves[*i] = v.clone();
-            }
-            // update the root
-            root = tree.root();
-            // verify again
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
+        // test merkle tree update functionality
+        for (i, v) in update_query {
+            let v = crate::to_uncompressed_bytes!(v).unwrap();
+            tree.update(*i, &v).unwrap();
+            leaves[*i] = v.clone();
+        }
+        // update the root
+        root = tree.root();
+        // verify again
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
+                .unwrap());
         }
     }
 
@@ -170,9 +140,9 @@ mod field_mt_tests {
     use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
     use ark_std::{test_rng, vec::Vec, One, UniformRand};
 
-    #[cfg(feature = "parallel")]
-    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
+    #[cfg(feature="parallel")]
+    use rayon::prelude::*;
+    
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;
@@ -193,107 +163,63 @@ mod field_mt_tests {
         let mut leaves = leaves.to_vec();
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
-
-        #[cfg(not(feature = "parallel"))]
+        
+        let leaves_iter; //serial or parallel
+        #[cfg(feature="parallel")]
         {
-            let mut tree = FieldMT::new(
-                &leaf_crh_params,
-                &two_to_one_params,
-                leaves.iter().map(|x| x.as_slice()),
-            )
-            .unwrap();
-
-            let mut root = tree.root();
-
-            // test merkle tree functionality without update
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
-
-            {
-                // wrong root should lead to error but do not panic
-                let wrong_root = root + F::one();
-                let proof = tree.generate_proof(0).unwrap();
-                assert!(!proof
-                    .verify(
-                        &leaf_crh_params,
-                        &two_to_one_params,
-                        &wrong_root,
-                        leaves[0].as_slice()
-                    )
-                    .unwrap())
-            }
-
-            // test merkle tree update functionality
-            for (i, v) in update_query {
-                tree.update(*i, v).unwrap();
-                leaves[*i] = v.to_vec();
-            }
-
-            // update the root
-            root = tree.root();
-
-            // verify again
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
+            leaves_iter = leaves.par_iter();
+        }
+        #[cfg(not(feature="parallel"))]
+        {
+            leaves_iter = leaves.iter();
         }
 
-        #[cfg(feature = "parallel")]
+        let mut tree = FieldMT::new(
+            &leaf_crh_params,
+            &two_to_one_params,
+            leaves_iter.map(|x| x.as_slice()),
+        )
+        .unwrap();
+
+        let mut root = tree.root();
+
+        // test merkle tree functionality without update
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
+                .unwrap());
+        }
+
         {
-            let mut tree = FieldMT::new(
-                &leaf_crh_params,
-                &two_to_one_params,
-                leaves.par_iter().map(|x| x.as_slice()),
-            )
-            .unwrap();
+            // wrong root should lead to error but do not panic
+            let wrong_root = root + F::one();
+            let proof = tree.generate_proof(0).unwrap();
+            assert!(!proof
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_params,
+                    &wrong_root,
+                    leaves[0].as_slice()
+                )
+                .unwrap())
+        }
 
-            let mut root = tree.root();
+        // test merkle tree update functionality
+        for (i, v) in update_query {
+            tree.update(*i, v).unwrap();
+            leaves[*i] = v.to_vec();
+        }
 
-            // test merkle tree functionality without update
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
+        // update the root
+        root = tree.root();
 
-            {
-                // wrong root should lead to error but do not panic
-                let wrong_root = root + F::one();
-                let proof = tree.generate_proof(0).unwrap();
-                assert!(!proof
-                    .verify(
-                        &leaf_crh_params,
-                        &two_to_one_params,
-                        &wrong_root,
-                        leaves[0].as_slice()
-                    )
-                    .unwrap())
-            }
-
-            // test merkle tree update functionality
-            for (i, v) in update_query {
-                tree.update(*i, v).unwrap();
-                leaves[*i] = v.to_vec();
-            }
-
-            // update the root
-            root = tree.root();
-
-            // verify again
-            for (i, leaf) in leaves.iter().enumerate() {
-                let proof = tree.generate_proof(i).unwrap();
-                assert!(proof
-                    .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                    .unwrap());
-            }
+        // verify again
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
+                .unwrap());
         }
     }
 

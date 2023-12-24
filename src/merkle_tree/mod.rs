@@ -242,7 +242,13 @@ impl<P: Config> MerkleTree<P> {
     pub fn new<L: Borrow<P::Leaf>>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: impl IntoIterator<Item = L> + IntoParallelIterator<Item = L>,
+        
+        // leaves is rayon::Iter::IntoParallelIterator if parallel feature is enabled
+        // else leaves is a std::iter::IntoIterator
+        #[cfg(feature="parallel")]
+        leaves: impl IntoParallelIterator<Item = L>, 
+        #[cfg(not(feature="parallel"))]
+        leaves: impl IntoIterator<Item = L>, 
     ) -> Result<Self, crate::Error> {
         
         // TODO: Box<Error> is not Send, I have used .unwrap() but this causes panic
@@ -261,7 +267,6 @@ impl<P: Config> MerkleTree<P> {
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaves_digest: Vec<P::LeafDigest>,
     ) -> Result<Self, crate::Error> {
-        // Parallel implementation of new_with_leaf_digest
 
         let leaf_nodes_size = leaves_digest.len();
         assert!(
@@ -342,7 +347,6 @@ impl<P: Config> MerkleTree<P> {
             nodes_at_level_iter
                 .enumerate()
                 .for_each(|(i,n)|{
-
                     // `left_child(current_index)` and `right_child(current_index) returns the position of
                     // leaf in the whole tree (represented as a list in level order). We need to shift it
                     // by `-upper_bound` to get the index in `leaf_nodes` list.
