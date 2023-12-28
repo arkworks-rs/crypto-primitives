@@ -239,21 +239,14 @@ impl<P: Config> MerkleTree<P> {
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
-    pub fn new<L, T>(
+    pub fn new<L: AsRef<P::Leaf> + Send>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: T,
-    ) -> Result<Self, crate::Error>
-    where
-        L: Borrow<P::Leaf> + Send,
-        T: IntoIterator<Item = L>,
-        T::IntoIter: Send,
-    {
-        #[cfg(feature = "parallel")]
-        let leaves = leaves.into_iter().par_bridge();
-
+        #[cfg(not(feature = "parallel"))] leaves: impl IntoIterator<Item = L>,
+        #[cfg(feature = "parallel")] leaves: impl IntoParallelIterator<Item = L>,
+    ) -> Result<Self, crate::Error> {
         let leaf_digests: Vec<_> = cfg_into_iter!(leaves)
-            .map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf))
+            .map(|input| P::LeafHash::evaluate(leaf_hash_param, input.as_ref()))
             .collect::<Result<Vec<_>, _>>()?;
 
         Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, &leaf_digests)

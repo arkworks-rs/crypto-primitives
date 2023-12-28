@@ -46,16 +46,10 @@ mod bytes_mt_tests {
             .collect();
 
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
-        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
-            .unwrap()
-            .clone();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
 
-        let mut tree = JubJubMerkleTree::new(
-            &leaf_crh_params.clone(),
-            &two_to_one_params.clone(),
-            leaves.iter().map(|x| x.as_slice()),
-        )
-        .unwrap();
+        let mut tree =
+            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &leaves).unwrap();
 
         let mut root = tree.root();
         // test merkle tree functionality without update
@@ -149,12 +143,7 @@ mod field_mt_tests {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
 
-        let mut tree = FieldMT::new(
-            &leaf_crh_params,
-            &two_to_one_params,
-            leaves.iter().map(|x| x.as_slice()),
-        )
-        .unwrap();
+        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, &leaves).unwrap();
 
         let mut root = tree.root();
 

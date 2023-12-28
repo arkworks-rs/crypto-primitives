@@ -49,7 +49,7 @@ mod bytes_mt_benches {
                 Sha256MerkleTree::new(
                     &leaf_crh_params.clone(),
                     &two_to_one_params.clone(),
-                    leaves.iter().map(|x| x.as_slice()),
+                    &leaves,
                 )
                 .unwrap();
             })
