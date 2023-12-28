@@ -43,7 +43,7 @@ pub mod snark;
 #[cfg(feature = "sponge")]
 pub mod sponge;
 
-pub type Error = Box<dyn ark_std::error::Error>;
+pub type Error = Box<dyn ark_std::error::Error + Send>;
 
 #[derive(Debug)]
 pub enum CryptoError {
