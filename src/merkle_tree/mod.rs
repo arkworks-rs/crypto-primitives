@@ -55,8 +55,8 @@ impl<T: CanonicalSerialize> DigestConverter<T, [u8]> for ByteDigestConverter<T> 
 /// * `LeafHash`: Convert leaf to leaf digest
 /// * `TwoToOneHash`: Compress two inner digests to one inner digest
 pub trait Config {
-    type Leaf: ?Sized; // merkle tree does not store the leaf
-                       // leaf layer
+    type Leaf: ?Sized + Send; // merkle tree does not store the leaf
+                              // leaf layer
     type LeafDigest: Clone
         + Eq
         + core::fmt::Debug
@@ -234,32 +234,37 @@ impl<P: Config> MerkleTree<P> {
         height: usize,
     ) -> Result<Self, crate::Error> {
         // use empty leaf digest
-        let leaves_digest = vec![P::LeafDigest::default(); 1 << (height - 1)];
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
+        let leaf_digests = vec![P::LeafDigest::default(); 1 << (height - 1)];
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, &leaf_digests)
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
-    pub fn new<L: Borrow<P::Leaf>>(
+    pub fn new<L, T>(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves: impl IntoIterator<Item = L>,
-    ) -> Result<Self, crate::Error> {
+        leaves: T,
+    ) -> Result<Self, crate::Error>
+    where
+        L: Borrow<P::Leaf> + Send,
+        T: IntoIterator<Item = L>,
+        T::IntoIter: Send,
+    {
         #[cfg(feature = "parallel")]
         let leaves = leaves.into_iter().par_bridge();
 
-        let leaves_digest: Vec<_> = cfg_into_iter!(leaves)
+        let leaf_digests: Vec<_> = cfg_into_iter!(leaves)
             .map(|leaf| P::LeafHash::evaluate(leaf_hash_param, leaf))
-            .collect()?;
+            .collect::<Result<Vec<_>, _>>()?;
 
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaves_digest)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, &leaf_digests)
     }
 
     pub fn new_with_leaf_digest(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaves_digest: Vec<P::LeafDigest>,
+        leaf_digests: &[P::LeafDigest],
     ) -> Result<Self, crate::Error> {
-        let leaf_nodes_size = leaves_digest.len();
+        let leaf_nodes_size = leaf_digests.len();
         assert!(
             leaf_nodes_size.is_power_of_two() && leaf_nodes_size > 1,
             "`leaves.len() should be power of two and greater than one"
@@ -305,14 +310,14 @@ impl<P: Config> MerkleTree<P> {
                     *n = P::TwoToOneHash::evaluate(
                         two_to_one_hash_param,
                         P::LeafInnerDigestConverter::convert(
-                            leaves_digest[left_leaf_index].clone(),
+                            leaf_digests[left_leaf_index].clone(),
                         )?,
                         P::LeafInnerDigestConverter::convert(
-                            leaves_digest[right_leaf_index].clone(),
+                            leaf_digests[right_leaf_index].clone(),
                         )?,
                     )?;
                     Ok::<(), crate::Error>(())
-                });
+                })?;
         }
 
         // compute the hash values for nodes in every other layer in the tree
@@ -343,11 +348,11 @@ impl<P: Config> MerkleTree<P> {
                         nodes_at_prev_level[left_leaf_index].clone(),
                         nodes_at_prev_level[right_leaf_index].clone(),
                     )?;
-                    Ok::<(), crate::Error>(())
-                });
+                    Ok::<_, crate::Error>(())
+                })?;
         }
         Ok(MerkleTree {
-            leaf_nodes: leaves_digest,
+            leaf_nodes: leaf_digests.to_vec(),
             non_leaf_nodes,
             height: tree_height,
             leaf_hash_param: leaf_hash_param.clone(),

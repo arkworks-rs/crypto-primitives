@@ -9,13 +9,9 @@ mod bytes_mt_benches {
     use ark_crypto_primitives::to_uncompressed_bytes;
     use ark_ff::BigInteger256;
     use ark_serialize::CanonicalSerialize;
-    use ark_std::cfg_iter;
     use ark_std::{test_rng, UniformRand};
     use criterion::Criterion;
     use std::borrow::Borrow;
-
-    #[cfg(feature = "parallel")]
-    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
     use crate::NUM_LEAVES;
 

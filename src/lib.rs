@@ -43,22 +43,29 @@ pub mod snark;
 #[cfg(feature = "sponge")]
 pub mod sponge;
 
-pub type Error = Box<dyn ark_std::error::Error + Send>;
-
 #[derive(Debug)]
-pub enum CryptoError {
+pub enum Error {
     IncorrectInputLength(usize),
     NotPrimeOrder,
+    GenericError(Box<dyn ark_std::error::Error + Send>),
+    SerializationError(ark_serialize::SerializationError),
 }
 
-impl core::fmt::Display for CryptoError {
+impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let msg = match self {
-            CryptoError::IncorrectInputLength(len) => format!("input length is wrong: {}", len),
-            CryptoError::NotPrimeOrder => "element is not prime order".to_owned(),
-        };
-        write!(f, "{}", msg)
+        match self {
+            Self::IncorrectInputLength(len) => write!(f, "incorrect input length: {len}"),
+            Self::NotPrimeOrder => write!(f, "element is not prime order"),
+            Self::GenericError(e) => write!(f, "{e}"),
+            Self::SerializationError(e) => write!(f, "{e}"),
+        }
     }
 }
 
-impl ark_std::error::Error for CryptoError {}
+impl ark_std::error::Error for Error {}
+
+impl From<ark_serialize::SerializationError> for Error {
+    fn from(e: ark_serialize::SerializationError) -> Self {
+        Self::SerializationError(e)
+    }
+}
