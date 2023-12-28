@@ -10,7 +10,7 @@ mod bytes_mt_tests {
     };
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
-    use ark_std::{test_rng, cfg_iter, UniformRand};
+    use ark_std::{test_rng, UniformRand};
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -40,10 +40,11 @@ mod bytes_mt_tests {
     fn merkle_tree_test<L: CanonicalSerialize>(leaves: &[L], update_query: &[(usize, L)]) -> () {
         let mut rng = ark_std::test_rng();
 
-        let mut leaves: Vec<_> = leaves.iter()
+        let mut leaves: Vec<_> = leaves
+            .iter()
             .map(|leaf| crate::to_uncompressed_bytes!(leaf).unwrap())
             .collect();
-        
+
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
             .unwrap()
@@ -52,7 +53,7 @@ mod bytes_mt_tests {
         let mut tree = JubJubMerkleTree::new(
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),
-            cfg_iter!(leaves).map(|x| x.as_slice()),
+            leaves.iter().map(|x| x.as_slice()),
         )
         .unwrap();
 
@@ -125,11 +126,8 @@ mod field_mt_tests {
     use crate::crh::poseidon;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
-    use ark_std::{test_rng, cfg_iter, vec::Vec, One, UniformRand};
+    use ark_std::{test_rng, vec::Vec, One, UniformRand};
 
-    #[cfg(feature="parallel")]
-    use rayon::prelude::*;
-    
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;
@@ -150,11 +148,11 @@ mod field_mt_tests {
         let mut leaves = leaves.to_vec();
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
-        
+
         let mut tree = FieldMT::new(
             &leaf_crh_params,
             &two_to_one_params,
-            cfg_iter!(leaves).map(|x| x.as_slice()),
+            leaves.iter().map(|x| x.as_slice()),
         )
         .unwrap();
 

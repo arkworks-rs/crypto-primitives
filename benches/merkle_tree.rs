@@ -7,9 +7,9 @@ mod bytes_mt_benches {
     use ark_crypto_primitives::crh::*;
     use ark_crypto_primitives::merkle_tree::*;
     use ark_crypto_primitives::to_uncompressed_bytes;
-    use ark_std::cfg_iter;
     use ark_ff::BigInteger256;
     use ark_serialize::CanonicalSerialize;
+    use ark_std::cfg_iter;
     use ark_std::{test_rng, UniformRand};
     use criterion::Criterion;
     use std::borrow::Borrow;
@@ -50,30 +50,12 @@ mod bytes_mt_benches {
             .clone();
         c.bench_function("Merkle Tree Create (Leaves as [u8])", move |b| {
             b.iter(|| {
-                //#[cfg(not(feature = "parallel"))]
-                //{
-                //    _ = Sha256MerkleTree::new(
-                //        &leaf_crh_params.clone(),
-                //        &two_to_one_params.clone(),
-                //        leaves.iter().map(|x| x.as_slice()),
-                //    )
-                //    .unwrap();
-                //}
-                //#[cfg(feature = "parallel")]
-                //{
-                //    _ = Sha256MerkleTree::new(
-                //        &leaf_crh_params.clone(),
-                //        &two_to_one_params.clone(),
-                //        leaves.par_iter().map(|x| x.as_slice()),
-                //    )
-                //    .unwrap();
-                //}
                 Sha256MerkleTree::new(
-                        &leaf_crh_params.clone(),
-                        &two_to_one_params.clone(),
-                        cfg_iter!(leaves).map(|x| x.as_slice()),
-                    )
-                    .unwrap();
+                    &leaf_crh_params.clone(),
+                    &two_to_one_params.clone(),
+                    leaves.iter().map(|x| x.as_slice()),
+                )
+                .unwrap();
             })
         });
     }
@@ -85,6 +67,4 @@ mod bytes_mt_benches {
     }
 }
 
-criterion_main!(
-    crate::bytes_mt_benches::mt_create,
-);
+criterion_main!(crate::bytes_mt_benches::mt_create,);
