@@ -235,7 +235,7 @@ impl<P: Config> MerkleTree<P> {
     ) -> Result<Self, crate::Error> {
         // use empty leaf digest
         let leaf_digests = vec![P::LeafDigest::default(); 1 << (height - 1)];
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, &leaf_digests)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests)
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
@@ -249,13 +249,13 @@ impl<P: Config> MerkleTree<P> {
             .map(|input| P::LeafHash::evaluate(leaf_hash_param, input.as_ref()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, &leaf_digests)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests)
     }
 
     pub fn new_with_leaf_digest(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
-        leaf_digests: &[P::LeafDigest],
+        leaf_digests: Vec<P::LeafDigest>,
     ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaf_digests.len();
         assert!(
@@ -345,7 +345,7 @@ impl<P: Config> MerkleTree<P> {
                 })?;
         }
         Ok(MerkleTree {
-            leaf_nodes: leaf_digests.to_vec(),
+            leaf_nodes: leaf_digests,
             non_leaf_nodes,
             height: tree_height,
             leaf_hash_param: leaf_hash_param.clone(),
