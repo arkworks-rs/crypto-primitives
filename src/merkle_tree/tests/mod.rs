@@ -39,20 +39,18 @@ mod bytes_mt_tests {
     /// Pedersen only takes bytes as leaf, so we use `ToBytes` trait.
     fn merkle_tree_test<L: CanonicalSerialize>(leaves: &[L], update_query: &[(usize, L)]) -> () {
         let mut rng = ark_std::test_rng();
+
         let mut leaves: Vec<_> = leaves
             .iter()
             .map(|leaf| crate::to_uncompressed_bytes!(leaf).unwrap())
             .collect();
+
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
-        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng)
-            .unwrap()
-            .clone();
-        let mut tree = JubJubMerkleTree::new(
-            &leaf_crh_params.clone(),
-            &two_to_one_params.clone(),
-            leaves.iter().map(|x| x.as_slice()),
-        )
-        .unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
+
+        let mut tree =
+            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &leaves).unwrap();
+
         let mut root = tree.root();
         // test merkle tree functionality without update
         for (i, leaf) in leaves.iter().enumerate() {
@@ -145,12 +143,7 @@ mod field_mt_tests {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
 
-        let mut tree = FieldMT::new(
-            &leaf_crh_params,
-            &two_to_one_params,
-            leaves.iter().map(|x| x.as_slice()),
-        )
-        .unwrap();
+        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, &leaves).unwrap();
 
         let mut root = tree.root();
 

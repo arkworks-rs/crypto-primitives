@@ -1,4 +1,4 @@
-use crate::{CryptoError, Error};
+use crate::Error;
 use ark_std::rand::Rng;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
@@ -16,7 +16,7 @@ pub mod constraints;
 pub trait InjectiveMap<C: CurveGroup> {
     type Output: Clone + Eq + Hash + Default + Debug + CanonicalSerialize + CanonicalDeserialize;
 
-    fn injective_map(ge: &C::Affine) -> Result<Self::Output, CryptoError>;
+    fn injective_map(ge: &C::Affine) -> Result<Self::Output, Error>;
 }
 
 pub struct TECompressor;
@@ -24,7 +24,7 @@ pub struct TECompressor;
 impl<P: TECurveConfig> InjectiveMap<TEProjective<P>> for TECompressor {
     type Output = <P as CurveConfig>::BaseField;
 
-    fn injective_map(ge: &TEAffine<P>) -> Result<Self::Output, CryptoError> {
+    fn injective_map(ge: &TEAffine<P>) -> Result<Self::Output, Error> {
         debug_assert!(ge.is_in_correct_subgroup_assuming_on_curve());
         Ok(ge.x)
     }

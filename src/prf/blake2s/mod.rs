@@ -3,7 +3,7 @@ use blake2::{Blake2s256 as B2s, Blake2sMac};
 use digest::Digest;
 
 use super::PRF;
-use crate::CryptoError;
+use crate::Error;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -16,7 +16,7 @@ impl PRF for Blake2s {
     type Output = [u8; 32];
     type Seed = [u8; 32];
 
-    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, CryptoError> {
+    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, Error> {
         let eval_time = start_timer!(|| "Blake2s::Eval");
         let mut h = B2s::new();
         h.update(seed.as_ref());
