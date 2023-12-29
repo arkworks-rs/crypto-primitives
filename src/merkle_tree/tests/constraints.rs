@@ -61,12 +61,8 @@ mod byte_mt_tests {
 
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_crh_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
-        let mut tree = JubJubMerkleTree::new(
-            &leaf_crh_params,
-            &two_to_one_crh_params,
-            leaves.iter().map(|v| v.as_slice()),
-        )
-        .unwrap();
+        let mut tree =
+            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_crh_params, leaves).unwrap();
         let root = tree.root();
         for (i, leaf) in leaves.iter().enumerate() {
             let cs = ConstraintSystem::<Fq>::new_ref();
@@ -288,12 +284,7 @@ mod field_mt_tests {
     ) {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
-        let mut tree = FieldMT::new(
-            &leaf_crh_params,
-            &two_to_one_params,
-            leaves.iter().map(|x| x.as_slice()),
-        )
-        .unwrap();
+        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, leaves).unwrap();
         let root = tree.root();
         for (i, leaf) in leaves.iter().enumerate() {
             let cs = ConstraintSystem::<F>::new_ref();
