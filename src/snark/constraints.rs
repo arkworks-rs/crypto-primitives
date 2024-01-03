@@ -3,11 +3,11 @@ use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::{
     bits::boolean::Boolean,
     fields::{
-        fp::{AllocatedFp, FpVar},
         emulated_fp::{
             params::{get_params, OptimizationType},
             AllocatedEmulatedFpVar, EmulatedFpVar,
         },
+        fp::{AllocatedFp, FpVar},
     },
     R1CSVar,
 };
