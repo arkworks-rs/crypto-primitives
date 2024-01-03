@@ -365,7 +365,7 @@ mod tests {
         let mut constraint_sponge = PoseidonSpongeVar::<Fr>::new(cs.clone(), &sponge_params);
 
         let (squeeze, bits) = constraint_sponge
-            .squeeze_nonnative_field_elements_with_sizes::<Fr>(&[FieldElementSize::Truncated(
+            .squeeze_emulated_field_elements_with_sizes::<Fr>(&[FieldElementSize::Truncated(
                 squeeze_bits as usize,
             )])
             .unwrap();
@@ -376,7 +376,7 @@ mod tests {
 
         // squeeze full
         let (_, bits) = constraint_sponge
-            .squeeze_nonnative_field_elements_with_sizes::<Fr>(&[FieldElementSize::Full])
+            .squeeze_emulated_field_elements_with_sizes::<Fr>(&[FieldElementSize::Full])
             .unwrap();
         let bits = &bits[0];
         assert_eq!(bits.len() as u32, Fr::MODULUS_BIT_SIZE - 1);
