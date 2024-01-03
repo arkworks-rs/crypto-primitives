@@ -176,7 +176,7 @@ where
 {
     #[inline]
     fn is_eq(&self, other: &Self) -> Result<Boolean<ConstraintF<C>>, SynthesisError> {
-        self.c1.is_eq(&other.c1)?.and(&self.c2.is_eq(&other.c2)?)
+        Ok(self.c1.is_eq(&other.c1)? & &self.c2.is_eq(&other.c2)?)
     }
 }
 

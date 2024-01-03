@@ -240,7 +240,7 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
 
         let mut bytes: Vec<UInt8<F>> = Vec::with_capacity(usable_bytes * num_elements);
         for elem in &src_elements {
-            bytes.extend_from_slice(&elem.to_bytes()?[..usable_bytes]);
+            bytes.extend_from_slice(&elem.to_bytes_le()?[..usable_bytes]);
         }
 
         bytes.truncate(num_bytes);
