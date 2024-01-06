@@ -68,10 +68,10 @@ pub(crate) fn squeeze_field_elements_with_sizes_default_impl<F: PrimeField>(
     let mut output = Vec::with_capacity(sizes.len());
     for size in sizes {
         let num_bits = size.num_bits::<F>();
-        let nonnative_bits_le: Vec<bool> = bits_window[..num_bits].to_vec();
+        let emulated_bits_le: Vec<bool> = bits_window[..num_bits].to_vec();
         bits_window = &bits_window[num_bits..];
 
-        let nonnative_bytes = nonnative_bits_le
+        let emulated_bytes = emulated_bits_le
             .chunks(8)
             .map(|bits| {
                 let mut byte = 0u8;
@@ -84,7 +84,7 @@ pub(crate) fn squeeze_field_elements_with_sizes_default_impl<F: PrimeField>(
             })
             .collect::<Vec<_>>();
 
-        output.push(F::from_le_bytes_mod_order(nonnative_bytes.as_slice()));
+        output.push(F::from_le_bytes_mod_order(emulated_bytes.as_slice()));
     }
 
     output
@@ -126,7 +126,7 @@ pub trait CryptographicSponge: Clone {
         squeeze_field_elements_with_sizes_default_impl(self, sizes)
     }
 
-    /// Squeeze `num_elements` nonnative field elements from the sponge.
+    /// Squeeze `num_elements` emulated field elements from the sponge.
     ///
     /// Because of rust limitation, for field-based implementation, using this method to squeeze
     /// native field elements will have runtime casting cost. For better efficiency, use `squeeze_native_field_elements`.

@@ -153,7 +153,7 @@ where
     GC: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
-    fn to_bytes(&self) -> Result<Vec<UInt8<ConstraintF<C>>>, SynthesisError> {
-        self.pub_key.to_bytes()
+    fn to_bytes_le(&self) -> Result<Vec<UInt8<ConstraintF<C>>>, SynthesisError> {
+        self.pub_key.to_bytes_le()
     }
 }

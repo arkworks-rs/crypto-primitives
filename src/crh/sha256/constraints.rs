@@ -3,19 +3,19 @@
 // See LICENSE-MIT in the root directory for a copy of the license
 // Thank you!
 
-use crate::crh::{
-    sha256::{r1cs_utils::UInt32Ext, Sha256},
-    CRHSchemeGadget, TwoToOneCRHSchemeGadget,
-};
+use crate::crh::{sha256::Sha256, CRHSchemeGadget, TwoToOneCRHSchemeGadget};
 
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
 use ark_ff::PrimeField;
 use ark_r1cs_std::{
     alloc::{AllocVar, AllocationMode},
-    bits::{boolean::Boolean, uint32::UInt32, uint8::UInt8, ToBytesGadget},
+    boolean::Boolean,
+    convert::ToBytesGadget,
     eq::EqGadget,
     select::CondSelectGadget,
+    uint32::UInt32,
+    uint8::UInt8,
     R1CSVar,
 };
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
@@ -75,61 +75,66 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
 
         for i in 16..64 {
             let s0 = {
-                let x1 = w[i - 15].rotr(7);
-                let x2 = w[i - 15].rotr(18);
-                let x3 = w[i - 15].shr(3);
-                x1.xor(&x2)?.xor(&x3)?
+                let x1 = w[i - 15].rotate_right(7);
+                let x2 = w[i - 15].rotate_right(18);
+                let x3 = &w[i - 15] >> 3u8;
+                x1 ^ &x2 ^ &x3
             };
             let s1 = {
-                let x1 = w[i - 2].rotr(17);
-                let x2 = w[i - 2].rotr(19);
-                let x3 = w[i - 2].shr(10);
-                x1.xor(&x2)?.xor(&x3)?
+                let x1 = w[i - 2].rotate_right(17);
+                let x2 = w[i - 2].rotate_right(19);
+                let x3 = &w[i - 2] >> 10u8;
+                x1 ^ &x2 ^ &x3
             };
-            w[i] = UInt32::addmany(&[w[i - 16].clone(), s0, w[i - 7].clone(), s1])?;
+            w[i] = UInt32::wrapping_add_many(&[w[i - 16].clone(), s0, w[i - 7].clone(), s1])?;
         }
 
         let mut h = state.to_vec();
         for i in 0..64 {
             let ch = {
-                let x1 = h[4].bitand(&h[5])?;
-                let x2 = h[4].not().bitand(&h[6])?;
-                x1.xor(&x2)?
+                let x1 = &h[4] & &h[5];
+                let x2 = (!&h[4]) & &h[6];
+                x1 ^ &x2
             };
             let ma = {
-                let x1 = h[0].bitand(&h[1])?;
-                let x2 = h[0].bitand(&h[2])?;
-                let x3 = h[1].bitand(&h[2])?;
-                x1.xor(&x2)?.xor(&x3)?
+                let x1 = &h[0] & &h[1];
+                let x2 = &h[0] & &h[2];
+                let x3 = &h[1] & &h[2];
+                x1 ^ &x2 ^ &x3
             };
             let s0 = {
-                let x1 = h[0].rotr(2);
-                let x2 = h[0].rotr(13);
-                let x3 = h[0].rotr(22);
-                x1.xor(&x2)?.xor(&x3)?
+                let x1 = h[0].rotate_right(2);
+                let x2 = h[0].rotate_right(13);
+                let x3 = h[0].rotate_right(22);
+                x1 ^ &x2 ^ &x3
             };
             let s1 = {
-                let x1 = h[4].rotr(6);
-                let x2 = h[4].rotr(11);
-                let x3 = h[4].rotr(25);
-                x1.xor(&x2)?.xor(&x3)?
+                let x1 = h[4].rotate_right(6);
+                let x2 = h[4].rotate_right(11);
+                let x3 = h[4].rotate_right(25);
+                x1 ^ &x2 ^ &x3
             };
-            let t0 =
-                UInt32::addmany(&[h[7].clone(), s1, ch, UInt32::constant(K[i]), w[i].clone()])?;
-            let t1 = UInt32::addmany(&[s0, ma])?;
+            let t0 = UInt32::wrapping_add_many(&[
+                h[7].clone(),
+                s1,
+                ch,
+                UInt32::constant(K[i]),
+                w[i].clone(),
+            ])?;
+            let t1 = s0.wrapping_add(&ma);
 
             h[7] = h[6].clone();
             h[6] = h[5].clone();
             h[5] = h[4].clone();
-            h[4] = UInt32::addmany(&[h[3].clone(), t0.clone()])?;
+            h[4] = h[3].wrapping_add(&t0);
             h[3] = h[2].clone();
             h[2] = h[1].clone();
             h[1] = h[0].clone();
-            h[0] = UInt32::addmany(&[t0, t1])?;
+            h[0] = t0.wrapping_add(&t1);
         }
 
         for (s, hi) in state.iter_mut().zip(h.iter()) {
-            *s = UInt32::addmany(&[s.clone(), hi.clone()])?;
+            *s = s.wrapping_add(hi);
         }
 
         Ok(())
@@ -192,7 +197,11 @@ impl<ConstraintF: PrimeField> Sha256Gadget<ConstraintF> {
         self.update(&pending[..offset + 8])?;
 
         // Collect the state into big-endian bytes
-        let bytes: Vec<_> = self.state.iter().flat_map(UInt32::to_bytes_be).collect();
+        let bytes = Vec::from_iter(
+            self.state
+                .iter()
+                .flat_map(|i| UInt32::to_bytes_be(i).unwrap()),
+        );
         Ok(DigestVar(bytes))
     }
 
@@ -221,7 +230,7 @@ where
 }
 
 impl<ConstraintF: PrimeField> ToBytesGadget<ConstraintF> for DigestVar<ConstraintF> {
-    fn to_bytes(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+    fn to_bytes_le(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
         Ok(self.0.clone())
     }
 }
@@ -360,8 +369,8 @@ where
         right_input: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // Convert output to bytes
-        let left_input = left_input.to_bytes()?;
-        let right_input = right_input.to_bytes()?;
+        let left_input = left_input.to_bytes_le()?;
+        let right_input = right_input.to_bytes_le()?;
         <Self as TwoToOneCRHSchemeGadget<Sha256, ConstraintF>>::evaluate(
             parameters,
             &left_input,

@@ -3,15 +3,15 @@ use ark_ec::{
     twisted_edwards::TECurveConfig as TEModelParameters, CurveConfig as ModelParameters,
 };
 use ark_ff::{Field, PrimeField};
-use ark_r1cs_std::bits::boolean::Boolean;
-use ark_r1cs_std::bits::uint8::UInt8;
+use ark_r1cs_std::boolean::Boolean;
+use ark_r1cs_std::convert::{ToBytesGadget, ToConstraintFieldGadget};
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::fields::{FieldOpsBounds, FieldVar};
 use ark_r1cs_std::groups::curves::short_weierstrass::{
     AffineVar as SWAffineVar, ProjectiveVar as SWProjectiveVar,
 };
 use ark_r1cs_std::groups::curves::twisted_edwards::AffineVar as TEAffineVar;
-use ark_r1cs_std::{ToBytesGadget, ToConstraintFieldGadget};
+use ark_r1cs_std::uint8::UInt8;
 use ark_relations::r1cs::SynthesisError;
 use ark_std::vec;
 use ark_std::vec::Vec;
@@ -71,7 +71,7 @@ impl<F: PrimeField> AbsorbGadget<F> for UInt8<F> {
 
 impl<F: PrimeField> AbsorbGadget<F> for Boolean<F> {
     fn to_sponge_bytes(&self) -> Result<Vec<UInt8<F>>, SynthesisError> {
-        self.to_bytes()
+        self.to_bytes_le()
     }
 
     fn to_sponge_field_elements(&self) -> Result<Vec<FpVar<F>>, SynthesisError> {
@@ -81,7 +81,7 @@ impl<F: PrimeField> AbsorbGadget<F> for Boolean<F> {
 
 impl<F: PrimeField> AbsorbGadget<F> for FpVar<F> {
     fn to_sponge_bytes(&self) -> Result<Vec<UInt8<F>>, SynthesisError> {
-        self.to_bytes()
+        self.to_bytes_le()
     }
 
     fn to_sponge_field_elements(&self) -> Result<Vec<FpVar<F>>, SynthesisError> {
@@ -125,7 +125,7 @@ where
     ) -> Result<Vec<UInt8<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
         let mut bytes = self.x.to_constraint_field()?.to_sponge_bytes()?;
         bytes.append(&mut self.y.to_constraint_field()?.to_sponge_bytes()?);
-        bytes.append(&mut self.infinity.to_bytes()?.to_sponge_bytes()?);
+        bytes.append(&mut self.infinity.to_bytes_le()?.to_sponge_bytes()?);
 
         Ok(bytes)
     }
@@ -150,7 +150,7 @@ where
         Vec<UInt8<<<P as ModelParameters>::BaseField as Field>::BasePrimeField>>,
         SynthesisError,
     > {
-        self.to_bytes()
+        self.to_bytes_le()
     }
 
     fn to_sponge_field_elements(
