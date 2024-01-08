@@ -5,7 +5,7 @@ use ark_ec::{
     twisted_edwards::TECurveConfig as TEModelParameters,
 };
 use ark_ff::models::{Fp, FpConfig};
-use ark_ff::{BigInteger, PrimeField, ToConstraintField};
+use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
 use ark_std::vec::Vec;
 
@@ -227,26 +227,44 @@ impl Absorb for isize {
     }
 }
 
-impl<CF: PrimeField, P: TEModelParameters<BaseField = CF>> Absorb for TEAffine<P> {
+impl<P: TEModelParameters> Absorb for TEAffine<P>
+where
+    P::BaseField: ToConstraintField<<P::BaseField as Field>::BasePrimeField>,
+{
     fn to_sponge_bytes(&self, dest: &mut Vec<u8>) {
-        dest.append(&mut self.x.into_bigint().to_bytes_le());
-        dest.append(&mut self.y.into_bigint().to_bytes_le());
+        self.x
+            .to_field_elements()
+            .unwrap()
+            .into_iter()
+            .chain(self.y.to_field_elements().unwrap())
+            .for_each(|elem| {
+                dest.append(&mut elem.into_bigint().to_bytes_le());
+            });
     }
 
     fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {
-        field_cast::<P::BaseField, _>(&self.to_field_elements().unwrap(), dest).unwrap();
+        field_cast(&self.to_field_elements().unwrap(), dest).unwrap();
     }
 }
 
-impl<CF: PrimeField, P: SWModelParameters<BaseField = CF>> Absorb for SWAffine<P> {
+impl<P: SWModelParameters> Absorb for SWAffine<P>
+where
+    P::BaseField: ToConstraintField<<P::BaseField as Field>::BasePrimeField>,
+{
     fn to_sponge_bytes(&self, dest: &mut Vec<u8>) {
-        dest.append(&mut self.x.into_bigint().to_bytes_le());
-        dest.append(&mut self.y.into_bigint().to_bytes_le());
+        self.x
+            .to_field_elements()
+            .unwrap()
+            .into_iter()
+            .chain(self.y.to_field_elements().unwrap())
+            .for_each(|elem| {
+                dest.append(&mut elem.into_bigint().to_bytes_le());
+            });
         dest.push(self.infinity.into());
     }
 
     fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {
-        field_cast::<P::BaseField, _>(&self.to_field_elements().unwrap(), dest).unwrap();
+        field_cast(&self.to_field_elements().unwrap(), dest).unwrap();
     }
 }
 
