@@ -7,9 +7,6 @@ use ark_std::rand::Rng;
 pub use sha2::{digest, Sha256};
 
 #[cfg(feature = "r1cs")]
-mod r1cs_utils;
-
-#[cfg(feature = "r1cs")]
 pub mod constraints;
 
 // Implement the CRH traits for SHA-256

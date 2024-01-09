@@ -1,12 +1,8 @@
 use crate::crh::TwoToOneCRHSchemeGadget;
 use crate::merkle_tree::{Config, IdentityDigestConverter};
 use crate::{crh::CRHSchemeGadget, merkle_tree::Path};
-use ark_ff::Field;
-use ark_r1cs_std::alloc::AllocVar;
-use ark_r1cs_std::boolean::Boolean;
-#[allow(unused)]
+use ark_ff::PrimeField;
 use ark_r1cs_std::prelude::*;
-use ark_r1cs_std::ToBytesGadget;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::borrow::Borrow;
 use ark_std::fmt::Debug;
@@ -25,91 +21,85 @@ impl<T> DigestVarConverter<T, T> for IdentityDigestConverter<T> {
     }
 }
 
-pub struct BytesVarDigestConverter<T: ToBytesGadget<ConstraintF>, ConstraintF: Field> {
+pub struct BytesVarDigestConverter<T: ToBytesGadget<F>, F: PrimeField> {
     _prev_layer_digest: T,
-    _constraint_field: ConstraintF,
+    _constraint_field: F,
 }
 
-impl<T: ToBytesGadget<ConstraintF>, ConstraintF: Field> DigestVarConverter<T, [UInt8<ConstraintF>]>
-    for BytesVarDigestConverter<T, ConstraintF>
+impl<T: ToBytesGadget<F>, F: PrimeField> DigestVarConverter<T, [UInt8<F>]>
+    for BytesVarDigestConverter<T, F>
 {
-    type TargetType = Vec<UInt8<ConstraintF>>;
+    type TargetType = Vec<UInt8<F>>;
 
     fn convert(from: T) -> Result<Self::TargetType, SynthesisError> {
-        from.to_non_unique_bytes()
+        from.to_non_unique_bytes_le()
     }
 }
 
-pub trait ConfigGadget<P: Config, ConstraintF: Field> {
+pub trait ConfigGadget<P: Config, F: PrimeField> {
     type Leaf: Debug + ?Sized;
-    type LeafDigest: AllocVar<P::LeafDigest, ConstraintF>
-        + EqGadget<ConstraintF>
-        + ToBytesGadget<ConstraintF>
-        + CondSelectGadget<ConstraintF>
-        + R1CSVar<ConstraintF>
+    type LeafDigest: AllocVar<P::LeafDigest, F>
+        + EqGadget<F>
+        + ToBytesGadget<F>
+        + CondSelectGadget<F>
+        + R1CSVar<F>
         + Debug
         + Clone
         + Sized;
     type LeafInnerConverter: DigestVarConverter<
         Self::LeafDigest,
-        <Self::TwoToOneHash as TwoToOneCRHSchemeGadget<P::TwoToOneHash, ConstraintF>>::InputVar,
+        <Self::TwoToOneHash as TwoToOneCRHSchemeGadget<P::TwoToOneHash, F>>::InputVar,
     >;
-    type InnerDigest: AllocVar<P::InnerDigest, ConstraintF>
-        + EqGadget<ConstraintF>
-        + ToBytesGadget<ConstraintF>
-        + CondSelectGadget<ConstraintF>
-        + R1CSVar<ConstraintF>
+    type InnerDigest: AllocVar<P::InnerDigest, F>
+        + EqGadget<F>
+        + ToBytesGadget<F>
+        + CondSelectGadget<F>
+        + R1CSVar<F>
         + Debug
         + Clone
         + Sized;
 
     type LeafHash: CRHSchemeGadget<
         P::LeafHash,
-        ConstraintF,
+        F,
         InputVar = Self::Leaf,
         OutputVar = Self::LeafDigest,
     >;
-    type TwoToOneHash: TwoToOneCRHSchemeGadget<
-        P::TwoToOneHash,
-        ConstraintF,
-        OutputVar = Self::InnerDigest,
-    >;
+    type TwoToOneHash: TwoToOneCRHSchemeGadget<P::TwoToOneHash, F, OutputVar = Self::InnerDigest>;
 }
 
-type LeafParam<PG, P, ConstraintF> =
-    <<PG as ConfigGadget<P, ConstraintF>>::LeafHash as CRHSchemeGadget<
-        <P as Config>::LeafHash,
-        ConstraintF,
-    >>::ParametersVar;
-type TwoToOneParam<PG, P, ConstraintF> =
-    <<PG as ConfigGadget<P, ConstraintF>>::TwoToOneHash as TwoToOneCRHSchemeGadget<
+type LeafParam<PG, P, F> = <<PG as ConfigGadget<P, F>>::LeafHash as CRHSchemeGadget<
+    <P as Config>::LeafHash,
+    F,
+>>::ParametersVar;
+type TwoToOneParam<PG, P, F> =
+    <<PG as ConfigGadget<P, F>>::TwoToOneHash as TwoToOneCRHSchemeGadget<
         <P as Config>::TwoToOneHash,
-        ConstraintF,
+        F,
     >>::ParametersVar;
 
 /// Represents a merkle tree path gadget.
 #[derive(Debug, Derivative)]
-#[derivative(Clone(bound = "P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>"))]
-pub struct PathVar<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> {
+#[derivative(Clone(bound = "P: Config, F: PrimeField, PG: ConfigGadget<P, F>"))]
+pub struct PathVar<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
-    path: Vec<Boolean<ConstraintF>>,
+    path: Vec<Boolean<F>>,
     /// `auth_path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
     auth_path: Vec<PG::InnerDigest>,
     /// The sibling of leaf.
     leaf_sibling: PG::LeafDigest,
     /// Is this leaf the right child?
-    leaf_is_right_child: Boolean<ConstraintF>,
+    leaf_is_right_child: Boolean<F>,
 }
 
-impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> AllocVar<Path<P>, ConstraintF>
-    for PathVar<P, ConstraintF, PG>
+impl<P, F, PG: ConfigGadget<P, F>> AllocVar<Path<P>, F> for PathVar<P, F, PG>
 where
     P: Config,
-    ConstraintF: Field,
+    F: PrimeField,
 {
     #[tracing::instrument(target = "r1cs", skip(cs, f))]
     fn new_variable<T: Borrow<Path<P>>>(
-        cs: impl Into<Namespace<ConstraintF>>,
+        cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
@@ -148,12 +138,12 @@ where
     }
 }
 
-impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P, ConstraintF, PG> {
+impl<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> PathVar<P, F, PG> {
     /// Set the leaf index of the path to a given value. Verifier can use function before calling `verify`
     /// to check the correctness leaf position.
     /// * `leaf_index`: leaf index encoded in little-endian format
     #[tracing::instrument(target = "r1cs", skip(self))]
-    pub fn set_leaf_position(&mut self, leaf_index: Vec<Boolean<ConstraintF>>) {
+    pub fn set_leaf_position(&mut self, leaf_index: Vec<Boolean<F>>) {
         // The path to a leaf is described by the branching
         // decisions taken at each node. This corresponds to the position
         // of the leaf.
@@ -180,7 +170,7 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     }
 
     /// Return the leaf position index in little-endian form.
-    pub fn get_leaf_position(&self) -> Vec<Boolean<ConstraintF>> {
+    pub fn get_leaf_position(&self) -> Vec<Boolean<F>> {
         ark_std::iter::once(self.leaf_is_right_child.clone())
             .chain(self.path.clone().into_iter().rev())
             .collect()
@@ -190,8 +180,8 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn calculate_root(
         &self,
-        leaf_params: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, F>,
+        two_to_one_params: &TwoToOneParam<PG, P, F>,
         leaf: &PG::Leaf,
     ) -> Result<PG::InnerDigest, SynthesisError> {
         let claimed_leaf_hash = PG::LeafHash::evaluate(leaf_params, leaf)?;
@@ -236,11 +226,11 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn verify_membership(
         &self,
-        leaf_params: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, F>,
+        two_to_one_params: &TwoToOneParam<PG, P, F>,
         root: &PG::InnerDigest,
         leaf: &PG::Leaf,
-    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
+    ) -> Result<Boolean<F>, SynthesisError> {
         let expected_root = self.calculate_root(leaf_params, two_to_one_params, leaf)?;
         Ok(expected_root.is_eq(root)?)
     }
@@ -250,8 +240,8 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn update_leaf(
         &self,
-        leaf_params: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, F>,
+        two_to_one_params: &TwoToOneParam<PG, P, F>,
         old_root: &PG::InnerDigest,
         old_leaf: &PG::Leaf,
         new_leaf: &PG::Leaf,
@@ -267,13 +257,13 @@ impl<P: Config, ConstraintF: Field, PG: ConfigGadget<P, ConstraintF>> PathVar<P,
     #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn update_and_check(
         &self,
-        leaf_params: &LeafParam<PG, P, ConstraintF>,
-        two_to_one_params: &TwoToOneParam<PG, P, ConstraintF>,
+        leaf_params: &LeafParam<PG, P, F>,
+        two_to_one_params: &TwoToOneParam<PG, P, F>,
         old_root: &PG::InnerDigest,
         new_root: &PG::InnerDigest,
         old_leaf: &PG::Leaf,
         new_leaf: &PG::Leaf,
-    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
+    ) -> Result<Boolean<F>, SynthesisError> {
         let actual_new_root =
             self.update_leaf(leaf_params, two_to_one_params, old_root, old_leaf, new_leaf)?;
         Ok(actual_new_root.is_eq(&new_root)?)

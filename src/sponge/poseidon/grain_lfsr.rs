@@ -175,15 +175,7 @@ impl PoseidonGrainLFSR {
 
     fn init(&mut self) {
         for _ in 0..160 {
-            let new_bit = self.state[(self.head + 62) % 80]
-                ^ self.state[(self.head + 51) % 80]
-                ^ self.state[(self.head + 38) % 80]
-                ^ self.state[(self.head + 23) % 80]
-                ^ self.state[(self.head + 13) % 80]
-                ^ self.state[self.head];
-            self.state[self.head] = new_bit;
-            self.head += 1;
-            self.head %= 80;
+            let _ = self.update();
         }
     }
 }
@@ -208,6 +200,18 @@ mod test {
             lfsr.get_field_elements_rejection_sampling::<Fr>(1)[0],
             MontFp!(
                 "51641662388546346858987925410984003801092143452466182801674685248597955169158"
+            )
+        );
+        assert_eq!(
+            lfsr.get_field_elements_mod_p::<Fr>(1)[0],
+            MontFp!(
+                "30468495022634911716522728179277518871747767531215914044579216845399211650580"
+            )
+        );
+        assert_eq!(
+            lfsr.get_field_elements_mod_p::<Fr>(1)[0],
+            MontFp!(
+                "17250718238509906485015112994867732544602358855445377986727968022920517907825"
             )
         );
     }

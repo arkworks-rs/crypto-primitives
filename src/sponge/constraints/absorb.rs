@@ -3,15 +3,15 @@ use ark_ec::{
     twisted_edwards::TECurveConfig as TEModelParameters, CurveConfig as ModelParameters,
 };
 use ark_ff::{Field, PrimeField};
-use ark_r1cs_std::bits::boolean::Boolean;
-use ark_r1cs_std::bits::uint8::UInt8;
+use ark_r1cs_std::boolean::Boolean;
+use ark_r1cs_std::convert::{ToBytesGadget, ToConstraintFieldGadget};
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::fields::{FieldOpsBounds, FieldVar};
 use ark_r1cs_std::groups::curves::short_weierstrass::{
     AffineVar as SWAffineVar, ProjectiveVar as SWProjectiveVar,
 };
 use ark_r1cs_std::groups::curves::twisted_edwards::AffineVar as TEAffineVar;
-use ark_r1cs_std::{ToBytesGadget, ToConstraintFieldGadget};
+use ark_r1cs_std::uint8::UInt8;
 use ark_relations::r1cs::SynthesisError;
 use ark_std::vec;
 use ark_std::vec::Vec;
@@ -71,7 +71,7 @@ impl<F: PrimeField> AbsorbGadget<F> for UInt8<F> {
 
 impl<F: PrimeField> AbsorbGadget<F> for Boolean<F> {
     fn to_sponge_bytes(&self) -> Result<Vec<UInt8<F>>, SynthesisError> {
-        self.to_bytes()
+        self.to_bytes_le()
     }
 
     fn to_sponge_field_elements(&self) -> Result<Vec<FpVar<F>>, SynthesisError> {
@@ -81,7 +81,7 @@ impl<F: PrimeField> AbsorbGadget<F> for Boolean<F> {
 
 impl<F: PrimeField> AbsorbGadget<F> for FpVar<F> {
     fn to_sponge_bytes(&self) -> Result<Vec<UInt8<F>>, SynthesisError> {
-        self.to_bytes()
+        self.to_bytes_le()
     }
 
     fn to_sponge_field_elements(&self) -> Result<Vec<FpVar<F>>, SynthesisError> {
@@ -93,32 +93,49 @@ impl<F: PrimeField> AbsorbGadget<F> for FpVar<F> {
     }
 }
 
-macro_rules! impl_absorbable_group {
-    ($group:ident, $params:ident) => {
-        impl<P, F> AbsorbGadget<<P::BaseField as Field>::BasePrimeField> for $group<P, F>
-        where
-            P: $params,
-            F: FieldVar<P::BaseField, <P::BaseField as Field>::BasePrimeField>,
-            for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
-            F: ToConstraintFieldGadget<<P::BaseField as Field>::BasePrimeField>,
-        {
-            fn to_sponge_bytes(
-                &self,
-            ) -> Result<Vec<UInt8<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
-                self.to_constraint_field()?.to_sponge_bytes()
-            }
+impl<P, F> AbsorbGadget<<P::BaseField as Field>::BasePrimeField> for TEAffineVar<P, F>
+where
+    P: TEModelParameters,
+    F: FieldVar<P::BaseField, <P::BaseField as Field>::BasePrimeField>,
+    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
+    F: ToConstraintFieldGadget<<P::BaseField as Field>::BasePrimeField>,
+{
+    fn to_sponge_bytes(
+        &self,
+    ) -> Result<Vec<UInt8<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
+        self.to_constraint_field()?.to_sponge_bytes()
+    }
 
-            fn to_sponge_field_elements(
-                &self,
-            ) -> Result<Vec<FpVar<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
-                self.to_constraint_field()
-            }
-        }
-    };
+    fn to_sponge_field_elements(
+        &self,
+    ) -> Result<Vec<FpVar<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
+        self.to_constraint_field()
+    }
 }
 
-impl_absorbable_group!(TEAffineVar, TEModelParameters);
-impl_absorbable_group!(SWAffineVar, SWModelParameters);
+impl<P, F> AbsorbGadget<<P::BaseField as Field>::BasePrimeField> for SWAffineVar<P, F>
+where
+    P: SWModelParameters,
+    F: FieldVar<P::BaseField, <P::BaseField as Field>::BasePrimeField>,
+    for<'a> &'a F: FieldOpsBounds<'a, P::BaseField, F>,
+    F: ToConstraintFieldGadget<<P::BaseField as Field>::BasePrimeField>,
+{
+    fn to_sponge_bytes(
+        &self,
+    ) -> Result<Vec<UInt8<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
+        let mut bytes = self.x.to_constraint_field()?.to_sponge_bytes()?;
+        bytes.append(&mut self.y.to_constraint_field()?.to_sponge_bytes()?);
+        bytes.append(&mut self.infinity.to_bytes_le()?.to_sponge_bytes()?);
+
+        Ok(bytes)
+    }
+
+    fn to_sponge_field_elements(
+        &self,
+    ) -> Result<Vec<FpVar<<P::BaseField as Field>::BasePrimeField>>, SynthesisError> {
+        self.to_constraint_field()
+    }
+}
 
 impl<P, F> AbsorbGadget<<P::BaseField as Field>::BasePrimeField> for SWProjectiveVar<P, F>
 where
@@ -133,7 +150,7 @@ where
         Vec<UInt8<<<P as ModelParameters>::BaseField as Field>::BasePrimeField>>,
         SynthesisError,
     > {
-        self.to_bytes()
+        self.to_bytes_le()
     }
 
     fn to_sponge_field_elements(
@@ -225,20 +242,89 @@ macro_rules! collect_sponge_field_elements_gadget {
 #[cfg(test)]
 mod tests {
     use crate::sponge::constraints::AbsorbGadget;
-    use crate::sponge::test::Fr;
     use crate::sponge::Absorb;
-    use ark_r1cs_std::alloc::AllocVar;
+    use ark_bls12_377::{Fq, G1Projective as G};
+    use ark_ec::CurveGroup;
+    use ark_ec::{
+        short_weierstrass::{Projective as SWProjective, SWCurveConfig},
+        twisted_edwards::{Projective as TEProjective, TECurveConfig},
+    };
+    use ark_ed_on_bls12_377::EdwardsProjective;
+    use ark_ff::PrimeField;
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::uint8::UInt8;
     use ark_r1cs_std::R1CSVar;
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_r1cs_std::{
+        alloc::AllocVar,
+        groups::curves::{
+            short_weierstrass::ProjectiveVar as SWProjectiveVar,
+            twisted_edwards::AffineVar as TEAffineVar,
+        },
+    };
+    use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_relations::*;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::{test_rng, UniformRand, Zero};
+
+    fn sw_curve_consistency_check<C>(
+        cs: ConstraintSystemRef<C::BaseField>,
+        g: SWProjective<C>,
+    ) -> r1cs::Result<()>
+    where
+        C: SWCurveConfig,
+        C::BaseField: PrimeField,
+    {
+        let g_affine = g.into_affine();
+        let native_point_bytes = g_affine.to_sponge_bytes_as_vec();
+        let native_point_field = g_affine.to_sponge_field_elements_as_vec::<C::BaseField>();
+
+        let cs_point =
+            SWProjectiveVar::<C, FpVar<C::BaseField>>::new_input(ns!(cs, "sw_projective"), || {
+                Ok(g)
+            })?;
+        let cs_point_bytes = cs_point.to_sponge_bytes()?;
+        let cs_point_field = cs_point.to_sponge_field_elements()?;
+
+        let cs_affine_point = cs_point.to_affine()?;
+        let cs_affine_bytes = cs_affine_point.to_sponge_bytes()?;
+        let cs_affine_field = cs_affine_point.to_sponge_field_elements()?;
+
+        assert_eq!(native_point_bytes, cs_point_bytes.value()?);
+        assert_eq!(native_point_field, cs_point_field.value()?);
+
+        assert_eq!(native_point_bytes, cs_affine_bytes.value()?);
+        assert_eq!(native_point_field, cs_affine_field.value()?);
+
+        Ok(())
+    }
+
+    fn te_curve_consistency_check<C>(g: TEProjective<C>) -> r1cs::Result<()>
+    where
+        C: TECurveConfig,
+        C::BaseField: PrimeField,
+    {
+        let cs = ConstraintSystem::<C::BaseField>::new_ref();
+
+        let g_affine = g.into_affine();
+        let native_point_bytes = g_affine.to_sponge_bytes_as_vec();
+        let native_point_field = g_affine.to_sponge_field_elements_as_vec::<C::BaseField>();
+
+        let cs_point =
+            TEAffineVar::<C, FpVar<C::BaseField>>::new_input(ns!(cs, "te_affine"), || Ok(g))?;
+        let cs_point_bytes = cs_point.to_sponge_bytes()?;
+        let cs_point_field = cs_point.to_sponge_field_elements()?;
+
+        assert_eq!(native_point_bytes, cs_point_bytes.value()?);
+        assert_eq!(native_point_field, cs_point_field.value()?);
+
+        assert!(cs.is_satisfied()?);
+
+        Ok(())
+    }
 
     #[test]
     fn consistency_check() {
         // test constraint is consistent with native
-        let cs = ConstraintSystem::<Fr>::new_ref();
+        let cs = ConstraintSystem::<Fq>::new_ref();
         let mut rng = test_rng();
         // uint8
         let data = vec![0u8, 1u8, 2u8, 3u8, 4u8, 5u8];
@@ -251,7 +337,7 @@ mod tests {
 
         // field
 
-        let data: Vec<_> = (0..10).map(|_| Fr::rand(&mut rng)).collect();
+        let data: Vec<_> = (0..10).map(|_| Fq::rand(&mut rng)).collect();
         let data_var: Vec<_> = data
             .iter()
             .map(|item| FpVar::new_input(ns!(cs, "fpdata"), || Ok(*item)).unwrap())
@@ -260,6 +346,14 @@ mod tests {
         let native_bytes = data.to_sponge_bytes_as_vec();
         let constraint_bytes = data_var.to_sponge_bytes().unwrap();
         assert_eq!(constraint_bytes.value().unwrap(), native_bytes);
+
+        // sw curve
+        sw_curve_consistency_check(cs.clone(), G::zero()).unwrap();
+        sw_curve_consistency_check(cs.clone(), G::rand(&mut rng)).unwrap();
+
+        // twisted edwards curve
+        te_curve_consistency_check(EdwardsProjective::zero()).unwrap();
+        te_curve_consistency_check(EdwardsProjective::rand(&mut rng)).unwrap();
 
         assert!(cs.is_satisfied().unwrap())
     }

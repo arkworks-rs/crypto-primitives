@@ -1,13 +1,12 @@
 use ark_ff::{BigInteger, PrimeField};
 use ark_r1cs_std::prelude::*;
 use ark_r1cs_std::{
-    bits::boolean::Boolean,
     fields::{
-        fp::{AllocatedFp, FpVar},
-        nonnative::{
+        emulated_fp::{
             params::{get_params, OptimizationType},
-            AllocatedNonNativeFieldVar, NonNativeFieldVar,
+            AllocatedEmulatedFpVar, EmulatedFpVar,
         },
+        fp::{AllocatedFp, FpVar},
     },
     R1CSVar,
 };
@@ -377,40 +376,40 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
     }
 }
 
-/// Conversion of field elements by allocating them as nonnative field elements
+/// Conversion of field elements by allocating them as "emulated" field elements
 /// Used by Marlin
-pub struct NonNativeFieldInputVar<F, CF>
+pub struct EmulatedFieldInputVar<F, CF>
 where
     F: PrimeField,
     CF: PrimeField,
 {
-    pub val: Vec<NonNativeFieldVar<F, CF>>,
+    pub val: Vec<EmulatedFpVar<F, CF>>,
 }
 
-impl<F, CF> NonNativeFieldInputVar<F, CF>
+impl<F, CF> EmulatedFieldInputVar<F, CF>
 where
     F: PrimeField,
     CF: PrimeField,
 {
-    pub fn new(val: Vec<NonNativeFieldVar<F, CF>>) -> Self {
+    pub fn new(val: Vec<EmulatedFpVar<F, CF>>) -> Self {
         Self { val }
     }
 }
 
-impl<F, CF> IntoIterator for NonNativeFieldInputVar<F, CF>
+impl<F, CF> IntoIterator for EmulatedFieldInputVar<F, CF>
 where
     F: PrimeField,
     CF: PrimeField,
 {
-    type Item = NonNativeFieldVar<F, CF>;
-    type IntoIter = IntoIter<NonNativeFieldVar<F, CF>>;
+    type Item = EmulatedFpVar<F, CF>;
+    type IntoIter = IntoIter<EmulatedFpVar<F, CF>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.val.into_iter()
     }
 }
 
-impl<F, CF> Clone for NonNativeFieldInputVar<F, CF>
+impl<F, CF> Clone for EmulatedFieldInputVar<F, CF>
 where
     F: PrimeField,
     CF: PrimeField,
@@ -422,7 +421,7 @@ where
     }
 }
 
-impl<F, CF> AllocVar<Vec<F>, CF> for NonNativeFieldInputVar<F, CF>
+impl<F, CF> AllocVar<Vec<F>, CF> for EmulatedFieldInputVar<F, CF>
 where
     F: PrimeField,
     CF: PrimeField,
@@ -435,17 +434,17 @@ where
         if mode == AllocationMode::Input {
             Self::new_input(cs, f)
         } else {
-            // directly allocate them as nonnative field elements
+            // directly allocate them as emulated field elements
 
             let ns = cs.into();
             let cs = ns.cs();
 
             let t = f()?;
             let obj = t.borrow();
-            let mut allocated = Vec::<NonNativeFieldVar<F, CF>>::new();
+            let mut allocated = Vec::<EmulatedFpVar<F, CF>>::new();
 
             for elem in obj.iter() {
-                let elem_allocated = NonNativeFieldVar::<F, CF>::new_variable(
+                let elem_allocated = EmulatedFpVar::<F, CF>::new_variable(
                     ns!(cs, "allocating element"),
                     || Ok(elem),
                     mode,
@@ -461,7 +460,7 @@ where
         cs: impl Into<Namespace<CF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
     ) -> Result<Self, SynthesisError> {
-        // allocate the nonnative field elements by squeezing the bits like in BooleanInputVar
+        // allocate the emulated field elements by squeezing the bits like in BooleanInputVar
 
         let ns = cs.into();
         let cs = ns.cs();
@@ -485,11 +484,11 @@ where
         let boolean_allocation =
             BooleanInputVar::new_input(ns!(cs, "boolean"), || Ok(obj.borrow()))?;
 
-        // Step 2: allocating the nonnative field elements as witnesses
-        let mut field_allocation = Vec::<AllocatedNonNativeFieldVar<F, CF>>::new();
+        // Step 2: allocating the emulated field elements as witnesses
+        let mut field_allocation = Vec::<AllocatedEmulatedFpVar<F, CF>>::new();
 
         for elem in obj.borrow().iter() {
-            let mut elem_allocated = AllocatedNonNativeFieldVar::<F, CF>::new_witness(
+            let mut elem_allocated = AllocatedEmulatedFpVar::<F, CF>::new_witness(
                 ns!(cs, "allocating element"),
                 || Ok(elem),
             )?;
@@ -532,9 +531,9 @@ where
             }
         }
 
-        let mut wrapped_field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
+        let mut wrapped_field_allocation = Vec::<EmulatedFpVar<F, CF>>::new();
         for field_gadget in field_allocation.iter() {
-            wrapped_field_allocation.push(NonNativeFieldVar::Var(field_gadget.clone()));
+            wrapped_field_allocation.push(EmulatedFpVar::Var(field_gadget.clone()));
         }
         Ok(Self {
             val: wrapped_field_allocation,
@@ -542,7 +541,7 @@ where
     }
 }
 
-impl<F, CF> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF>
+impl<F, CF> FromFieldElementsGadget<F, CF> for EmulatedFieldInputVar<F, CF>
 where
     F: PrimeField,
     CF: PrimeField,
@@ -558,8 +557,8 @@ where
             // Step 1: use BooleanInputVar to convert them into booleans
             let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
 
-            // Step 2: construct the nonnative field gadgets from bits
-            let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
+            // Step 2: construct the emulated field gadgets from bits
+            let mut field_allocation = Vec::<EmulatedFpVar<F, CF>>::new();
 
             // reconstruct the field elements and check consistency
             for field_bits in boolean_allocation.val.iter() {
@@ -576,7 +575,7 @@ where
                     cur.double_in_place();
                 }
 
-                field_allocation.push(NonNativeFieldVar::Constant(value));
+                field_allocation.push(EmulatedFpVar::Constant(value));
             }
 
             Ok(Self {
@@ -598,8 +597,8 @@ where
             // Step 1: use BooleanInputVar to convert them into booleans
             let boolean_allocation = BooleanInputVar::<F, CF>::from_field_elements(src)?;
 
-            // Step 2: construct the nonnative field gadgets from bits
-            let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
+            // Step 2: construct the emulated field gadgets from bits
+            let mut field_allocation = Vec::<EmulatedFpVar<F, CF>>::new();
 
             // reconstruct the field elements and check consistency
             for field_bits in boolean_allocation.val.iter() {
@@ -642,8 +641,8 @@ where
                     limbs.push(FpVar::from(limb));
                 }
 
-                field_allocation.push(NonNativeFieldVar::<F, CF>::Var(
-                    AllocatedNonNativeFieldVar::<F, CF> {
+                field_allocation.push(EmulatedFpVar::<F, CF>::Var(
+                    AllocatedEmulatedFpVar::<F, CF> {
                         cs: cs.clone(),
                         limbs,
                         num_of_additions_over_normal_form: CF::zero(),

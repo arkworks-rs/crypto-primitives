@@ -5,9 +5,7 @@ mod byte_mt_tests {
     use crate::merkle_tree::constraints::{BytesVarDigestConverter, ConfigGadget};
     use crate::merkle_tree::{constraints::PathVar, ByteDigestConverter, Config, MerkleTree};
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
-    #[allow(unused)]
     use ark_r1cs_std::prelude::*;
-    #[allow(unused)]
     use ark_relations::r1cs::ConstraintSystem;
 
     #[derive(Clone)]
@@ -61,12 +59,8 @@ mod byte_mt_tests {
 
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_crh_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
-        let mut tree = JubJubMerkleTree::new(
-            &leaf_crh_params,
-            &two_to_one_crh_params,
-            leaves.iter().map(|v| v.as_slice()),
-        )
-        .unwrap();
+        let mut tree =
+            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_crh_params, leaves).unwrap();
         let root = tree.root();
         for (i, leaf) in leaves.iter().enumerate() {
             let cs = ConstraintSystem::<Fq>::new_ref();
@@ -243,10 +237,10 @@ mod field_mt_tests {
     use crate::merkle_tree::constraints::ConfigGadget;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{constraints::PathVar, Config, IdentityDigestConverter, MerkleTree};
-    use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::uint32::UInt32;
     use ark_r1cs_std::R1CSVar;
+    use ark_r1cs_std::{alloc::AllocVar, convert::ToBitsGadget};
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::{test_rng, One, UniformRand};
 
@@ -288,12 +282,7 @@ mod field_mt_tests {
     ) {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
-        let mut tree = FieldMT::new(
-            &leaf_crh_params,
-            &two_to_one_params,
-            leaves.iter().map(|x| x.as_slice()),
-        )
-        .unwrap();
+        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, leaves).unwrap();
         let root = tree.root();
         for (i, leaf) in leaves.iter().enumerate() {
             let cs = ConstraintSystem::<F>::new_ref();
@@ -357,7 +346,8 @@ mod field_mt_tests {
             // try replace the path index
             let leaf_pos = UInt32::new_witness(cs.clone(), || Ok(i as u32))
                 .unwrap()
-                .to_bits_le();
+                .to_bits_le()
+                .unwrap();
             cw.set_leaf_position(leaf_pos.clone());
 
             // check if get_leaf_position is correct

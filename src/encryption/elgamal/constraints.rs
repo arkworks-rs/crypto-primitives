@@ -158,8 +158,8 @@ where
         let ns = cs.into();
         let cs = ns.cs();
         let prep = f().map(|g| *g.borrow());
-        let c1 = GG::new_variable(cs.clone(), || prep.map(|g| g.borrow().0), mode)?;
-        let c2 = GG::new_variable(cs.clone(), || prep.map(|g| g.borrow().1), mode)?;
+        let c1 = GG::new_variable(cs.clone(), || prep.map(|g| g.0), mode)?;
+        let c2 = GG::new_variable(cs.clone(), || prep.map(|g| g.1), mode)?;
         Ok(Self {
             c1,
             c2,
@@ -176,7 +176,7 @@ where
 {
     #[inline]
     fn is_eq(&self, other: &Self) -> Result<Boolean<ConstraintF<C>>, SynthesisError> {
-        self.c1.is_eq(&other.c1)?.and(&self.c2.is_eq(&other.c2)?)
+        Ok(self.c1.is_eq(&other.c1)? & &self.c2.is_eq(&other.c2)?)
     }
 }
 
