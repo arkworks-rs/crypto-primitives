@@ -85,14 +85,14 @@ fn mixing_g<ConstraintF: PrimeField>(
     x: &UInt32<ConstraintF>,
     y: &UInt32<ConstraintF>,
 ) -> Result<(), SynthesisError> {
-    v[a] = UInt32::addmany(&[v[a].clone(), v[b].clone(), x.clone()])?;
-    v[d] = v[d].xor(&v[a])?.rotr(R1);
-    v[c] = UInt32::addmany(&[v[c].clone(), v[d].clone()])?;
-    v[b] = v[b].xor(&v[c])?.rotr(R2);
-    v[a] = UInt32::addmany(&[v[a].clone(), v[b].clone(), y.clone()])?;
-    v[d] = v[d].xor(&v[a])?.rotr(R3);
-    v[c] = UInt32::addmany(&[v[c].clone(), v[d].clone()])?;
-    v[b] = v[b].xor(&v[c])?.rotr(R4);
+    v[a] = UInt32::wrapping_add_many(&[v[a].clone(), v[b].clone(), x.clone()])?;
+    v[d] = (&v[d] ^ &v[a]).rotate_right(R1);
+    v[c] = v[c].wrapping_add(&v[d]);
+    v[b] = (&v[b] ^ &v[c]).rotate_right(R2);
+    v[a] = UInt32::wrapping_add_many(&[v[a].clone(), v[b].clone(), y.clone()])?;
+    v[d] = (&v[d] ^ &v[a]).rotate_right(R3);
+    v[c] = v[c].wrapping_add(&v[d]);
+    v[b] = (&v[b] ^ &v[c]).rotate_right(R4);
 
     Ok(())
 }
@@ -173,11 +173,11 @@ fn blake2s_compression<ConstraintF: PrimeField>(
 
     assert_eq!(v.len(), 16);
 
-    v[12] = v[12].xor(&UInt32::constant(t as u32))?;
-    v[13] = v[13].xor(&UInt32::constant((t >> 32) as u32))?;
+    v[12] ^= t as u32;
+    v[13] ^= (t >> 32) as u32;
 
     if f {
-        v[14] = v[14].xor(&UInt32::constant(u32::max_value()))?;
+        v[14] ^= u32::max_value();
     }
 
     for i in 0..10 {
@@ -194,8 +194,8 @@ fn blake2s_compression<ConstraintF: PrimeField>(
     }
 
     for i in 0..8 {
-        h[i] = h[i].xor(&v[i])?;
-        h[i] = h[i].xor(&v[i + 8])?;
+        h[i] ^= &v[i];
+        h[i] ^= &v[i + 8];
     }
 
     Ok(())
@@ -229,7 +229,7 @@ fn blake2s_compression<ConstraintF: PrimeField>(
 
 pub fn evaluate_blake2s<ConstraintF: PrimeField>(
     input: &[Boolean<ConstraintF>],
-) -> Result<Vec<UInt32<ConstraintF>>, SynthesisError> {
+) -> Result<[UInt32<ConstraintF>; 8], SynthesisError> {
     assert!(input.len() % 8 == 0);
     let mut parameters = [0; 8];
     parameters[0] = 0x01010000 ^ 32;
@@ -239,18 +239,19 @@ pub fn evaluate_blake2s<ConstraintF: PrimeField>(
 pub fn evaluate_blake2s_with_parameters<F: PrimeField>(
     input: &[Boolean<F>],
     parameters: &[u32; 8],
-) -> Result<Vec<UInt32<F>>, SynthesisError> {
+) -> Result<[UInt32<F>; 8], SynthesisError> {
     assert!(input.len() % 8 == 0);
 
-    let mut h = Vec::with_capacity(8);
-    h.push(UInt32::constant(0x6A09E667).xor(&UInt32::constant(parameters[0]))?);
-    h.push(UInt32::constant(0xBB67AE85).xor(&UInt32::constant(parameters[1]))?);
-    h.push(UInt32::constant(0x3C6EF372).xor(&UInt32::constant(parameters[2]))?);
-    h.push(UInt32::constant(0xA54FF53A).xor(&UInt32::constant(parameters[3]))?);
-    h.push(UInt32::constant(0x510E527F).xor(&UInt32::constant(parameters[4]))?);
-    h.push(UInt32::constant(0x9B05688C).xor(&UInt32::constant(parameters[5]))?);
-    h.push(UInt32::constant(0x1F83D9AB).xor(&UInt32::constant(parameters[6]))?);
-    h.push(UInt32::constant(0x5BE0CD19).xor(&UInt32::constant(parameters[7]))?);
+    let mut h = [
+        UInt32::constant(0x6A09E667 ^ parameters[0]),
+        UInt32::constant(0xBB67AE85 ^ parameters[1]),
+        UInt32::constant(0x3C6EF372 ^ parameters[2]),
+        UInt32::constant(0xA54FF53A ^ parameters[3]),
+        UInt32::constant(0x510E527F ^ parameters[4]),
+        UInt32::constant(0x9B05688C ^ parameters[5]),
+        UInt32::constant(0x1F83D9AB ^ parameters[6]),
+        UInt32::constant(0x5BE0CD19 ^ parameters[7]),
+    ];
 
     let mut blocks: Vec<Vec<UInt32<F>>> = vec![];
 
@@ -326,7 +327,7 @@ impl<ConstraintF: PrimeField> EqGadget<ConstraintF> for OutputVar<ConstraintF> {
 
 impl<ConstraintF: PrimeField> ToBytesGadget<ConstraintF> for OutputVar<ConstraintF> {
     #[inline]
-    fn to_bytes(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+    fn to_bytes_le(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
         Ok(self.0.clone())
     }
 }
@@ -383,7 +384,7 @@ impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
             .collect();
         let result: Vec<_> = evaluate_blake2s(&input)?
             .into_iter()
-            .flat_map(|int| int.to_bytes().unwrap())
+            .flat_map(|int| int.to_bytes_le().unwrap())
             .collect();
         Ok(OutputVar(result))
     }
@@ -516,19 +517,8 @@ mod test {
                 .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
 
             for chunk in r {
-                for b in chunk.to_bits_le() {
-                    match b {
-                        Boolean::Is(b) => {
-                            assert!(s.next().unwrap() == b.value().unwrap());
-                        }
-                        Boolean::Not(b) => {
-                            assert!(s.next().unwrap() != b.value().unwrap());
-                        }
-                        Boolean::Constant(b) => {
-                            assert!(input_len == 0);
-                            assert!(s.next().unwrap() == b);
-                        }
-                    }
+                for b in chunk.to_bits_le().unwrap() {
+                    assert_eq!(s.next().unwrap(), b.value().unwrap());
                 }
             }
         }

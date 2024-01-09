@@ -127,8 +127,8 @@ where
         right_input: &Self::OutputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
         // convert output to bytes
-        let left_input = left_input.to_bytes()?;
-        let right_input = right_input.to_bytes()?;
+        let left_input = left_input.to_bytes_le()?;
+        let right_input = right_input.to_bytes_le()?;
         Self::evaluate(parameters, &left_input, &right_input)
     }
 }
