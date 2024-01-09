@@ -58,6 +58,16 @@ where
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
     ) -> Result<Self::OutputVar, SynthesisError> {
+        if (input.len() * 8) > W::WINDOW_SIZE * W::NUM_WINDOWS * CHUNK_SIZE {
+            panic!(
+                "incorrect input bitlength {:?} for window params {:?}x{:?}x{}",
+                input.len() * 8,
+                W::WINDOW_SIZE,
+                W::NUM_WINDOWS,
+                CHUNK_SIZE,
+            );
+        }
+
         // Pad the input if it is not the current length.
         let mut input_in_bits: Vec<Boolean<_>> = input
             .iter()
@@ -266,5 +276,34 @@ mod test {
         let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
         assert!(cs.is_satisfied().unwrap());
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_input_size_check() {
+        // Pick parameters that are far too small for a CRH
+        #[derive(Clone, PartialEq, Eq, Hash)]
+        pub(super) struct TooSmallWindow;
+        impl pedersen::Window for TooSmallWindow {
+            const WINDOW_SIZE: usize = 1;
+            const NUM_WINDOWS: usize = 1;
+        }
+        type TestCRH = bowe_hopwood::CRH<EdwardsConfig, TooSmallWindow>;
+        type TestCRHGadget = bowe_hopwood::constraints::CRHGadget<EdwardsConfig, FqVar>;
+
+        let rng = &mut test_rng();
+        let cs = ConstraintSystem::<Fr>::new_ref();
+
+        let (_, input_var) = generate_u8_input(cs.clone(), 189, rng);
+        println!("number of constraints for input: {}", cs.num_constraints());
+
+        let parameters = TestCRH::setup(rng).unwrap();
+        let parameters_var =
+            <TestCRHGadget as CRHSchemeGadget<TestCRH, Fr>>::ParametersVar::new_witness(
+                ark_relations::ns!(cs, "parameters_var"),
+                || Ok(&parameters),
+            )
+            .unwrap();
+        let _ = TestCRHGadget::evaluate(&parameters_var, &input_var).unwrap();
     }
 }
