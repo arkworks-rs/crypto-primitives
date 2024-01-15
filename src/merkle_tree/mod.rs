@@ -7,6 +7,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
+use std::collections::HashMap;
 
 #[cfg(test)]
 mod tests;
@@ -159,8 +160,11 @@ impl<P: Config> Path<P> {
             P::TwoToOneHash::evaluate(&two_to_one_params, left_child, right_child)?;
 
         // we will use `index` variable to track the position of path
-        let mut index = self.leaf_index;
-        index >>= 1;
+        //let mut index = self.leaf_index;
+        //index >>= 1;
+        let tree_height = self.auth_path.len() + 2;
+        let mut index = convert_index_to_last_level(index, tree_height);
+        index = parent(index);
 
         // Check levels between leaf level and root
         for level in (0..self.auth_path.len()).rev() {
@@ -169,7 +173,8 @@ impl<P: Config> Path<P> {
                 select_left_right_child(index, &curr_path_node, &self.auth_path[level])?;
             // update curr_path_node
             curr_path_node = P::TwoToOneHash::compress(&two_to_one_params, &left, &right)?;
-            index >>= 1;
+            //index >>= 1;
+            index = parent(index);
         }
 
         // check if final hash is root
@@ -178,6 +183,190 @@ impl<P: Config> Path<P> {
         }
 
         Ok(true)
+    }
+}
+
+/// Optimized data structure to store multiple nodes proofs.
+/// For example:
+/// ```tree_diagram
+///         [A]
+///        /   \
+///      [B]    C
+///     / \   /  \
+///    D [E] F    H
+///   .. / \ ....
+///    [I] J
+/// ```
+///  Suppose we want to prove I and J, then: 
+///     `leaf_indexes` is: [2,3] (indexes in Merkle Tree leaves vector)
+///     `leaf_siblings_hashes`: [J,I]
+///     `auth_paths_prefix_lenghts`: [0,2]
+///     `auth_paths_suffixes`: [ [C,D], []]
+///  We can reconstruct the paths incrementally:
+///  First, we reconstruct the first path. The prefix length is 0, hence we do not have any prefix encoding.
+///  The path is thus [C,D].
+///  Once the first path is verified, we can reconstruct the second path. 
+///  The prefix length of 2 means that the path prefix will be `previous_path[:2] -> [C,D]`.
+///  Since the Merkle Tree branch is the same, the authentication path is the same (which means in this case that there is no suffix).
+///  The second path is hence `[C,D] + []` (i.e., plus the empty suffix). We can verify the second path as the first one.
+
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(
+    Clone(bound = "P: Config"),
+    Debug(bound = "P: Config"),
+    Default(bound = "P: Config")
+)]
+pub struct MultiPath<P: Config> {
+    /// For node i, stores the hash of node i's sibling
+    pub leaf_siblings_hashes: Vec<P::LeafDigest>,
+    /// For node i path, stores at index i the prefix length of the path, for Incremental encoding
+    pub auth_paths_prefix_lenghts: Vec<usize>,
+    /// For node i path, stores at index i the suffix of the path for Incremental Encoding (as vector of symbols to be resolved with self.lut). Order is from higher layer to lower layer (does not include root node).
+    pub auth_paths_suffixes: Vec<Vec<P::InnerDigest>>,
+    /// stores the leaf indexes of the nodes to prove
+    pub leaf_indexes: Vec<usize>,
+}
+
+impl<P: Config> MultiPath<P> {
+    /// Returns a compressed MultiPath containing multiple encoded authentication paths for `indexes`
+    fn compress(&mut self, indexes: Vec<usize>, leaf_sibling_hashes: Vec<P::LeafDigest>, auth_paths: Vec<Vec<P::InnerDigest>>)->Result<Self, crate::Error>{
+        
+        // use multipath for more than 1 leaf
+        assert!(indexes.len() > 1, format!("Expected more than one leaf to verify for MultiPath, got {}", indexes.len()));
+
+        let mut auth_paths_prefix_lenghts = Vec::new();
+        let mut auth_paths_suffixes = Vec::new();
+        let mut prev_path = Path::default();
+
+        // Encode paths with Incremental Encoding (Front compression)
+        for path in auth_paths{
+            if prev_path == Path::default(){
+                // no previous prefix
+                auth_paths_prefix_lenghts.append(0);
+                auth_paths_suffixes.append(path.auth_path);
+            } else{
+                // there is a previous prefix
+                let mut prefix_len = 0;
+                while prev_path.auth_path[prefix_len] == path[prefix_len]{
+                    prefix_len++;
+                }
+                auth_paths_prefix_lenghts.append(prefix_len);
+                auth_paths_suffixes.append({Vec::new()} if prefix_len == prev_path.auth_path.len() else {path[prefix_len..]})
+            }
+            prev_path = path;
+        }
+
+        // check that the first path is complete
+        assert_eq!(self.auth_paths_prefix_lenghts[0],0, format!("Expected first prefix length of MultiPath to be 0, got {}",self.auth_paths_prefix_lenghts[0]));
+        assert_ne!(self.auth_paths_suffixes[0].len(),0, "Expected first suffix length of MultiPath not to be 0");
+        
+        // check consistent lengths
+        assert_eq!(self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len(), format!("Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len()));
+        assert_eq!(self.auth_paths_suffixes.len(), self.indexes.len(), format!("Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}",self.auth_paths_suffixes.len(), self.indexes.len()));
+
+
+        Ok(
+            MultiPath{
+                leaf_indexes: indexes,
+                auth_paths_prefix_lenghts: auth_paths_prefix_lenghts,
+                auth_paths_suffixes: auth_paths_suffixes,
+                leaf_siblings_hashes
+            }
+        )
+    }
+
+    /// Returns the decompressed authentication paths for every leaf index
+    fn decompress(&'_ self) -> Result<impl '_ + Iterator<Item = Vec<P::InnerDigest>>,crate::Error> {
+        
+        // check that the first path is complete
+        assert_eq!(self.auth_paths_prefix_lenghts[0],0, format!("Expected first prefix length of MultiPath to be 0, got {}",self.auth_paths_prefix_lenghts[0]));
+        assert_ne!(self.auth_paths_suffixes[0].len(),0, "Expected first suffix length of MultiPath not to be 0");
+        
+        // check consistent lengths
+        assert_eq!(self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len(), format!("Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len()));
+        assert_eq!(self.auth_paths_suffixes.len(), self.indexes.len(), format!("Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}",self.auth_paths_suffixes.len(), self.indexes.len()));
+
+        // Incrementally reconstruct all the paths
+        let mut curr_path = self.auth_paths_suffixes[0];
+        let mut auth_paths = (0..self.indexes.len()).map(|_| Vec::new());
+        auth_paths[0] = self.auth_paths_suffixes[0];
+        for i in (1..auth_paths.len()){
+            let path = curr_path[0..self.auth_paths_prefix_lenghts[i]].extend(&self.auth_paths_suffixes[i]);
+        }
+        Ok(
+            auth_paths
+        )
+    }
+
+    /// Verify that leaves are at `self.indexes` of the merkle tree.
+    /// * `leaf_size`: leaf size in number of bytes
+    ///
+    /// `verify` infers the tree height by setting `tree_height = self.auth_paths_suffixes[0].len() + 2`
+    pub fn verify<L: Borrow<P::Leaf>>(
+        &self,
+        leaf_hash_params: &LeafParam<P>,
+        two_to_one_params: &TwoToOneParam<P>,
+        root_hash: &P::InnerDigest,
+        leaves: Vec<L>,
+    ) -> Result<bool, crate::Error> {
+
+        let auth_paths = self.decompress()?;
+        let tree_height = auth_paths[0].len();
+
+        // LookUp table to speedup computation avoid redundant hash computations
+        let hash_lut: HashMap<&usize,P::InnerDigest> = HashMap::new();
+        
+        for leaf_index, leaf, leaf_sibling_hash, path in zip(self.indexes, leaves, self.leaf_siblings_hashes, self.auth_paths){
+            let claimed_leaf_hash = P::LeafHash::evaluate(&leaf_hash_params, leaf)?;
+            let (left_child, right_child) =
+                select_left_right_child(leaf_index, &claimed_leaf_hash, &leaf_sibling_hash)?;
+            // check hash along the path from bottom to root
+
+            // leaf layer to inner layer conversion
+            let left_child = P::LeafInnerDigestConverter::convert(left_child)?;
+            let right_child = P::LeafInnerDigestConverter::convert(right_child)?;
+            
+            // we will use `index` variable to track the position of path
+            let mut index = convert_index_to_last_level(leaf_index, tree_height);
+            index = parent(index);
+            
+            let mut curr_path_node = *hash_lut.entry(index).or_insert(
+                P::TwoToOneHash::evaluate(&two_to_one_params, left_child, right_child)?
+            );
+            
+            // Check levels between leaf level and root
+            for level in (0..self.auth_path.len()).rev() {
+                // check if path node at this level is left or right
+                let (left, right) =
+                    select_left_right_child(index, &curr_path_node, &auth_path[level])?;
+                // update curr_path_node
+                index = parent(index);
+                curr_path_node = *hash_lut.entry(index).or_insert(
+                    P::TwoToOneHash::evaluate(&two_to_one_params, left, right)?
+                );
+            }
+            
+            // check if final hash is root
+            if &curr_path_node != root_hash {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// The position of on_path node in `leaf_and_sibling_hash` and `non_leaf_and_sibling_hash_path`.
+    /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
+    ///
+    /// This function simply converts every index in `self.indexes` to boolean array in big endian form.
+    #[allow(unused)] // this function is actually used when r1cs feature is on
+    fn position_list(&'_ self) -> impl '_ + Iterator<Item = Vec<bool>> {
+        let path_len = self.auth_paths_suffixes[0].len();
+        
+        cfg_into_iter!(self.indexes).map(|i| {
+            (0..path_len + 1)
+            .map(move |j| ((i >> j) & 1) != 0)
+            .rev()
+        })
     }
 }
 
@@ -398,6 +587,28 @@ impl<P: Config> MerkleTree<P> {
             auth_path: path,
             leaf_sibling_hash,
         })
+    }
+
+    /// Returns a MultiPath (multiple authentication paths in compressed form), from every leaf i at `indexes[i]` to root.
+    /// For compression efficiency, indexes should be sorted, so that leaves with similar paths are close together
+    
+    pub fn generate_multi_proof(&self, indexes: Vec<usize>) -> Result<MultiPath<P>, crate::Error> {
+        // gather basic tree information
+        let tree_height = tree_height(self.leaf_nodes.len());
+        
+        let auth_paths: Vec<Path> = cfg_into_iter!(indexes).map(|i| self.generate_proof(i)).collect::<Result<Vec<Path>,_>>()?;
+        
+        let leaf_siblings_hashes = cfg_into_iter!(indexes).map(|i| {
+            if i & 1 == 0 {
+                // leaf is left child
+                self.leaf_nodes[index + 1].clone()
+            } else {
+                // leaf is right child
+                self.leaf_nodes[index - 1].clone()
+            }
+        }).collect();
+
+        MultiPath::compress(indexes, leaf_siblings_hashes, auth_paths)
     }
 
     /// Given the index and new leaf, return the hash of leaf and an updated path in order from root to bottom non-leaf level.
