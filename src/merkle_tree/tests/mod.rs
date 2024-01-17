@@ -134,14 +134,14 @@ mod bytes_mt_tests {
     }
 
     #[test]
-    fn multi_proof_test(){
+    fn multi_proof_dissection_test() {
         let mut rng = test_rng();
 
         let mut leaves = Vec::new();
         for _ in 0..8u8 {
             leaves.push(BigInteger256::rand(&mut rng));
         }
-        assert_eq!(leaves.len(),8);
+        assert_eq!(leaves.len(), 8);
 
         let serialized_leaves: Vec<_> = leaves
             .iter()
@@ -151,10 +151,10 @@ mod bytes_mt_tests {
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
 
-        let tree =
-            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &serialized_leaves).unwrap();
+        let tree = JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &serialized_leaves)
+            .unwrap();
 
-        let mut proofs=Vec::with_capacity(leaves.len());
+        let mut proofs = Vec::with_capacity(leaves.len());
 
         for (i, _) in leaves.iter().enumerate() {
             proofs.push(tree.generate_proof(i).unwrap());
@@ -167,24 +167,29 @@ mod bytes_mt_tests {
         // test compression theretical lengths for size 8 Tree
         let theoretical_prefix_lengths = vec![0, 2, 1, 2, 0, 2, 1, 2];
 
-        for (comp_len, exp_len) in zip(&multi_proof.auth_paths_prefix_lenghts, &theoretical_prefix_lengths){
+        for (comp_len, exp_len) in zip(
+            &multi_proof.auth_paths_prefix_lenghts,
+            &theoretical_prefix_lengths,
+        ) {
             assert_eq!(comp_len, exp_len);
         }
 
         // test that the compressed paths can expand to expected len
-        for (prefix_len, suffix) in zip(&multi_proof.auth_paths_prefix_lenghts, &multi_proof.auth_paths_suffixes){
+        for (prefix_len, suffix) in zip(
+            &multi_proof.auth_paths_prefix_lenghts,
+            &multi_proof.auth_paths_suffixes,
+        ) {
             assert_eq!(prefix_len + suffix.len(), proofs[0].auth_path.len());
         }
 
-        let comp_proofs:Vec<_> = multi_proof.decompress().unwrap().collect();
-        
+        let comp_proofs: Vec<_> = multi_proof.decompress().unwrap().collect();
+
         // test decompressed paths are as expected
-        for (comp_path, exp_path) in zip(&comp_proofs, &proofs){
-            for (comp_hash, exp_hash) in zip(comp_path, &exp_path.auth_path){
+        for (comp_path, exp_path) in zip(&comp_proofs, &proofs) {
+            for (comp_hash, exp_hash) in zip(comp_path, &exp_path.auth_path) {
                 assert_eq!(*comp_hash, *exp_hash);
             }
         }
-
     }
 }
 
