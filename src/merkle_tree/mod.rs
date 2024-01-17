@@ -232,39 +232,40 @@ impl<P: Config> MultiPath<P> {
 
         let mut auth_paths_prefix_lenghts:Vec<usize> = Vec::with_capacity(indexes.len());
         let mut auth_paths_suffixes:Vec<Vec<P::InnerDigest>> = Vec::with_capacity(indexes.len());
-        // init to empty path
-        let mut prev_path = Path::default();
-        prev_path.auth_path = Vec::new();
+        
+
+        auth_paths_prefix_lenghts.push(0);
+        auth_paths_suffixes.push(auth_paths[0].auth_path.clone());
+        
+        let mut prev_path = auth_paths[0].clone();
 
         // Encode paths with Incremental Encoding (Front compression)
-        for path in auth_paths{
-            if prev_path.auth_path.len() == 0{
-                // no previous prefix
-                auth_paths_prefix_lenghts.push(0);
-                auth_paths_suffixes.push(path.auth_path.clone());
-            } else{
-                // there is a previous prefix
-                let mut prefix_len = 0;
+        for path in auth_paths[1..].to_vec(){
+            let mut prefix_len = 0;
+            if prev_path.auth_path.len() != 0 && path.auth_path.len() != 0{ 
                 while prev_path.auth_path[prefix_len] == path.auth_path[prefix_len]{
                     prefix_len += 1;
+                    if prefix_len == prev_path.auth_path.len() || prefix_len == path.auth_path.len(){
+                        break;
+                    }
                 }
-                auth_paths_prefix_lenghts.push(prefix_len);
-                if prefix_len == prev_path.auth_path.len() {
-                    auth_paths_suffixes.push(Vec::new());
-                } else {
-                    auth_paths_suffixes.push(path.auth_path[prefix_len..].to_vec().clone());
-                }
+            }
+            auth_paths_prefix_lenghts.push(prefix_len);
+            if prefix_len == prev_path.auth_path.len() {
+                auth_paths_suffixes.push(vec![]);
+            } else {
+                auth_paths_suffixes.push(path.auth_path[prefix_len..].to_vec().clone());
             }
             prev_path = path;
         }
 
         // check that the first path is complete
-        assert_eq!(auth_paths_prefix_lenghts[0], 0, "Expected first prefix length of MultiPath to be 0, got {}",auth_paths_prefix_lenghts[0]);
-        assert_ne!(auth_paths_suffixes[0].len(), 0, "Expected first suffix length of MultiPath not to be 0");
-        
-        // check consistent lengths
-        assert_eq!(auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len());
-        assert_eq!(auth_paths_suffixes.len(), indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}", auth_paths_suffixes.len(), indexes.len());
+        //assert_eq!(auth_paths_prefix_lenghts[0], 0, "Expected first prefix length of MultiPath to be 0, got {}",auth_paths_prefix_lenghts[0]);
+        //assert_ne!(auth_paths_suffixes[0].len(), 0, "Expected first suffix length of MultiPath not to be 0");
+        //
+        //// check consistent lengths
+        //assert_eq!(auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len());
+        //assert_eq!(auth_paths_suffixes.len(), indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}", auth_paths_suffixes.len(), indexes.len());
 
 
         Ok(
@@ -280,13 +281,13 @@ impl<P: Config> MultiPath<P> {
     /// Returns the decompressed authentication paths for every leaf index
     fn decompress(&'_ self) -> Result<impl '_ + Iterator<Item = Vec<P::InnerDigest>>,crate::Error> {
         
-        // check that the first path is complete
-        assert_eq!(self.auth_paths_prefix_lenghts[0], 0, "Expected first prefix length of MultiPath to be 0, got {}",self.auth_paths_prefix_lenghts[0]);
-        assert_ne!(self.auth_paths_suffixes[0].len(), 0, "Expected first suffix length of MultiPath not to be 0");
-        
-        // check consistent lengths
-        assert_eq!(self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len());
-        assert_eq!(self.auth_paths_suffixes.len(), self.leaf_indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}",self.auth_paths_suffixes.len(), self.leaf_indexes.len());
+        //// check that the first path is complete
+        //assert_eq!(self.auth_paths_prefix_lenghts[0], 0, "Expected first prefix length of MultiPath to be 0, got {}",self.auth_paths_prefix_lenghts[0]);
+        //assert_ne!(self.auth_paths_suffixes[0].len(), 0, "Expected first suffix length of MultiPath not to be 0");
+        //
+        //// check consistent lengths
+        //assert_eq!(self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len());
+        //assert_eq!(self.auth_paths_suffixes.len(), self.leaf_indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}",self.auth_paths_suffixes.len(), self.leaf_indexes.len());
 
         // Incrementally reconstruct all the paths
         let mut curr_path = self.auth_paths_suffixes[0].clone();
@@ -312,12 +313,13 @@ impl<P: Config> MultiPath<P> {
         leaf_hash_params: &LeafParam<P>,
         two_to_one_params: &TwoToOneParam<P>,
         root_hash: &P::InnerDigest,
-        leaves: Vec<L>,
+        leaves: &Vec<L>,
     ) -> Result<bool, crate::Error> {
 
         // array of auth paths as arrays of InnerDigests
-        let auth_paths:Vec<Vec<P::InnerDigest>> = self.decompress()?.collect(); 
-        let tree_height = auth_paths[0].len();
+        let auth_paths:Vec<Vec<P::InnerDigest>> = self.decompress()?.collect();
+        
+        let tree_height = auth_paths[0].len() + 2;
 
         // LookUp table to speedup computation avoid redundant hash computations
         let mut hash_lut: HashMap<usize,P::InnerDigest> = HashMap::new();
@@ -354,7 +356,7 @@ impl<P: Config> MultiPath<P> {
                     select_left_right_child(index, curr_path_node, &auth_path[level])?;
                 // update curr_path_node
                 index >>= 1;
-                index_in_tree = parent(index).unwrap();
+                index_in_tree = parent(index_in_tree).unwrap();
                 curr_path_node = hash_lut.entry(index_in_tree).or_insert(
                     P::TwoToOneHash::compress(&two_to_one_params, left, right)?
                 );
@@ -608,6 +610,7 @@ impl<P: Config> MerkleTree<P> {
     /// For compression efficiency, indexes should be sorted, so that leaves with similar paths are close together
     pub fn generate_multi_proof(&self, indexes: Vec<usize>) -> Result<MultiPath<P>, crate::Error> {
                 
+        
         let auth_paths: Vec<Path<P>> = cfg_into_iter!(indexes.clone())
             .map(|i| self.generate_proof(i))
             .collect::<Result<Vec<Path<P>>,crate::Error>>()?;

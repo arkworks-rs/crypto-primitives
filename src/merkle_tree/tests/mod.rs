@@ -55,10 +55,19 @@ mod bytes_mt_tests {
         // test merkle tree functionality without update
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.generate_proof(i).unwrap();
+            println!("{}", proof.auth_path.len());
             assert!(proof
                 .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
                 .unwrap());
         }
+
+        // test the merkle tree multi-proof functionality
+        let mut multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+        
+        assert!(multi_proof
+            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .unwrap());
+
 
         // test merkle tree update functionality
         for (i, v) in update_query {
@@ -75,6 +84,13 @@ mod bytes_mt_tests {
                 .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
                 .unwrap());
         }
+
+        // test the merkle tree multi-proof functionality again
+        multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+
+        assert!(multi_proof
+            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .unwrap());
     }
 
     #[test]
@@ -155,6 +171,13 @@ mod field_mt_tests {
                 .unwrap());
         }
 
+        // test the merkle tree multi-proof functionality
+        let mut multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+        
+        assert!(multi_proof
+            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .unwrap());
+
         {
             // wrong root should lead to error but do not panic
             let wrong_root = root + F::one();
@@ -166,7 +189,14 @@ mod field_mt_tests {
                     &wrong_root,
                     leaves[0].as_slice()
                 )
-                .unwrap())
+                .unwrap());
+
+            // test the merkle tree multi-proof functionality
+            let multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+            
+            assert!(!multi_proof
+                .verify(&leaf_crh_params, &two_to_one_params, &wrong_root, &leaves)
+                .unwrap());
         }
 
         // test merkle tree update functionality
@@ -185,6 +215,12 @@ mod field_mt_tests {
                 .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
                 .unwrap());
         }
+
+        multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+            
+        assert!(multi_proof
+            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .unwrap());
     }
 
     #[test]
