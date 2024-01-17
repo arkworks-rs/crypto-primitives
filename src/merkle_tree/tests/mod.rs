@@ -164,7 +164,8 @@ mod bytes_mt_tests {
             .generate_multi_proof(&mut (0..leaves.len()).collect())
             .unwrap();
 
-        // test compression theretical lengths for size 8 Tree
+        // test compression theretical prefix lengths for size 8 Tree:
+        // we should send 6 hashes instead of 2*8 = 16
         let theoretical_prefix_lengths = vec![0, 2, 1, 2, 0, 2, 1, 2];
 
         for (comp_len, exp_len) in zip(
