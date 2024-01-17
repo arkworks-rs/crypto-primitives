@@ -262,7 +262,12 @@ mod field_mt_tests {
                 .unwrap();
 
             assert!(!multi_proof
-                .verify(&leaf_crh_params, &two_to_one_params, &wrong_root, leaves.clone())
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_params,
+                    &wrong_root,
+                    leaves.clone()
+                )
                 .unwrap());
         }
 

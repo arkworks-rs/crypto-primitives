@@ -7,7 +7,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 
 #[cfg(test)]
 mod tests;
@@ -226,11 +226,10 @@ pub struct MultiPath<P: Config> {
 impl<P: Config> MultiPath<P> {
     /// Returns a compressed MultiPath containing multiple encoded authentication paths for `indexes`
     fn compress(
-        indexes: impl IntoIterator<Item=usize>,
+        indexes: impl IntoIterator<Item = usize>,
         leaf_siblings_hashes: Vec<P::LeafDigest>,
         auth_paths: Vec<Path<P>>,
     ) -> Result<Self, crate::Error> {
-        
         let indexes = Vec::from_iter(indexes);
         // use multipath for more than 1 leaf
         assert!(
