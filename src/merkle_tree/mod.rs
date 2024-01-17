@@ -8,6 +8,7 @@ use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
 use std::collections::HashMap;
+use std::iter::zip;
 
 #[cfg(test)]
 mod tests;
@@ -266,7 +267,6 @@ impl<P: Config> MultiPath<P> {
         //// check consistent lengths
         //assert_eq!(auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len());
         //assert_eq!(auth_paths_suffixes.len(), indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}", auth_paths_suffixes.len(), indexes.len());
-
 
         Ok(
             MultiPath{
