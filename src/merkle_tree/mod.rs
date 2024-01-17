@@ -260,14 +260,7 @@ impl<P: Config> MultiPath<P> {
             prev_path = path;
         }
 
-        // check that the first path is complete
-        //assert_eq!(auth_paths_prefix_lenghts[0], 0, "Expected first prefix length of MultiPath to be 0, got {}",auth_paths_prefix_lenghts[0]);
-        //assert_ne!(auth_paths_suffixes[0].len(), 0, "Expected first suffix length of MultiPath not to be 0");
-        //
-        //// check consistent lengths
-        //assert_eq!(auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", auth_paths_prefix_lenghts.len(), auth_paths_suffixes.len());
-        //assert_eq!(auth_paths_suffixes.len(), indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}", auth_paths_suffixes.len(), indexes.len());
-
+       
         Ok(
             MultiPath{
                 leaf_indexes: indexes.clone(),
@@ -281,14 +274,7 @@ impl<P: Config> MultiPath<P> {
     /// Returns the decompressed authentication paths for every leaf index
     fn decompress(&'_ self) -> Result<impl '_ + Iterator<Item = Vec<P::InnerDigest>>,crate::Error> {
         
-        //// check that the first path is complete
-        //assert_eq!(self.auth_paths_prefix_lenghts[0], 0, "Expected first prefix length of MultiPath to be 0, got {}",self.auth_paths_prefix_lenghts[0]);
-        //assert_ne!(self.auth_paths_suffixes[0].len(), 0, "Expected first suffix length of MultiPath not to be 0");
-        //
-        //// check consistent lengths
-        //assert_eq!(self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len(), "Vector of prefix lenghts and suffixes of MultiPath do not have equal length: {} and {}", self.auth_paths_prefix_lenghts.len(), self.auth_paths_suffixes.len());
-        //assert_eq!(self.auth_paths_suffixes.len(), self.leaf_indexes.len(), "Vector of suffixes and indexes of MultiPath do not have equal length: {} and {}",self.auth_paths_suffixes.len(), self.leaf_indexes.len());
-
+        
         // Incrementally reconstruct all the paths
         let mut curr_path = self.auth_paths_suffixes[0].clone();
         let mut auth_paths = (0..self.leaf_indexes.len()).map(|_| Vec::new()).collect::<Vec<Vec<P::InnerDigest>>>();
@@ -499,8 +485,8 @@ impl<P: Config> MerkleTree<P> {
                     // leaf in the whole tree (represented as a list in level order). We need to shift it
                     // by `-upper_bound` to get the index in `leaf_nodes` list.
 
-                    //similarly, we need to rescale i by start_index
-                    //to get the index outside the slice and in the level-ordered list of nodes
+                    // similarly, we need to rescale i by start_index
+                    // to get the index outside the slice and in the level-ordered list of nodes
 
                     let current_index = i + start_index;
                     let left_leaf_index = left_child(current_index) - upper_bound;
@@ -535,8 +521,8 @@ impl<P: Config> MerkleTree<P> {
                     // leaf in the whole tree (represented as a list in level order). We need to shift it
                     // by `-upper_bound` to get the index in `leaf_nodes` list.
 
-                    //similarly, we need to rescale i by start_index
-                    //to get the index outside the slice and in the level-ordered list of nodes
+                    // similarly, we need to rescale i by start_index
+                    // to get the index outside the slice and in the level-ordered list of nodes
                     let current_index = i + start_index;
                     let left_leaf_index = left_child(current_index) - upper_bound;
                     let right_leaf_index = right_child(current_index) - upper_bound;
