@@ -62,7 +62,7 @@ mod bytes_mt_tests {
         }
 
         // test the merkle tree multi-proof functionality
-        let mut multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+        let mut multi_proof = tree.generate_multi_proof(&mut (0..leaves.len()).collect()).unwrap();
         
         assert!(multi_proof
             .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
@@ -86,7 +86,7 @@ mod bytes_mt_tests {
         }
 
         // test the merkle tree multi-proof functionality again
-        multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+        multi_proof = tree.generate_multi_proof(&mut (0..leaves.len()).collect()).unwrap();
 
         assert!(multi_proof
             .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
@@ -172,7 +172,7 @@ mod field_mt_tests {
         }
 
         // test the merkle tree multi-proof functionality
-        let mut multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+        let mut multi_proof = tree.generate_multi_proof(&mut (0..leaves.len()).collect()).unwrap();
         
         assert!(multi_proof
             .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
@@ -192,7 +192,7 @@ mod field_mt_tests {
                 .unwrap());
 
             // test the merkle tree multi-proof functionality
-            let multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+            let multi_proof = tree.generate_multi_proof(&mut (0..leaves.len()).collect()).unwrap();
             
             assert!(!multi_proof
                 .verify(&leaf_crh_params, &two_to_one_params, &wrong_root, &leaves)
@@ -216,7 +216,7 @@ mod field_mt_tests {
                 .unwrap());
         }
 
-        multi_proof = tree.generate_multi_proof((0..leaves.len()).collect()).unwrap();
+        multi_proof = tree.generate_multi_proof(&mut (0..leaves.len()).collect()).unwrap();
             
         assert!(multi_proof
             .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)

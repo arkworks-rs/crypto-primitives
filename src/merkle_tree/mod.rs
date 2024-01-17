@@ -225,7 +225,7 @@ pub struct MultiPath<P: Config> {
 
 impl<P: Config> MultiPath<P> {
     /// Returns a compressed MultiPath containing multiple encoded authentication paths for `indexes`
-    fn compress(indexes: Vec<usize>, leaf_siblings_hashes: Vec<P::LeafDigest>, auth_paths: Vec<Path<P>>)->Result<Self, crate::Error>{
+    fn compress(indexes: &mut Vec<usize>, leaf_siblings_hashes: Vec<P::LeafDigest>, auth_paths: Vec<Path<P>>)->Result<Self, crate::Error>{
         
         // use multipath for more than 1 leaf
         assert!(indexes.len() > 1, "Expected more than one leaf to verify for MultiPath, got {}", indexes.len());
@@ -270,7 +270,7 @@ impl<P: Config> MultiPath<P> {
 
         Ok(
             MultiPath{
-                leaf_indexes: indexes,
+                leaf_indexes: indexes.clone(),
                 auth_paths_prefix_lenghts: auth_paths_prefix_lenghts,
                 auth_paths_suffixes: auth_paths_suffixes,
                 leaf_siblings_hashes: leaf_siblings_hashes
@@ -383,7 +383,7 @@ impl<P: Config> MultiPath<P> {
             .map(move |j| ((i >> j) & 1) != 0)
             .rev()
             .collect()
-        })
+        }).collect::<Vec<_>>().into_iter()
     }
 }
 
@@ -607,12 +607,12 @@ impl<P: Config> MerkleTree<P> {
     }
 
     /// Returns a MultiPath (multiple authentication paths in compressed form), from every leaf i at `indexes[i]` to root.
-    /// For compression efficiency, indexes should be sorted, so that leaves with similar paths are close together
-    pub fn generate_multi_proof(&self, indexes: Vec<usize>) -> Result<MultiPath<P>, crate::Error> {
+    pub fn generate_multi_proof(&self, indexes: &mut Vec<usize>) -> Result<MultiPath<P>, crate::Error> {
                 
-        
-        let auth_paths: Vec<Path<P>> = cfg_into_iter!(indexes.clone())
-            .map(|i| self.generate_proof(i))
+        // sort for encoding efficiency
+        indexes.sort();
+        let auth_paths: Vec<Path<P>> = cfg_into_iter!(indexes)
+            .map(|i| self.generate_proof(*i))
             .collect::<Result<Vec<Path<P>>,crate::Error>>()?;
         
         let leaf_siblings_hashes = cfg_into_iter!(indexes.clone()).map(|i| {
