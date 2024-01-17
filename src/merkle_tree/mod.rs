@@ -7,8 +7,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
-use std::collections::HashMap;
-use std::iter::zip;
+use std::collections::{HashMap, BTreeSet};
 
 #[cfg(test)]
 mod tests;
@@ -191,8 +190,8 @@ impl<P: Config> Path<P> {
 ///      [B]    C
 ///     / \   /  \
 ///    D [E] F    H
-///   .. / \ ....
-///    [I] J
+///   / \ / \ ....
+///  [I]J L  M
 /// ```
 ///  Suppose we want to prove I and J, then:
 ///     `leaf_indexes` is: [2,3] (indexes in Merkle Tree leaves vector)
@@ -227,10 +226,12 @@ pub struct MultiPath<P: Config> {
 impl<P: Config> MultiPath<P> {
     /// Returns a compressed MultiPath containing multiple encoded authentication paths for `indexes`
     fn compress(
-        indexes: &mut Vec<usize>,
+        indexes: impl IntoIterator<Item=usize>,
         leaf_siblings_hashes: Vec<P::LeafDigest>,
         auth_paths: Vec<Path<P>>,
     ) -> Result<Self, crate::Error> {
+        
+        let indexes = Vec::from_iter(indexes);
         // use multipath for more than 1 leaf
         assert!(
             indexes.len() > 1,
@@ -268,7 +269,7 @@ impl<P: Config> MultiPath<P> {
         }
 
         Ok(MultiPath {
-            leaf_indexes: indexes.clone(),
+            leaf_indexes: indexes,
             auth_paths_prefix_lenghts: auth_paths_prefix_lenghts,
             auth_paths_suffixes: auth_paths_suffixes,
             leaf_siblings_hashes: leaf_siblings_hashes,
@@ -295,6 +296,7 @@ impl<P: Config> MultiPath<P> {
     }
 
     /// Verify that leaves are at `self.leaf_indexes` of the merkle tree.
+    /// Note that the order of the leaves hashes should match the leaves respective indexes
     /// * `leaf_size`: leaf size in number of bytes
     ///
     /// `verify` infers the tree height by setting `tree_height = self.auth_paths_suffixes[0].len() + 2`
@@ -303,9 +305,12 @@ impl<P: Config> MultiPath<P> {
         leaf_hash_params: &LeafParam<P>,
         two_to_one_params: &TwoToOneParam<P>,
         root_hash: &P::InnerDigest,
-        leaves: &Vec<L>,
+        leaves: impl IntoIterator<Item = L>,
     ) -> Result<bool, crate::Error> {
         // array of auth paths as arrays of InnerDigests
+
+        let leaves: Vec<L> = leaves.into_iter().collect();
+
         let auth_paths: Vec<Vec<P::InnerDigest>> = self.decompress()?.collect();
 
         let tree_height = auth_paths[0].len() + 2;
@@ -603,15 +608,20 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
-    /// Returns a MultiPath (multiple authentication paths in compressed form), from every leaf i at `indexes[i]` to root.
+    /// Returns a MultiPath (multiple authentication paths in compressed form, with Front Incremental Encoding),
+    /// from every leaf to root.
+    /// Note that for compression efficiency, the indexes are internally sorted.
+    /// When verifying the proof, leaves hashes should be supplied in order, that is:
+    /// let ordered_leaves: Vec<_> = self.leaf_indexes.into_iter().map(|i| leaves[i]).collect();
     pub fn generate_multi_proof(
         &self,
-        indexes: &mut Vec<usize>,
+        indexes: impl IntoIterator<Item = usize>,
     ) -> Result<MultiPath<P>, crate::Error> {
-        // sort for encoding efficiency
-        indexes.sort();
-        let auth_paths: Vec<Path<P>> = cfg_into_iter!(indexes)
-            .map(|i| self.generate_proof(*i))
+        // pruned and sorted for encoding efficiency
+        let indexes: BTreeSet<usize> = indexes.into_iter().collect();
+
+        let auth_paths: Vec<Path<P>> = cfg_into_iter!(indexes.clone())
+            .map(|i| self.generate_proof(i))
             .collect::<Result<Vec<Path<P>>, crate::Error>>()?;
 
         let leaf_siblings_hashes = cfg_into_iter!(indexes.clone())

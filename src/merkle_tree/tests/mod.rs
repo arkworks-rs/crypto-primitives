@@ -11,6 +11,7 @@ mod bytes_mt_tests {
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
     use ark_std::{test_rng, UniformRand};
+    use std::iter::zip;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -62,11 +63,11 @@ mod bytes_mt_tests {
 
         // test the merkle tree multi-proof functionality
         let mut multi_proof = tree
-            .generate_multi_proof(&mut (0..leaves.len()).collect())
+            .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
             .unwrap();
 
         assert!(multi_proof
-            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
             .unwrap());
 
         // test merkle tree update functionality
@@ -87,11 +88,11 @@ mod bytes_mt_tests {
 
         // test the merkle tree multi-proof functionality again
         multi_proof = tree
-            .generate_multi_proof(&mut (0..leaves.len()).collect())
+            .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
             .unwrap();
 
         assert!(multi_proof
-            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
             .unwrap());
     }
 
@@ -161,7 +162,7 @@ mod bytes_mt_tests {
         }
 
         let multi_proof = tree
-            .generate_multi_proof(&mut (0..leaves.len()).collect())
+            .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
             .unwrap();
 
         // test compression theretical prefix lengths for size 8 Tree:
@@ -235,11 +236,11 @@ mod field_mt_tests {
 
         // test the merkle tree multi-proof functionality
         let mut multi_proof = tree
-            .generate_multi_proof(&mut (0..leaves.len()).collect())
+            .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
             .unwrap();
 
         assert!(multi_proof
-            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
             .unwrap());
 
         {
@@ -257,11 +258,11 @@ mod field_mt_tests {
 
             // test the merkle tree multi-proof functionality
             let multi_proof = tree
-                .generate_multi_proof(&mut (0..leaves.len()).collect())
+                .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
                 .unwrap();
 
             assert!(!multi_proof
-                .verify(&leaf_crh_params, &two_to_one_params, &wrong_root, &leaves)
+                .verify(&leaf_crh_params, &two_to_one_params, &wrong_root, leaves.clone())
                 .unwrap());
         }
 
@@ -283,11 +284,11 @@ mod field_mt_tests {
         }
 
         multi_proof = tree
-            .generate_multi_proof(&mut (0..leaves.len()).collect())
+            .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
             .unwrap();
 
         assert!(multi_proof
-            .verify(&leaf_crh_params, &two_to_one_params, &root, &leaves)
+            .verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
             .unwrap());
     }
 
