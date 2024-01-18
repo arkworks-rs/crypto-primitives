@@ -7,7 +7,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
-use std::collections::{BTreeSet, HashMap};
+use ark_std::collections::{BTreeSet, HashMap};
 
 #[cfg(test)]
 mod tests;
