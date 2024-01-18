@@ -269,10 +269,10 @@ impl<P: Config> MultiPath<P> {
         }
 
         Ok(MultiPath {
-            leaf_indexes: indexes,
-            auth_paths_prefix_lenghts: auth_paths_prefix_lenghts,
-            auth_paths_suffixes: auth_paths_suffixes,
-            leaf_siblings_hashes: leaf_siblings_hashes,
+            indexes,
+            auth_paths_prefix_lenghts,
+            auth_paths_suffixes,
+            leaf_siblings_hashes,
         })
     }
 
