@@ -5,9 +5,9 @@ use crate::crh::TwoToOneCRHScheme;
 use crate::{crh::CRHScheme, Error};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
+use ark_std::collections::{BTreeSet, HashMap};
 use ark_std::hash::Hash;
 use ark_std::vec::Vec;
-use ark_std::collections::{BTreeSet, HashMap};
 
 #[cfg(test)]
 mod tests;
@@ -269,7 +269,7 @@ impl<P: Config> MultiPath<P> {
         }
 
         Ok(MultiPath {
-            indexes,
+            leaf_indexes: indexes,
             auth_paths_prefix_lenghts,
             auth_paths_suffixes,
             leaf_siblings_hashes,
@@ -311,7 +311,7 @@ impl<P: Config> MultiPath<P> {
 
         let mut leaves = leaves.into_iter();
 
-        let mut auth_paths: Vec<Vec<P::InnerDigest>> = self.decompress()?.peekable();
+        let mut auth_paths = self.decompress()?.peekable();
 
         let tree_height = auth_paths.peek().unwrap().len() + 2;
 
