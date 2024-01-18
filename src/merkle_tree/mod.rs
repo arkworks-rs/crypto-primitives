@@ -309,7 +309,7 @@ impl<P: Config> MultiPath<P> {
     ) -> Result<bool, crate::Error> {
         // array of auth paths as arrays of InnerDigests
 
-        let leaves: Vec<L> = leaves.into_iter().collect();
+        let mut leaves = leaves.into_iter();
 
         let auth_paths: Vec<Vec<P::InnerDigest>> = self.decompress()?.collect();
 
