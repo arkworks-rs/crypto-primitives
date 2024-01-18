@@ -281,17 +281,23 @@ impl<P: Config> MultiPath<P> {
         &'_ self,
     ) -> Result<impl '_ + Iterator<Item = Vec<P::InnerDigest>>, crate::Error> {
         // Incrementally reconstruct all the paths
-        let mut curr_path = self.auth_paths_suffixes[0].clone();
-        let mut auth_paths = (0..self.leaf_indexes.len())
-            .map(|_| Vec::with_capacity(curr_path.len()))
-            .collect::<Vec<Vec<P::InnerDigest>>>();
-        auth_paths[0] = self.auth_paths_suffixes[0].clone();
 
-        for i in 1..auth_paths.len() {
-            auth_paths[i].extend_from_slice(&curr_path[0..self.auth_paths_prefix_lenghts[i]]);
-            auth_paths[i].extend(self.auth_paths_suffixes[i].clone());
-            curr_path = auth_paths[i].clone();
+        let mut auth_paths = Vec::with_capacity(self.leaf_indexes.len());
+        let mut curr_path = &self.auth_paths_suffixes[0];
+
+        for i in 0..self.leaf_indexes.len(){
+            if self.auth_paths_prefix_lenghts[i] == 0{
+                auth_paths.push(self.auth_paths_suffixes[i].clone());
+            } else {
+                auth_paths.push(
+                    vec![
+                        curr_path[0..self.auth_paths_prefix_lenghts[i]].to_vec(),
+                        self.auth_paths_suffixes[i].clone()
+                        ].concat());
+            }
+            curr_path = &auth_paths[i];
         }
+
         Ok(auth_paths.into_iter())
     }
 
