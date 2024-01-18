@@ -313,7 +313,7 @@ impl<P: Config> MultiPath<P> {
 
         let mut auth_paths: Vec<Vec<P::InnerDigest>> = self.decompress()?.peekable();
 
-        let tree_height = auth_paths[0].len() + 2;
+        let tree_height = auth_paths.peek().unwrap().len() + 2;
 
         // LookUp table to speedup computation avoid redundant hash computations
         let mut hash_lut: HashMap<usize, P::InnerDigest> = HashMap::new();
