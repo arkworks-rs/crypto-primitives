@@ -311,7 +311,7 @@ impl<P: Config> MultiPath<P> {
 
         let mut leaves = leaves.into_iter();
 
-        let auth_paths: Vec<Vec<P::InnerDigest>> = self.decompress()?.collect();
+        let mut auth_paths: Vec<Vec<P::InnerDigest>> = self.decompress()?.peekable();
 
         let tree_height = auth_paths[0].len() + 2;
 
