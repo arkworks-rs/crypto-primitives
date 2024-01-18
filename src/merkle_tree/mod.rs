@@ -322,7 +322,7 @@ impl<P: Config> MultiPath<P> {
             let leaf_index = self.leaf_indexes[i];
             let leaf = leaves.next().unwrap();
             let leaf_sibling_hash = &self.leaf_siblings_hashes[i];
-            let auth_path = &auth_paths[i];
+            let auth_path = auth_paths.next().unwrap();
 
             let claimed_leaf_hash = P::LeafHash::evaluate(&leaf_hash_params, leaf.clone())?;
             let (left_child, right_child) =
