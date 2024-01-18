@@ -114,7 +114,7 @@ mod bytes_mt_benches {
             .collect();
 
         c.bench_function("Merkle Tree Verify Proof (Leaves as [u8])", move |b| {
-            b.iter(move || {
+            b.iter(|| {
                 for (proof, leaf) in zip(proofs.clone(), leaves.clone()) {
                     proof
                         .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
@@ -143,12 +143,15 @@ mod bytes_mt_benches {
             &leaves,
         )
         .unwrap();
-        c.bench_function("Merkle Tree Generate Multi Proof (Leaves as [u8])", move |b| {
-            b.iter(|| {
-                tree.generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
-                    .unwrap();
-            })
-        });
+        c.bench_function(
+            "Merkle Tree Generate Multi Proof (Leaves as [u8])",
+            move |b| {
+                b.iter(|| {
+                    tree.generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
+                        .unwrap();
+                })
+            },
+        );
     }
 
     pub fn merkle_tree_verify_multi_proof(c: &mut Criterion) {
@@ -177,11 +180,14 @@ mod bytes_mt_benches {
             .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
             .unwrap();
 
-        c.bench_function("Merkle Tree Verify Multi Proof (Leaves as [u8])", move |b| {
-            b.iter(|| {
-                multi_proof.verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
-            })
-        });
+        c.bench_function(
+            "Merkle Tree Verify Multi Proof (Leaves as [u8])",
+            move |b| {
+                b.iter(|| {
+                    multi_proof.verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
+                })
+            },
+        );
     }
 
     criterion_group! {

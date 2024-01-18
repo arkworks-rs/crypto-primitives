@@ -283,7 +283,7 @@ impl<P: Config> MultiPath<P> {
         // Incrementally reconstruct all the paths
         let mut curr_path = self.auth_paths_suffixes[0].clone();
         let mut auth_paths = (0..self.leaf_indexes.len())
-            .map(|_| Vec::new())
+            .map(|_| Vec::with_capacity(curr_path.len()))
             .collect::<Vec<Vec<P::InnerDigest>>>();
         auth_paths[0] = self.auth_paths_suffixes[0].clone();
 
@@ -611,6 +611,10 @@ impl<P: Config> MerkleTree<P> {
     /// Returns a MultiPath (multiple authentication paths in compressed form, with Front Incremental Encoding),
     /// from every leaf to root.
     /// Note that for compression efficiency, the indexes are internally sorted.
+    /// For sorted indexes, MultiPath contains:
+    /// `2*( (num_leaves.log2()-1).pow(2) - (num_leaves.log2()-2) )`
+    /// instead of
+    /// `num_leaves*(num_leaves.log2()-1)`
     /// When verifying the proof, leaves hashes should be supplied in order, that is:
     /// let ordered_leaves: Vec<_> = self.leaf_indexes.into_iter().map(|i| leaves[i]).collect();
     pub fn generate_multi_proof(
