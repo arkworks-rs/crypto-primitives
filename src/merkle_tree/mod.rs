@@ -320,7 +320,7 @@ impl<P: Config> MultiPath<P> {
 
         for i in 0..self.leaf_indexes.len() {
             let leaf_index = self.leaf_indexes[i];
-            let leaf = &leaves[i];
+            let leaf = leaves.next().unwrap();
             let leaf_sibling_hash = &self.leaf_siblings_hashes[i];
             let auth_path = &auth_paths[i];
 
