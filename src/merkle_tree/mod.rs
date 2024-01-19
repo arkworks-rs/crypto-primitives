@@ -226,55 +226,55 @@ pub struct MultiPath<P: Config> {
 
 impl<P: Config> MultiPath<P> {
     /// Returns a compressed MultiPath containing multiple encoded authentication paths for `indexes`
-    fn compress(
-        indexes: impl IntoIterator<Item = usize>,
-        leaf_siblings_hashes: Vec<P::LeafDigest>,
-        auth_paths: Vec<Path<P>>,
-    ) -> Result<Self, crate::Error> {
-        let indexes = Vec::from_iter(indexes);
-        // use multipath for more than 1 leaf
-        assert!(
-            indexes.len() > 1,
-            "Expected more than one leaf to verify for MultiPath, got {}",
-            indexes.len()
-        );
-
-        let mut auth_paths_prefix_lenghts: Vec<usize> = Vec::with_capacity(indexes.len());
-        let mut auth_paths_suffixes: Vec<Vec<P::InnerDigest>> = Vec::with_capacity(indexes.len());
-
-        auth_paths_prefix_lenghts.push(0);
-        auth_paths_suffixes.push(auth_paths[0].auth_path.clone());
-
-        let mut prev_path = auth_paths[0].clone();
-
-        // Encode paths with Incremental Encoding (Front compression)
-        for path in auth_paths[1..].to_vec() {
-            let mut prefix_len = 0;
-            if prev_path.auth_path.len() != 0 && path.auth_path.len() != 0 {
-                while prev_path.auth_path[prefix_len] == path.auth_path[prefix_len] {
-                    prefix_len += 1;
-                    if prefix_len == prev_path.auth_path.len() || prefix_len == path.auth_path.len()
-                    {
-                        break;
-                    }
-                }
-            }
-            auth_paths_prefix_lenghts.push(prefix_len);
-            if prefix_len == prev_path.auth_path.len() {
-                auth_paths_suffixes.push(vec![]);
-            } else {
-                auth_paths_suffixes.push(path.auth_path[prefix_len..].to_vec().clone());
-            }
-            prev_path = path;
-        }
-
-        Ok(MultiPath {
-            leaf_indexes: indexes,
-            auth_paths_prefix_lenghts,
-            auth_paths_suffixes,
-            leaf_siblings_hashes,
-        })
-    }
+    //fn compress(
+    //    indexes: impl IntoIterator<Item = usize>,
+    //    leaf_siblings_hashes: Vec<P::LeafDigest>,
+    //    auth_paths: Vec<Path<P>>,
+    //) -> Result<Self, crate::Error> {
+    //    let indexes = Vec::from_iter(indexes);
+    //    // use multipath for more than 1 leaf
+    //    assert!(
+    //        indexes.len() > 1,
+    //        "Expected more than one leaf to verify for MultiPath, got {}",
+    //        indexes.len()
+    //    );
+//
+    //    let mut auth_paths_prefix_lenghts: Vec<usize> = Vec::with_capacity(indexes.len());
+    //    let mut auth_paths_suffixes: Vec<Vec<P::InnerDigest>> = Vec::with_capacity(indexes.len());
+//
+    //    auth_paths_prefix_lenghts.push(0);
+    //    auth_paths_suffixes.push(auth_paths[0].auth_path.clone());
+//
+    //    let mut prev_path = auth_paths[0].clone();
+//
+    //    // Encode paths with Incremental Encoding (Front compression)
+    //    for path in auth_paths[1..].to_vec() {
+    //        let mut prefix_len = 0;
+    //        if prev_path.auth_path.len() != 0 && path.auth_path.len() != 0 {
+    //            while prev_path.auth_path[prefix_len] == path.auth_path[prefix_len] {
+    //                prefix_len += 1;
+    //                if prefix_len == prev_path.auth_path.len() || prefix_len == path.auth_path.len()
+    //                {
+    //                    break;
+    //                }
+    //            }
+    //        }
+    //        auth_paths_prefix_lenghts.push(prefix_len);
+    //        if prefix_len == prev_path.auth_path.len() {
+    //            auth_paths_suffixes.push(vec![]);
+    //        } else {
+    //            auth_paths_suffixes.push(path.auth_path[prefix_len..].to_vec().clone());
+    //        }
+    //        prev_path = path;
+    //    }
+//
+    //    Ok(MultiPath {
+    //        leaf_indexes: indexes,
+    //        auth_paths_prefix_lenghts,
+    //        auth_paths_suffixes,
+    //        leaf_siblings_hashes,
+    //    })
+    //}
 
     /// Returns the decompressed authentication paths for every leaf index
     //fn decompress(
@@ -637,26 +637,75 @@ impl<P: Config> MerkleTree<P> {
         &self,
         indexes: impl IntoIterator<Item = usize>,
     ) -> Result<MultiPath<P>, crate::Error> {
+
         // pruned and sorted for encoding efficiency
         let indexes: BTreeSet<usize> = indexes.into_iter().collect();
+        // gather basic tree information
+        let tree_height = tree_height(self.leaf_nodes.len());
+        
+        //let auth_paths = Vec::with_capacity(indexes.len());
+        let mut auth_paths_prefix_lenghts: Vec<usize> = Vec::with_capacity(indexes.len());
+        let mut auth_paths_suffixes: Vec<Vec<P::InnerDigest>> = Vec::with_capacity(indexes.len());
 
-        let auth_paths: Vec<Path<P>> = cfg_into_iter!(indexes.clone())
-            .map(|i| self.generate_proof(i))
-            .collect::<Result<Vec<Path<P>>, crate::Error>>()?;
+        let mut leaf_siblings_hashes = Vec::with_capacity(indexes.len());
 
-        let leaf_siblings_hashes = cfg_into_iter!(indexes.clone())
-            .map(|i| {
-                if i & 1 == 0 {
-                    // leaf is left child
-                    self.leaf_nodes[i + 1].clone()
-                } else {
-                    // leaf is right child
-                    self.leaf_nodes[i - 1].clone()
-                }
-            })
-            .collect();
+        let mut prev_path = Vec::new(); 
+        
+        for index in &indexes{
+            let leaf_index_in_tree = convert_index_to_last_level(*index, tree_height);
+            
+            let leaf_sibling_hash = if index & 1 == 0 {
+                // leaf is left child
+                self.leaf_nodes[index + 1].clone()
+            } else {
+                // leaf is right child
+                self.leaf_nodes[index - 1].clone()
+            };
+            leaf_siblings_hashes.push(leaf_sibling_hash);
 
-        MultiPath::compress(indexes, leaf_siblings_hashes, auth_paths)
+            // path.len() = `tree height - 2`, the two missing elements being the leaf sibling hash and the root
+            let mut path = Vec::with_capacity(tree_height - 2);
+            
+            // Iterate from the bottom layer after the leaves, to the top, storing all sibling node's hash values.
+            let mut current_node = parent(leaf_index_in_tree).unwrap();
+            while !is_root(current_node) {
+                let sibling_node = sibling(current_node).unwrap();
+                path.push(self.non_leaf_nodes[sibling_node].clone());
+                current_node = parent(current_node).unwrap();
+            }
+
+            debug_assert_eq!(path.len(), tree_height - 2);
+
+            // we want to make path from root to bottom
+            path.reverse();
+        
+            //let mut prefix_len = 0;
+            //if prev_path.len() != 0 && path.len() != 0 {
+            //    while prev_path[prefix_len] == path[prefix_len]{
+            //        prefix_len += 1;
+            //    }
+            //    if prefix_len == prev_path.len() || prefix_len == path.len() {
+            //        break;
+            //    }
+            //}
+            //auth_paths_prefix_lenghts.push(prefix_len);
+            //if prefix_len == prev_path.len(){
+            //    auth_paths_suffixes.push(vec![]);
+            //} else {
+            //    auth_paths_suffixes.push(path[prefix_len..].to_vec().clone());
+            //}
+            let (prefix_len, suffix) = prefix_encode_path(&prev_path, &path);
+            auth_paths_prefix_lenghts.push(prefix_len);
+            auth_paths_suffixes.push(suffix);
+            prev_path = path;
+        }
+        
+        Ok(MultiPath {
+            leaf_indexes: Vec::from_iter(indexes),
+            auth_paths_prefix_lenghts,
+            auth_paths_suffixes,
+            leaf_siblings_hashes,
+        })
     }
 
     /// Given the index and new leaf, return the hash of leaf and an updated path in order from root to bottom non-leaf level.
@@ -819,3 +868,34 @@ fn parent(index: usize) -> Option<usize> {
 fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
 }
+
+
+
+/// Encodes path with Incremental Encoding by comparing with prev_path
+/// Returns the prefix length and the suffix to append during decoding
+/// Example:
+/// If `prev_path` is vec![C,D] and `path` is vec![C,E] (where C,D,E are hashes)
+/// `prefix_encode_path` returns 1,vec![E]
+#[inline]
+fn prefix_encode_path<T>(
+    prev_path: &Vec<T>, 
+    path: &Vec<T>
+) -> (usize, Vec<T>)
+where
+T: Eq + Clone{
+    let mut prefix_len = 0;
+    if prev_path.len() != 0 && path.len() != 0 {
+        while prev_path[prefix_len] == path[prefix_len]{
+            prefix_len += 1;
+            if prefix_len == prev_path.len() || prefix_len == path.len() {
+                break;
+            }
+        }
+    }
+    if prefix_len != 0 && prefix_len == prev_path.len(){
+        return (prefix_len, Vec::new());
+    } else {
+        return (prefix_len, path[prefix_len..].to_vec());
+    }
+}
+
