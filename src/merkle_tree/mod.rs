@@ -507,7 +507,8 @@ impl<P: Config> MerkleTree<P> {
         self.height
     }
 
-    fn get_leaf_sibling_hash(&self, index: usize) -> P::LeafDigest{
+    /// Given the `index` of a leaf, returns the digest of its leaf sibling
+    pub fn get_leaf_sibling_hash(&self, index: usize) -> P::LeafDigest{
         if index & 1 == 0 {
             // leaf is left child
             self.leaf_nodes[index + 1].clone()
@@ -518,7 +519,7 @@ impl<P: Config> MerkleTree<P> {
     }
 
     /// Returns the authentication path from leaf at `index` to root, as a Vec of digests
-    fn compute_path(&self, index: usize) -> Vec<P::InnerDigest> {
+    fn compute_auth_path(&self, index: usize) -> Vec<P::InnerDigest> {
         // gather basic tree information
         let tree_height = tree_height(self.leaf_nodes.len());
 
@@ -544,7 +545,7 @@ impl<P: Config> MerkleTree<P> {
 
     /// Returns the authentication path from leaf at `index` to root.
     pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
-        let path = self.compute_path(index);
+        let path = self.compute_auth_path(index);
         Ok(Path {
             leaf_index: index,
             auth_path: path,
@@ -580,7 +581,7 @@ impl<P: Config> MerkleTree<P> {
 
             leaf_siblings_hashes.push(self.get_leaf_sibling_hash(*index));
 
-            let path = self.compute_path(*index);
+            let path = self.compute_auth_path(*index);
 
             // incremental encoding
             let (prefix_len, suffix) = prefix_encode_path(&prev_path, &path);
