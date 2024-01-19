@@ -183,15 +183,6 @@ mod bytes_mt_tests {
         ) {
             assert_eq!(prefix_len + suffix.len(), proofs[0].auth_path.len());
         }
-
-        //let comp_proofs: Vec<_> = multi_proof.decompress().unwrap().collect();
-        //
-        //// test decompressed paths are as expected
-        //for (comp_path, exp_path) in zip(&comp_proofs, &proofs) {
-        //    for (comp_hash, exp_hash) in zip(comp_path, &exp_path.auth_path) {
-        //        assert_eq!(*comp_hash, *exp_hash);
-        //    }
-        //}
     }
 }
 
