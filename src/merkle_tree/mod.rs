@@ -508,7 +508,7 @@ impl<P: Config> MerkleTree<P> {
     }
 
     /// Given the `index` of a leaf, returns the digest of its leaf sibling
-    pub fn get_leaf_sibling_hash(&self, index: usize) -> P::LeafDigest{
+    pub fn get_leaf_sibling_hash(&self, index: usize) -> P::LeafDigest {
         if index & 1 == 0 {
             // leaf is left child
             self.leaf_nodes[index + 1].clone()
@@ -578,7 +578,6 @@ impl<P: Config> MerkleTree<P> {
         let mut prev_path = Vec::new();
 
         for index in &indexes {
-
             leaf_siblings_hashes.push(self.get_leaf_sibling_hash(*index));
 
             let path = self.compute_auth_path(*index);
