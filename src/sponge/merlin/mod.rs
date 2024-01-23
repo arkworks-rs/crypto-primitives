@@ -13,14 +13,14 @@ impl CryptographicSponge for Transcript {
     }
 
     fn squeeze_bytes(&mut self, num_bytes: usize) -> Vec<u8> {
-        let mut dest = Vec::with_capacity(num_bytes);
+        let mut dest = vec![0; num_bytes];
         self.challenge_bytes(b"", &mut dest);
         dest
     }
 
     fn squeeze_bits(&mut self, num_bits: usize) -> Vec<bool> {
         let num_bytes = (num_bits + 7) / 8;
-        let mut tmp = Vec::with_capacity(num_bytes);
+        let mut tmp = vec![0; num_bytes];
         self.challenge_bytes(b"", &mut tmp);
         let dest = tmp
             .iter()
