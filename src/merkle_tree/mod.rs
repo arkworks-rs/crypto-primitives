@@ -275,14 +275,9 @@ impl<P: Config> MultiPath<P> {
             index >>= 1;
             index_in_tree = parent(index_in_tree).unwrap();
 
-            let mut curr_path_node =
-                hash_lut
-                    .entry(index_in_tree)
-                    .or_insert_with(|| P::TwoToOneHash::evaluate(
-                        &two_to_one_params,
-                        left_child,
-                        right_child,
-                    ).unwrap());
+            let mut curr_path_node = hash_lut.entry(index_in_tree).or_insert_with(|| {
+                P::TwoToOneHash::evaluate(&two_to_one_params, left_child, right_child).unwrap()
+            });
 
             // Check levels between leaf level and root
             for level in (0..auth_path.len()).rev() {
@@ -292,9 +287,9 @@ impl<P: Config> MultiPath<P> {
                 // update curr_path_node
                 index >>= 1;
                 index_in_tree = parent(index_in_tree).unwrap();
-                curr_path_node = hash_lut
-                    .entry(index_in_tree)
-                    .or_insert_with(|| P::TwoToOneHash::compress(&two_to_one_params, left, right).unwrap());
+                curr_path_node = hash_lut.entry(index_in_tree).or_insert_with(|| {
+                    P::TwoToOneHash::compress(&two_to_one_params, left, right).unwrap()
+                });
             }
 
             // check if final hash is root
