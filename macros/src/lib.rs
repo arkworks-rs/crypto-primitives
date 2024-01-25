@@ -79,7 +79,7 @@ pub fn derive_absorb(input: TokenStream) -> TokenStream {
         _ => panic!("Absorb only supports structs"),
     }
 
-    let gen = quote! {
+    quote! {
         impl #impl_generics Absorb for #name #ty_generics #where_clause {
             fn to_sponge_bytes(&self, dest: &mut Vec<u8>) {
                 #( #to_sponge_bytes )*
@@ -89,6 +89,6 @@ pub fn derive_absorb(input: TokenStream) -> TokenStream {
                 #( #to_sponge_field_elements )*
             }
         }
-    };
-    TokenStream::from(gen)
+    }
+    .into()
 }
