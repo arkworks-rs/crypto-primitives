@@ -121,8 +121,8 @@ ark-ec = { git = "https://github.com/arkworks-rs/algebra/" }
 ark-poly = { git = "https://github.com/arkworks-rs/algebra/" }
 ark-serialize = { git = "https://github.com/arkworks-rs/algebra/" }
 
-ark-ed-on-bls12-377 = { git = "https://github.com/arkworks-rs/curves/" }
-ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/curves/" }
-ark-bls12-377 = { git = "https://github.com/arkworks-rs/curves/" }
-ark-mnt4-298 = { git = "https://github.com/arkworks-rs/curves/" }
-ark-mnt6-298 = { git = "https://github.com/arkworks-rs/curves/" }
+ark-ed-on-bls12-377 = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-bls12-377 = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-mnt4-298 = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-mnt6-298 = { git = "https://github.com/arkworks-rs/algebra/" }
