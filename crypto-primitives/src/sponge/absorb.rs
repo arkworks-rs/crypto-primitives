@@ -9,6 +9,8 @@ use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
 use ark_std::vec::Vec;
 
+pub use ark_crypto_primitives_macros::*;
+
 /// An interface for objects that can be absorbed by a `CryptographicSponge`.
 pub trait Absorb {
     /// Converts the object into a list of bytes that can be absorbed by a `CryptographicSponge`.
@@ -374,7 +376,6 @@ mod tests {
     use crate::sponge::test::Fr;
     use crate::sponge::Absorb;
     use crate::sponge::{field_cast, CryptographicSponge};
-    use ark_crypto_primitives_macros::Absorb;
     use ark_ff::PrimeField;
     use ark_std::{test_rng, vec::Vec, UniformRand};
 
