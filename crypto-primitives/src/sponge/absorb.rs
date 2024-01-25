@@ -374,7 +374,7 @@ mod tests {
     use crate::sponge::test::Fr;
     use crate::sponge::Absorb;
     use crate::sponge::{field_cast, CryptographicSponge};
-    use ark_crypto_primitives_macros::AutoAbsorb;
+    use ark_crypto_primitives_macros::Absorb;
     use ark_ff::PrimeField;
     use ark_std::{test_rng, vec::Vec, UniformRand};
 
@@ -387,13 +387,13 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
-    #[derive(AutoAbsorb)]
+    #[derive(Absorb)]
     struct SubStruct {
         a: u8,
         b: u16,
     }
 
-    #[derive(AutoAbsorb)]
+    #[derive(Absorb)]
     struct TestStruct {
         a: u8,
         b: u16,

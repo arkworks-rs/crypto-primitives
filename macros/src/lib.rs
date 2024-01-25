@@ -1,9 +1,9 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Data, Fields};
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
-#[proc_macro_derive(AutoAbsorb)]
+#[proc_macro_derive(Absorb)]
 pub fn derive_absorb(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -39,11 +39,11 @@ pub fn derive_absorb(input: TokenStream) -> TokenStream {
                             }
                         }
                     }
-                },
+                }
                 // Handle other field types (Unnamed, Unit) if necessary...
-                _ => panic!("DeriveAbsorb only supports named fields"),
+                _ => panic!("Absorb only supports named fields"),
             }
-        },
+        }
         // Handle other data types (Enum, Union) if necessary...
         _ => panic!("DeriveAbsorb only supports structs"),
     };

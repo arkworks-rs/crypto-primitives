@@ -16,7 +16,6 @@ mod tests;
 #[cfg(test)]
 pub(crate) use tests::poseidon_parameters_for_test;
 
-
 /// default parameters traits for Poseidon
 pub mod traits;
 pub use traits::*;
