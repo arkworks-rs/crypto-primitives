@@ -394,6 +394,9 @@ mod tests {
     }
 
     #[derive(Absorb)]
+    struct StructWithNoNamedFields(u16);
+
+    #[derive(Absorb)]
     struct TestStruct {
         a: u8,
         b: u16,
@@ -402,6 +405,7 @@ mod tests {
         e: u128,
         f: Fr,
         g: SubStruct,
+        h: StructWithNoNamedFields,
     }
 
     #[test]
@@ -414,6 +418,7 @@ mod tests {
             e: 5,
             f: Fr::from(6),
             g: SubStruct { a: 7, b: 8 },
+            h: StructWithNoNamedFields(9),
         };
 
         let sponge_param = poseidon_parameters_for_test();
@@ -440,6 +445,7 @@ mod tests {
         sponge.absorb(&a.e);
         sponge.absorb(&a.f);
         sponge.absorb(&a.g);
+        sponge.absorb(&a.h);
         let out_manual = sponge.squeeze_bytes(32);
         assert_eq!(out_derived, out_manual);
     }
