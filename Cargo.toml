@@ -5,6 +5,19 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+version = "0.4.0"
+authors = [ "arkworks contributors" ]
+description = "A library of useful cryptographic primitives"
+documentation = "https://docs.rs/ark-crypto-primitives/"
+homepage = "https://arkworks.rs"
+repository = "https://github.com/arkworks-rs/crypto-primitives"
+keywords = [ "r1cs", "pedersen", "blake2s", "snark", "schnorr" ]
+categories = ["cryptography"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+license = "MIT/Apache-2.0"
+edition = "2021"
+
 [profile.release]
 opt-level = 3
 lto = "thin"

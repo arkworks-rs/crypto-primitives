@@ -1,17 +1,16 @@
 [package]
 name = "ark-crypto-primitives"
-version = "0.4.0"
-authors = [ "arkworks contributors" ]
-description = "A library of useful cryptographic primitives"
-homepage = "https://arkworks.rs"
-repository = "https://github.com/arkworks-rs/crypto-primitives"
-documentation = "https://docs.rs/ark-crypto-primitives/"
-keywords = [ "r1cs", "pedersen", "blake2s", "snark", "schnorr" ]
-categories = ["cryptography"]
-include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
-license = "MIT/Apache-2.0"
-edition = "2021"
-resolver = "2"
+description.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+categories.workspace = true
+include.workspace = true
+license.workspace = true
+edition.workspace = true
 
 ################################# Dependencies ################################
 
