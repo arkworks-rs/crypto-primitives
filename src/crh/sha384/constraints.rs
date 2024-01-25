@@ -4,7 +4,7 @@
 // Thank you!
 
 use crate::crh::{
-    sha384::{r1cs_utils::UInt64Ext, Sha384},
+    sha384::Sha384,
     CRHSchemeGadget, TwoToOneCRHSchemeGadget,
 };
 
@@ -13,7 +13,7 @@ use core::{borrow::Borrow, iter, marker::PhantomData};
 use ark_ff::PrimeField;
 use ark_r1cs_std::{
     alloc::{AllocVar, AllocationMode},
-    bits::{boolean::Boolean, uint64::UInt64, uint8::UInt8, ToBytesGadget},
+    boolean::Boolean, uint64::UInt64, uint8::UInt8, convert::ToBytesGadget,
     eq::EqGadget,
     select::CondSelectGadget,
     R1CSVar,
@@ -95,7 +95,7 @@ impl<ConstraintF: PrimeField> Sha384Gadget<ConstraintF> {
                 let x3 = w[i - 2].shr(6);
                 x1.xor(&x2)?.xor(&x3)?
             };
-            w[i] = UInt64::addmany(&[w[i - 16].clone(), s0, w[i - 7].clone(), s1])?;
+            w[i] = w[i - 16].wrapping_add_many(&[s0, w[i - 7].clone(), s1])?;
         }
 
         let mut h = state.to_vec();
@@ -123,22 +123,21 @@ impl<ConstraintF: PrimeField> Sha384Gadget<ConstraintF> {
                 let x3 = h[4].rotr(41);
                 x1.xor(&x2)?.xor(&x3)?
             };
-            let t0 =
-                UInt64::addmany(&[h[7].clone(), s1, ch, UInt64::constant(K[i]), w[i].clone()])?;
-            let t1 = UInt64::addmany(&[s0, ma])?;
+            let t0 = h[7].wrapping_add_many(&[s1, ch, UInt64::constant(K[i]), w[i].clone()])?;
+            let t1 = s0.wrapping_add(ma)?;
 
             h[7] = h[6].clone();
             h[6] = h[5].clone();
             h[5] = h[4].clone();
-            h[4] = UInt64::addmany(&[h[3].clone(), t0.clone()])?;
+            h[4] = h[3].wrapping_add(&t0)?;
             h[3] = h[2].clone();
             h[2] = h[1].clone();
             h[1] = h[0].clone();
-            h[0] = UInt64::addmany(&[t0, t1])?;
+            h[0] = t0.wrapping_add(&t1)?;
         }
 
         for (s, hi) in state.iter_mut().zip(h.iter()) {
-            *s = UInt64::addmany(&[s.clone(), hi.clone()])?;
+            s.wrapping_add_in_place(hi)?;
         }
 
         Ok(())
@@ -218,7 +217,7 @@ impl<ConstraintF: PrimeField> Sha384Gadget<ConstraintF> {
 
 /// Contains a 64-byte SHA384 digest
 #[derive(Clone, Debug)]
-pub struct DigestVar<ConstraintF: PrimeField>(pub Vec<UInt8<ConstraintF>>);
+pub struct DigestVar<ConstraintF: PrimeField>([UInt8<ConstraintF>; 48]);
 
 impl<ConstraintF> EqGadget<ConstraintF> for DigestVar<ConstraintF>
 where
@@ -230,7 +229,7 @@ where
 }
 
 impl<ConstraintF: PrimeField> ToBytesGadget<ConstraintF> for DigestVar<ConstraintF> {
-    fn to_bytes(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
+    fn to_bytes_le(&self) -> Result<Vec<UInt8<ConstraintF>>, SynthesisError> {
         Ok(self.0.clone())
     }
 }
