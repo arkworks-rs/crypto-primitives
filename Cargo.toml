@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crypto-primitives",
+    "macros",
 ]
 resolver = "2"
 
