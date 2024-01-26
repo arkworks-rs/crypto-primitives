@@ -395,6 +395,9 @@ mod tests {
     }
 
     #[derive(Absorb)]
+    struct StructWithGeneric<F: PrimeField + Absorb>(F);
+
+    #[derive(Absorb)]
     struct StructWithNoNamedFields(u16);
 
     #[derive(Absorb)]
@@ -407,6 +410,7 @@ mod tests {
         f: Fr,
         g: SubStruct,
         h: StructWithNoNamedFields,
+        i: StructWithGeneric<Fr>,
     }
 
     #[test]
@@ -420,6 +424,7 @@ mod tests {
             f: Fr::from(6),
             g: SubStruct { a: 7, b: 8 },
             h: StructWithNoNamedFields(9),
+            i: StructWithGeneric(Fr::from(10)),
         };
 
         let sponge_param = poseidon_parameters_for_test();
@@ -447,6 +452,7 @@ mod tests {
         sponge.absorb(&a.f);
         sponge.absorb(&a.g);
         sponge.absorb(&a.h);
+        sponge.absorb(&a.i);
         let out_manual = sponge.squeeze_bytes(32);
         assert_eq!(out_derived, out_manual);
     }
