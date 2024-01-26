@@ -85,7 +85,7 @@ pub fn derive_absorb(input: TokenStream) -> TokenStream {
                 #( #to_sponge_bytes )*
             }
 
-            fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {
+            fn to_sponge_field_elements<FieldType: PrimeField>(&self, dest: &mut Vec<FieldType>) {
                 #( #to_sponge_field_elements )*
             }
         }
