@@ -1,5 +1,6 @@
 use crate::sponge::{Absorb, CryptographicSponge};
-use merlin::Transcript;
+use crate::Vec;
+pub use merlin::Transcript;
 
 impl CryptographicSponge for Transcript {
     type Config = &'static [u8];
