@@ -227,6 +227,16 @@ impl Absorb for isize {
     }
 }
 
+impl Absorb for String {
+    fn to_sponge_bytes(&self, dest: &mut Vec<u8>) {
+        dest.extend_from_slice(self.as_bytes())
+    }
+
+    fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {
+        self.as_bytes().to_sponge_field_elements(dest)
+    }
+}
+
 impl<P: TEModelParameters> Absorb for TEAffine<P>
 where
     P::BaseField: ToConstraintField<<P::BaseField as Field>::BasePrimeField>,
