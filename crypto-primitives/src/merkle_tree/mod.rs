@@ -2,6 +2,7 @@
 
 /// Defines a trait to chain two types of CRHs.
 use crate::crh::TwoToOneCRHScheme;
+use crate::sponge::Absorb;
 use crate::{crh::CRHScheme, Error};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
@@ -78,7 +79,8 @@ pub trait Config {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize
-        + Send;
+        + Send
+        + Absorb;
 
     // Tom's Note: in the future, if we want different hash function, we can simply add more
     // types of digest here and specify a digest converter. Same for constraints.
