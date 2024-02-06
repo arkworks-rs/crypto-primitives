@@ -7,6 +7,7 @@ use ark_ec::{
 use ark_ff::models::{Fp, FpConfig};
 use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
+use ark_std::string::String;
 use ark_std::vec::Vec;
 
 /// An interface for objects that can be absorbed by a `CryptographicSponge`.
