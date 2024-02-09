@@ -230,6 +230,7 @@ impl Absorb for isize {
 
 impl Absorb for String {
     fn to_sponge_bytes(&self, dest: &mut Vec<u8>) {
+        self.len().to_sponge_bytes(dest);
         dest.extend_from_slice(self.as_bytes())
     }
 
