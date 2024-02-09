@@ -9,6 +9,8 @@ use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
 use ark_std::vec::Vec;
 
+pub use ark_crypto_primitives_macros::*;
+
 /// An interface for objects that can be absorbed by a `CryptographicSponge`.
 pub trait Absorb {
     /// Converts the object into a list of bytes that can be absorbed by a `CryptographicSponge`.
@@ -370,8 +372,11 @@ macro_rules! collect_sponge_field_elements {
 
 #[cfg(test)]
 mod tests {
-    use crate::sponge::field_cast;
+    use crate::sponge::poseidon::{poseidon_parameters_for_test, PoseidonSponge};
     use crate::sponge::test::Fr;
+    use crate::sponge::Absorb;
+    use crate::sponge::{field_cast, CryptographicSponge};
+    use ark_ff::PrimeField;
     use ark_std::{test_rng, vec::Vec, UniformRand};
 
     #[test]
@@ -381,5 +386,74 @@ mod tests {
         let mut actual = Vec::new();
         field_cast::<_, Fr>(&expected, &mut actual).unwrap();
         assert_eq!(actual, expected);
+    }
+
+    #[derive(Absorb)]
+    struct SubStruct {
+        a: u8,
+        b: u16,
+    }
+
+    #[derive(Absorb)]
+    struct StructWithGeneric<F: PrimeField + Absorb>(F);
+
+    #[derive(Absorb)]
+    struct StructWithNoNamedFields(u16);
+
+    #[derive(Absorb)]
+    struct TestStruct {
+        a: u8,
+        b: u16,
+        c: u32,
+        d: u64,
+        e: u128,
+        f: Fr,
+        g: SubStruct,
+        h: StructWithNoNamedFields,
+        i: StructWithGeneric<Fr>,
+    }
+
+    #[test]
+    fn test_absorb_derive() {
+        let a = TestStruct {
+            a: 1,
+            b: 2,
+            c: 3,
+            d: 4,
+            e: 5,
+            f: Fr::from(6),
+            g: SubStruct { a: 7, b: 8 },
+            h: StructWithNoNamedFields(9),
+            i: StructWithGeneric(Fr::from(10)),
+        };
+
+        let sponge_param = poseidon_parameters_for_test();
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_param);
+
+        sponge.absorb(&a);
+        let out_derived = sponge.squeeze_bytes(32);
+
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_param);
+        sponge.absorb(&a.a);
+        sponge.absorb(&a.b);
+        sponge.absorb(&a.c);
+        sponge.absorb(&a.d);
+        sponge.absorb(&a.e);
+        // we forgot to absorb some fields, assert that output is different
+        let out_manual = sponge.squeeze_bytes(32);
+        assert_ne!(out_derived, out_manual);
+
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_param);
+        sponge.absorb(&a.a);
+        sponge.absorb(&a.b);
+        sponge.absorb(&a.c);
+        sponge.absorb(&a.d);
+        sponge.absorb(&a.e);
+        sponge.absorb(&a.f);
+        sponge.absorb(&a.g);
+        sponge.absorb(&a.h);
+        sponge.absorb(&a.i);
+        let out_manual = sponge.squeeze_bytes(32);
+        assert_eq!(out_derived, out_manual);
     }
 }
