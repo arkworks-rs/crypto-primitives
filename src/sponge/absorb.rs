@@ -382,6 +382,7 @@ macro_rules! collect_sponge_field_elements {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::sponge::field_cast;
     use crate::sponge::test::Fr;
     use ark_std::{test_rng, vec::Vec, UniformRand};
@@ -393,5 +394,32 @@ mod tests {
         let mut actual = Vec::new();
         field_cast::<_, Fr>(&expected, &mut actual).unwrap();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_string_absort() {
+        // absorbing two strings should not be the same as absorbing the concatenated string
+        let s1 = "hello".to_string();
+        let s2 = "world".to_string();
+
+        let mut dest1 = Vec::new();
+        s1.to_sponge_bytes(&mut dest1);
+        s2.to_sponge_bytes(&mut dest1);
+
+        let mut dest2 = Vec::new();
+        let s3 = "helloworld".to_string();
+        s3.to_sponge_bytes(&mut dest2);
+
+        assert_ne!(dest1, dest2);
+
+        // Same for converting to sponge field elements
+        let mut dest1: Vec<Fr> = Vec::new();
+        s1.to_sponge_field_elements(&mut dest1);
+        s2.to_sponge_field_elements(&mut dest1);
+
+        let mut dest2 = Vec::new();
+        s3.to_sponge_field_elements(&mut dest2);
+
+        assert_ne!(dest1, dest2);
     }
 }
