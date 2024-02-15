@@ -13,6 +13,8 @@ use ark_std::vec::Vec;
 pub mod constraints;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) use tests::poseidon_parameters_for_test;
 
 /// default parameters traits for Poseidon
 pub mod traits;
