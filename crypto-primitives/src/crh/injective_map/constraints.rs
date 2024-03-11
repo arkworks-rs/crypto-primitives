@@ -14,9 +14,7 @@ use ark_ec::{
 };
 use ark_ff::fields::{Field, PrimeField};
 use ark_r1cs_std::{
-    fields::fp::FpVar,
-    groups::{curves::twisted_edwards::AffineVar as TEVar, CurveVar},
-    prelude::*,
+    fields::fp::FpVar, groups::curves::twisted_edwards::AffineVar as TEVar, prelude::*,
 };
 use ark_relations::r1cs::SynthesisError;
 

@@ -1,7 +1,7 @@
 use ark_ff::PrimeField;
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 
-use crate::{prf::PRFGadget, Vec};
+use crate::prf::PRFGadget;
 use ark_r1cs_std::prelude::*;
 
 use core::borrow::Borrow;

@@ -3,7 +3,6 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use crate::{
     commitment::{blake2s, CommitmentGadget},
     prf::blake2s::constraints::{evaluate_blake2s, OutputVar},
-    Vec,
 };
 use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::prelude::*;

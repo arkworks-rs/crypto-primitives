@@ -7,7 +7,6 @@ use crate::{crh::CRHScheme, Error};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::hash::Hash;
-use ark_std::vec::Vec;
 
 #[cfg(test)]
 mod tests;

@@ -1,5 +1,4 @@
 use crate::sponge::{Absorb, CryptographicSponge};
-use crate::Vec;
 pub use merlin::Transcript;
 
 impl CryptographicSponge for Transcript {
