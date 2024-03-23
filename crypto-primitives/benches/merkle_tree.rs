@@ -191,10 +191,26 @@ mod bytes_mt_benches {
     }
 
     criterion_group! {
-        name = mt_benches;
+        name = mt_create;
+        config = Criterion::default().sample_size(100);
+        targets = merkle_tree_create
+    }
+
+    criterion_group! {
+        name = mt_proof;
+        config = Criterion::default().sample_size(100);
+        targets = merkle_tree_generate_proof, merkle_tree_generate_multi_proof
+    }
+
+    criterion_group! {
+        name = mt_verify;
         config = Criterion::default().sample_size(10);
-        targets = merkle_tree_create, merkle_tree_generate_proof, merkle_tree_verify_proof, merkle_tree_generate_multi_proof, merkle_tree_verify_multi_proof
+        targets = merkle_tree_verify_proof, merkle_tree_verify_multi_proof
     }
 }
 
-criterion_main!(crate::bytes_mt_benches::mt_benches);
+criterion_main!(
+    bytes_mt_benches::mt_create,
+    bytes_mt_benches::mt_proof,
+    bytes_mt_benches::mt_verify
+);
