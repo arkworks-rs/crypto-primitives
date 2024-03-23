@@ -760,25 +760,19 @@ fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
 /// Example:
 /// If `prev_path` is vec![C,D] and `path` is vec![C,E] (where C,D,E are hashes)
 /// `prefix_encode_path` returns 1,vec![E]
+
 #[inline]
 fn prefix_encode_path<T>(prev_path: &Vec<T>, path: &Vec<T>) -> (usize, Vec<T>)
 where
     T: Eq + Clone,
 {
-    let mut prefix_len = 0;
-    if prev_path.len() != 0 && path.len() != 0 {
-        while prev_path[prefix_len] == path[prefix_len] {
-            prefix_len += 1;
-            if prefix_len == prev_path.len() || prefix_len == path.len() {
-                break;
-            }
-        }
-    }
-    if prefix_len != 0 && prefix_len == prev_path.len() {
-        return (prefix_len, Vec::new());
-    } else {
-        return (prefix_len, path[prefix_len..].to_vec());
-    }
+    let prefix_length = prev_path
+        .iter()
+        .zip(path.iter())
+        .take_while(|(a, b)| a == b)
+        .count();
+
+    (prefix_length, path[prefix_length..].to_vec())
 }
 
 fn prefix_decode_path<T>(prev_path: &Vec<T>, prefix_len: usize, suffix: &Vec<T>) -> Vec<T>
