@@ -6,7 +6,6 @@ use crate::crh::{
 use crate::sponge::constraints::CryptographicSpongeVar;
 use crate::sponge::poseidon::constraints::PoseidonSpongeVar;
 use crate::sponge::poseidon::PoseidonConfig;
-use crate::{crh::CRHScheme, Vec};
 
 use crate::sponge::Absorb;
 use ark_ff::PrimeField;
