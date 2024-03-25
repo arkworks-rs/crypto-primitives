@@ -6,7 +6,6 @@ use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::borrow::Borrow;
 use ark_std::fmt::Debug;
-use ark_std::vec::Vec;
 
 pub trait DigestVarConverter<From, To: ?Sized> {
     type TargetType: Borrow<To>;

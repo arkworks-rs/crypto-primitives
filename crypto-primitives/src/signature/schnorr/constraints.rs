@@ -1,4 +1,3 @@
-use crate::Vec;
 use ark_ec::CurveGroup;
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;

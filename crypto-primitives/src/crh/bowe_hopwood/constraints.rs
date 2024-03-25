@@ -2,22 +2,16 @@ use ark_ec::twisted_edwards::{Projective as TEProjective, TECurveConfig};
 use ark_ec::CurveConfig;
 use core::{borrow::Borrow, iter, marker::PhantomData};
 
-use crate::{
-    crh::{
-        bowe_hopwood::{Parameters, CHUNK_SIZE},
-        pedersen::{self, Window},
-        CRHSchemeGadget, TwoToOneCRHSchemeGadget,
-    },
-    Vec,
+use crate::crh::{
+    bowe_hopwood::{Parameters, CHUNK_SIZE},
+    pedersen::{self, Window},
+    CRHSchemeGadget, TwoToOneCRHSchemeGadget,
 };
 use ark_ff::Field;
-use ark_r1cs_std::{
-    alloc::AllocVar, groups::curves::twisted_edwards::AffineVar, prelude::*, uint8::UInt8,
-};
+use ark_r1cs_std::{groups::curves::twisted_edwards::AffineVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::crh::bowe_hopwood::{TwoToOneCRH, CRH};
-use ark_r1cs_std::boolean::Boolean;
 
 type ConstraintF<P> = <<P as CurveConfig>::BaseField as Field>::BasePrimeField;
 

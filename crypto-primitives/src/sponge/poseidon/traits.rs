@@ -1,7 +1,6 @@
 use crate::sponge::poseidon::grain_lfsr::PoseidonGrainLFSR;
 use crate::sponge::poseidon::PoseidonConfig;
-use ark_ff::{fields::models::*, FpConfig, PrimeField};
-use ark_std::{vec, vec::Vec};
+use ark_ff::{fields::models::*, PrimeField};
 
 /// An entry in the default Poseidon parameters
 pub struct PoseidonDefaultConfigEntry {

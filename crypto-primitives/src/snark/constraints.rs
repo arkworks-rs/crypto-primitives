@@ -1,15 +1,12 @@
 use ark_ff::{BigInteger, PrimeField};
-use ark_r1cs_std::prelude::*;
-use ark_r1cs_std::{
-    fields::{
-        emulated_fp::{
-            params::{get_params, OptimizationType},
-            AllocatedEmulatedFpVar, EmulatedFpVar,
-        },
-        fp::{AllocatedFp, FpVar},
+use ark_r1cs_std::fields::{
+    emulated_fp::{
+        params::{get_params, OptimizationType},
+        AllocatedEmulatedFpVar, EmulatedFpVar,
     },
-    R1CSVar,
+    fp::{AllocatedFp, FpVar},
 };
+use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::OptimizationGoal;
 use ark_relations::{
     lc, ns,
@@ -18,12 +15,7 @@ use ark_relations::{
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
-use ark_std::{
-    borrow::Borrow,
-    fmt,
-    marker::PhantomData,
-    vec::{IntoIter, Vec},
-};
+use ark_std::{borrow::Borrow, fmt, marker::PhantomData, vec::IntoIter};
 
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {

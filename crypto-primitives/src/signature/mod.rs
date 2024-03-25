@@ -52,10 +52,10 @@ pub trait SignatureScheme {
 
 #[cfg(test)]
 mod test {
-    use crate::signature::{schnorr, *};
+    use crate::signature::*;
     use ark_ec::AdditiveGroup;
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_std::{test_rng, vec::Vec, UniformRand};
+    use ark_std::{test_rng, UniformRand};
     use blake2::Blake2s256 as Blake2s;
 
     fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {

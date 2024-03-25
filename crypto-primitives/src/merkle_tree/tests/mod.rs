@@ -4,10 +4,7 @@ mod test_utils;
 
 mod bytes_mt_tests {
 
-    use crate::{
-        crh::{pedersen, *},
-        merkle_tree::*,
-    };
+    use crate::{crh::*, merkle_tree::*};
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
     use ark_std::{test_rng, UniformRand};
@@ -190,8 +187,8 @@ mod field_mt_tests {
     use crate::crh::poseidon;
     use crate::merkle_tree::tests::test_utils::poseidon_parameters;
     use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
-    use ark_std::{test_rng, vec::Vec, One, UniformRand};
-
+    use ark_std::{test_rng, One, UniformRand};
+    
     type F = ark_ed_on_bls12_381::Fr;
     type H = poseidon::CRH<F>;
     type TwoToOneH = poseidon::TwoToOneCRH<F>;

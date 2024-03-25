@@ -1,4 +1,5 @@
 use crate::crh::poseidon::{TwoToOneCRH, CRH};
+use crate::crh::CRHScheme;
 use crate::crh::{
     CRHSchemeGadget as CRHGadgetTrait, TwoToOneCRHSchemeGadget as TwoToOneCRHGadgetTrait,
 };
