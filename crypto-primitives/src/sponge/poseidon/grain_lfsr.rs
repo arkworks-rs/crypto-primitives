@@ -2,7 +2,6 @@
 
 use ark_ff::{BigInteger, PrimeField};
 
-
 pub struct PoseidonGrainLFSR {
     pub prime_num_bits: u64,
 

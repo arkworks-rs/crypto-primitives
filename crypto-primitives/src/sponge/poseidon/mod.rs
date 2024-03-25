@@ -6,7 +6,6 @@ use ark_ff::{BigInteger, PrimeField};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::any::TypeId;
 
-
 /// constraints for Poseidon
 #[cfg(feature = "r1cs")]
 pub mod constraints;

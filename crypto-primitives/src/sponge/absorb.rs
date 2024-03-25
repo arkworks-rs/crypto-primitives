@@ -8,7 +8,6 @@ use ark_ff::models::{Fp, FpConfig};
 use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
 
-
 pub use ark_crypto_primitives_macros::*;
 
 /// An interface for objects that can be absorbed by a `CryptographicSponge`.
