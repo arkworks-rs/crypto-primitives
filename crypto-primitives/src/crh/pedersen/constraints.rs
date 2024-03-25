@@ -1,9 +1,6 @@
-use crate::{
-    crh::{
-        pedersen::{Parameters, Window},
-        CRHSchemeGadget as CRHGadgetTrait,
-    },
-    Vec,
+use crate::crh::{
+    pedersen::{Parameters, Window},
+    CRHSchemeGadget as CRHGadgetTrait,
 };
 use ark_ec::CurveGroup;
 use ark_ff::Field;

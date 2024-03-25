@@ -9,7 +9,6 @@ use ark_ec::{
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
-use ark_std::vec::Vec;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 

@@ -19,7 +19,6 @@ use ark_r1cs_std::{
     R1CSVar,
 };
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
-use ark_std::{vec, vec::Vec};
 
 const STATE_LEN: usize = 8;
 
@@ -383,17 +382,10 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::crh::{
-        sha256::{digest::Digest, Sha256},
-        CRHScheme, CRHSchemeGadget, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget,
-    };
+    use crate::crh::{sha256::digest::Digest, CRHScheme, TwoToOneCRHScheme};
 
     use ark_bls12_377::Fr;
-    use ark_r1cs_std::R1CSVar;
-    use ark_relations::{
-        ns,
-        r1cs::{ConstraintSystem, Namespace},
-    };
+    use ark_relations::{ns, r1cs::ConstraintSystem};
     use ark_std::rand::RngCore;
 
     const TEST_LENGTHS: &[usize] = &[

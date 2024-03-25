@@ -1,7 +1,6 @@
 use crate::{
     commitment::pedersen::{Commitment, Parameters, Randomness},
     crh::pedersen::Window,
-    Vec,
 };
 use ark_ec::CurveGroup;
 use ark_ff::{

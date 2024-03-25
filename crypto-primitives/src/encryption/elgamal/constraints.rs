@@ -11,7 +11,7 @@ use ark_ff::{
     Zero,
 };
 use ark_serialize::CanonicalSerialize;
-use ark_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
+use ark_std::{borrow::Borrow, marker::PhantomData};
 
 pub type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 

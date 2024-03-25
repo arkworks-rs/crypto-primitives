@@ -7,8 +7,6 @@ use ark_ec::{
 use ark_ff::models::{Fp, FpConfig};
 use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
-use ark_std::string::String;
-use ark_std::vec::Vec;
 
 pub use ark_crypto_primitives_macros::*;
 
@@ -389,7 +387,7 @@ mod tests {
     use crate::sponge::Absorb;
     use crate::sponge::{field_cast, CryptographicSponge};
     use ark_ff::PrimeField;
-    use ark_std::{test_rng, vec::Vec, UniformRand};
+    use ark_std::{test_rng, UniformRand};
 
     #[test]
     fn test_cast() {

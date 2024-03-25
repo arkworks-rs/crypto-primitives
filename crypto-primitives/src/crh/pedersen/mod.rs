@@ -1,4 +1,4 @@
-use crate::{Error, Vec};
+use crate::Error;
 use ark_std::rand::Rng;
 use ark_std::{
     fmt::{Debug, Formatter, Result as FmtResult},

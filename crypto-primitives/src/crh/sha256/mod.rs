@@ -1,5 +1,5 @@
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
-use crate::{Error, Vec};
+use crate::Error;
 
 use ark_std::rand::Rng;
 
