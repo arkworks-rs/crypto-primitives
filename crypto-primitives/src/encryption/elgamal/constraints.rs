@@ -12,6 +12,8 @@ use ark_ff::{
 };
 use ark_serialize::CanonicalSerialize;
 use ark_std::{borrow::Borrow, marker::PhantomData};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 pub type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 

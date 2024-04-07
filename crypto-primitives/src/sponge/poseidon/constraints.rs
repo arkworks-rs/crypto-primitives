@@ -7,6 +7,8 @@ use ark_ff::PrimeField;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{ConstraintSystemRef, SynthesisError};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge

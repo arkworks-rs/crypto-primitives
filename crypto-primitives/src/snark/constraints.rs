@@ -16,6 +16,8 @@ use ark_relations::{
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 use ark_std::{borrow::Borrow, fmt, marker::PhantomData, vec::IntoIter};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
