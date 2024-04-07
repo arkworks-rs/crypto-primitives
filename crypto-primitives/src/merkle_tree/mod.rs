@@ -65,7 +65,9 @@ pub trait Config {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize
-        + Send;
+        + Send
+        + Sync;
+
     // transition between leaf layer to inner layer
     type LeafInnerDigestConverter: DigestConverter<
         Self::LeafDigest,
@@ -80,6 +82,7 @@ pub trait Config {
         + CanonicalSerialize
         + CanonicalDeserialize
         + Send
+        + Sync
         + Absorb;
 
     // Tom's Note: in the future, if we want different hash function, we can simply add more

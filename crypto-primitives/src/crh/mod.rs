@@ -29,7 +29,7 @@ pub trait CRHScheme {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize;
-    type Parameters: Clone + CanonicalSerialize + CanonicalDeserialize;
+    type Parameters: Clone + CanonicalSerialize + CanonicalDeserialize + Sync;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
     fn evaluate<T: Borrow<Self::Input>>(
@@ -50,7 +50,7 @@ pub trait TwoToOneCRHScheme {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize;
-    type Parameters: Clone + CanonicalSerialize + CanonicalDeserialize;
+    type Parameters: Clone + CanonicalSerialize + CanonicalDeserialize + Sync;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
 
