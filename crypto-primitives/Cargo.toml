@@ -33,6 +33,7 @@ ark-snark = { version = "^0.4.0", default-features = false }
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
 tracing = { version = "0.1", default-features = false, features = [ "attributes" ], optional = true }
+hashbrown = { version = "^0.14", default-features = false, optional = true }
 
 [features]
 default = ["std"]
@@ -43,7 +44,7 @@ r1cs = [ "ark-r1cs-std", "tracing" ]
 crh = [ "sponge" ]
 sponge = []
 commitment = ["crh"]
-merkle_tree = ["crh"]
+merkle_tree = ["crh", "hashbrown"]
 encryption = []
 prf = []
 snark = []

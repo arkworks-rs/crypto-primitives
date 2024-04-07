@@ -7,6 +7,8 @@ use ark_ec::{
 use ark_ff::models::{Fp, FpConfig};
 use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
+#[cfg(not(feature = "std"))]
+use ark_std::{string::String, vec::Vec};
 
 pub use ark_crypto_primitives_macros::*;
 

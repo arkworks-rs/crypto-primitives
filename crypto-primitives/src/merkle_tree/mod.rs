@@ -6,8 +6,11 @@ use crate::sponge::Absorb;
 use crate::{crh::CRHScheme, Error};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
-use ark_std::collections::{BTreeSet, HashMap};
+use ark_std::collections::BTreeSet;
 use ark_std::hash::Hash;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
+use hashbrown::HashMap;
 
 #[cfg(test)]
 mod tests;

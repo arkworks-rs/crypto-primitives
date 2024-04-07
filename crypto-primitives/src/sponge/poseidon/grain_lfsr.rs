@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
 use ark_ff::{BigInteger, PrimeField};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 pub struct PoseidonGrainLFSR {
     pub prime_num_bits: u64,

@@ -7,6 +7,8 @@ use ark_ff::{
 use ark_serialize::CanonicalSerialize;
 use ark_std::ops::Mul;
 use ark_std::rand::Rng;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 use ark_std::{hash::Hash, marker::PhantomData};
 use digest::Digest;
 

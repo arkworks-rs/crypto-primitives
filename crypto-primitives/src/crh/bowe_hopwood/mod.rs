@@ -21,6 +21,8 @@ use ark_ff::fields::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
 use ark_std::cfg_chunks;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 use ark_std::UniformRand;
 
 #[cfg(feature = "r1cs")]
