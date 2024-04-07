@@ -118,5 +118,5 @@ jobs:
 
       - name: crypto-primitives
         run: |
-          cargo build --no-default-features --features=r1cs --target aarch64-unknown-none
-          cargo check --examples --no-default-features --features=r1cs --target aarch64-unknown-none
+          cargo build --no-default-features --features=r1cs,merkle_tree,prf,encryption,signature,snark --target aarch64-unknown-none
+          cargo check --all --no-default-features --features=r1cs,merkle_tree,prf,encryption,signature,snark --target aarch64-unknown-none
