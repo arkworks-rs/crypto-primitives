@@ -9,6 +9,8 @@ use ark_r1cs_std::uint8::UInt8;
 use ark_r1cs_std::R1CSVar;
 use ark_relations::lc;
 use ark_relations::r1cs::{ConstraintSystemRef, LinearCombination, SynthesisError};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 mod absorb;
 pub use absorb::*;
