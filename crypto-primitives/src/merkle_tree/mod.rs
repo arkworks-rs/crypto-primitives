@@ -12,9 +12,10 @@ use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, collections::BTreeSet, hash::Hash};
 use hashbrown::HashMap;
 #[cfg(feature = "parallel")]
-use rayon::prelude::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
-};
+use rayon::prelude::*;
+
+#[cfg(feature = "r1cs")]
+pub mod constraints;
 
 #[cfg(test)]
 mod tests;
