@@ -51,8 +51,8 @@ pub enum Error {
     SerializationError(ark_serialize::SerializationError),
 }
 
-impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl ark_std::fmt::Display for Error {
+    fn fmt(&self, f: &mut ark_std::fmt::Formatter<'_>) -> ark_std::fmt::Result {
         match self {
             Self::IncorrectInputLength(len) => write!(f, "incorrect input length: {len}"),
             Self::NotPrimeOrder => write!(f, "element is not prime order"),

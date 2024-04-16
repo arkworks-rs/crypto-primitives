@@ -9,7 +9,7 @@ use crate::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-use ark_std::{borrow::Borrow, collections::BTreeSet, hash::Hash};
+use ark_std::{borrow::Borrow, collections::BTreeSet, fmt::Debug, hash::Hash};
 use hashbrown::HashMap;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -62,7 +62,7 @@ pub trait Config {
                               // leaf layer
     type LeafDigest: Clone
         + Eq
-        + core::fmt::Debug
+        + Debug
         + Hash
         + Default
         + CanonicalSerialize
@@ -78,7 +78,7 @@ pub trait Config {
     // inner layer
     type InnerDigest: Clone
         + Eq
-        + core::fmt::Debug
+        + Debug
         + Hash
         + Default
         + CanonicalSerialize

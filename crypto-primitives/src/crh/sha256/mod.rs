@@ -2,9 +2,10 @@ use crate::{
     crh::{CRHScheme, TwoToOneCRHScheme},
     Error,
 };
-use ark_std::rand::Rng;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
+use ark_std::{borrow::Borrow, rand::Rng};
+use sha2::digest::Digest;
 
 // Re-export the RustCrypto Sha256 type and its associated traits
 pub use sha2::{digest, Sha256};
@@ -13,10 +14,6 @@ pub use sha2::{digest, Sha256};
 pub mod constraints;
 
 // Implement the CRH traits for SHA-256
-
-use core::borrow::Borrow;
-use sha2::digest::Digest;
-
 impl CRHScheme for Sha256 {
     type Input = [u8];
     // This is always 32 bytes. It has to be a Vec to impl CanonicalSerialize
