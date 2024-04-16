@@ -1,4 +1,6 @@
 use crate::sponge::{Absorb, CryptographicSponge};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 pub use merlin::Transcript;
 
 impl CryptographicSponge for Transcript {
