@@ -1,7 +1,8 @@
 #![allow(clippy::upper_case_acronyms)]
 use crate::Error;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{borrow::Borrow, hash::Hash, rand::Rng};
+use ark_std::{borrow::Borrow, fmt::Debug, hash::Hash, rand::Rng};
+
 pub mod bowe_hopwood;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
@@ -16,13 +17,7 @@ pub use constraints::*;
 /// variable length CRH may also implement this trait in future.
 pub trait CRHScheme {
     type Input: ?Sized + Send;
-    type Output: Clone
-        + Eq
-        + core::fmt::Debug
-        + Hash
-        + Default
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+    type Output: Clone + Eq + Debug + Hash + Default + CanonicalSerialize + CanonicalDeserialize;
     type Parameters: Clone + CanonicalSerialize + CanonicalDeserialize + Sync;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
@@ -37,13 +32,7 @@ pub trait TwoToOneCRHScheme {
     /// Raw Input type of TwoToOneCRH
     type Input: ?Sized;
     /// Raw Output type of TwoToOneCRH
-    type Output: Clone
-        + Eq
-        + core::fmt::Debug
-        + Hash
-        + Default
-        + CanonicalSerialize
-        + CanonicalDeserialize;
+    type Output: Clone + Eq + Debug + Hash + Default + CanonicalSerialize + CanonicalDeserialize;
     type Parameters: Clone + CanonicalSerialize + CanonicalDeserialize + Sync;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
