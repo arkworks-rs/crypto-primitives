@@ -1,11 +1,10 @@
-use crate::sponge::constraints::AbsorbGadget;
-use crate::sponge::constraints::{CryptographicSpongeVar, SpongeWithGadget};
-use crate::sponge::poseidon::{PoseidonConfig, PoseidonSponge};
-use crate::sponge::DuplexSpongeMode;
-
+use crate::sponge::{
+    constraints::{AbsorbGadget, CryptographicSpongeVar, SpongeWithGadget},
+    poseidon::{PoseidonConfig, PoseidonSponge},
+    DuplexSpongeMode,
+};
 use ark_ff::PrimeField;
-use ark_r1cs_std::fields::fp::FpVar;
-use ark_r1cs_std::prelude::*;
+use ark_r1cs_std::{fields::fp::FpVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSystemRef, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;

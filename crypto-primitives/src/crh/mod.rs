@@ -1,20 +1,14 @@
 #![allow(clippy::upper_case_acronyms)]
-
-use ark_std::hash::Hash;
-use ark_std::rand::Rng;
+use crate::Error;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::{borrow::Borrow, hash::Hash, rand::Rng};
 pub mod bowe_hopwood;
+#[cfg(feature = "r1cs")]
+pub mod constraints;
 pub mod injective_map;
 pub mod pedersen;
 pub mod poseidon;
 pub mod sha256;
-
-use crate::Error;
-
-#[cfg(feature = "r1cs")]
-pub mod constraints;
-
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::borrow::Borrow;
 #[cfg(feature = "r1cs")]
 pub use constraints::*;
 

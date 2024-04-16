@@ -1,16 +1,15 @@
-use ark_ec::short_weierstrass::Affine as SWAffine;
-use ark_ec::twisted_edwards::Affine as TEAffine;
+pub use ark_crypto_primitives_macros::*;
 use ark_ec::{
-    short_weierstrass::SWCurveConfig as SWModelParameters,
-    twisted_edwards::TECurveConfig as TEModelParameters,
+    short_weierstrass::{Affine as SWAffine, SWCurveConfig as SWModelParameters},
+    twisted_edwards::{Affine as TEAffine, TECurveConfig as TEModelParameters},
 };
-use ark_ff::models::{Fp, FpConfig};
-use ark_ff::{BigInteger, Field, PrimeField, ToConstraintField};
+use ark_ff::{
+    models::{Fp, FpConfig},
+    BigInteger, Field, PrimeField, ToConstraintField,
+};
 use ark_serialize::CanonicalSerialize;
 #[cfg(not(feature = "std"))]
 use ark_std::{string::String, vec::Vec};
-
-pub use ark_crypto_primitives_macros::*;
 
 /// An interface for objects that can be absorbed by a `CryptographicSponge`.
 pub trait Absorb {

@@ -1,10 +1,8 @@
-use ark_ff::Field;
-use core::fmt::Debug;
-
 use crate::prf::PRF;
-use ark_relations::r1cs::{Namespace, SynthesisError};
-
+use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_std::fmt::Debug;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 

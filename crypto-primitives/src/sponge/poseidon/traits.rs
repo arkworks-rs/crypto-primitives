@@ -1,5 +1,4 @@
-use crate::sponge::poseidon::grain_lfsr::PoseidonGrainLFSR;
-use crate::sponge::poseidon::PoseidonConfig;
+use crate::sponge::poseidon::{grain_lfsr::PoseidonGrainLFSR, PoseidonConfig};
 use ark_ff::{fields::models::*, PrimeField};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;

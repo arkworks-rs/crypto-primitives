@@ -5,11 +5,9 @@ use ark_ff::{
     AdditiveGroup, One, ToConstraintField, UniformRand, Zero,
 };
 use ark_serialize::CanonicalSerialize;
-use ark_std::ops::Mul;
-use ark_std::rand::Rng;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-use ark_std::{hash::Hash, marker::PhantomData};
+use ark_std::{hash::Hash, marker::PhantomData, ops::Mul, rand::Rng};
 use digest::Digest;
 
 #[cfg(feature = "r1cs")]

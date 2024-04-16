@@ -1,6 +1,7 @@
-use crate::crh::{CRHScheme, TwoToOneCRHScheme};
-use crate::Error;
-
+use crate::{
+    crh::{CRHScheme, TwoToOneCRHScheme},
+    Error,
+};
 use ark_std::rand::Rng;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;

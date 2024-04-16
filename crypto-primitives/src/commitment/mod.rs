@@ -1,7 +1,7 @@
+use crate::Error;
 use ark_ff::UniformRand;
 use ark_serialize::CanonicalSerialize;
-use ark_std::rand::Rng;
-use ark_std::{fmt::Debug, hash::Hash};
+use ark_std::{fmt::Debug, hash::Hash, rand::Rng};
 
 pub mod blake2s;
 pub mod injective_map;
@@ -11,8 +11,6 @@ pub mod pedersen;
 pub mod constraints;
 #[cfg(feature = "r1cs")]
 pub use constraints::*;
-
-use crate::Error;
 
 pub trait CommitmentScheme {
     type Output: CanonicalSerialize + Clone + Default + Eq + Hash + Debug;

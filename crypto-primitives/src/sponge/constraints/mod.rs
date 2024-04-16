@@ -1,14 +1,22 @@
 use crate::sponge::{Absorb, CryptographicSponge, FieldElementSize};
 use ark_ff::PrimeField;
-use ark_r1cs_std::alloc::AllocVar;
-use ark_r1cs_std::boolean::Boolean;
-use ark_r1cs_std::fields::emulated_fp::params::{get_params, OptimizationType};
-use ark_r1cs_std::fields::emulated_fp::{AllocatedEmulatedFpVar, EmulatedFpVar};
-use ark_r1cs_std::fields::fp::{AllocatedFp, FpVar};
-use ark_r1cs_std::uint8::UInt8;
-use ark_r1cs_std::R1CSVar;
-use ark_relations::lc;
-use ark_relations::r1cs::{ConstraintSystemRef, LinearCombination, SynthesisError};
+use ark_r1cs_std::{
+    alloc::AllocVar,
+    boolean::Boolean,
+    fields::{
+        emulated_fp::{
+            params::{get_params, OptimizationType},
+            AllocatedEmulatedFpVar, EmulatedFpVar,
+        },
+        fp::{AllocatedFp, FpVar},
+    },
+    uint8::UInt8,
+    R1CSVar,
+};
+use ark_relations::{
+    lc,
+    r1cs::{ConstraintSystemRef, LinearCombination, SynthesisError},
+};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 

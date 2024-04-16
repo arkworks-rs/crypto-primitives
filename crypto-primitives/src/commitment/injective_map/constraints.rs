@@ -5,7 +5,6 @@ use crate::commitment::{
         Window,
     },
 };
-
 pub use crate::crh::injective_map::constraints::InjectiveMapGadget;
 use ark_ec::CurveGroup;
 use ark_ff::{Field, PrimeField};
@@ -14,7 +13,6 @@ use ark_r1cs_std::{
     uint8::UInt8,
 };
 use ark_relations::r1cs::SynthesisError;
-
 use ark_std::marker::PhantomData;
 
 type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;

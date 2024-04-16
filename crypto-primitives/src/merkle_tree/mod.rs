@@ -1,25 +1,23 @@
 #![allow(clippy::needless_range_loop)]
 
 /// Defines a trait to chain two types of CRHs.
-use crate::crh::TwoToOneCRHScheme;
-use crate::sponge::Absorb;
-use crate::{crh::CRHScheme, Error};
+use crate::{
+    crh::{CRHScheme, TwoToOneCRHScheme},
+    sponge::Absorb,
+    Error,
+};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::borrow::Borrow;
-use ark_std::collections::BTreeSet;
-use ark_std::hash::Hash;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
+use ark_std::{borrow::Borrow, collections::BTreeSet, hash::Hash};
 use hashbrown::HashMap;
+#[cfg(feature = "parallel")]
+use rayon::prelude::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(feature = "r1cs")]
-pub mod constraints;
-
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 
 /// Convert the hash digest in different layers by converting previous layer's output to
 /// `TargetType`, which is a `Borrow` to next layer's input.

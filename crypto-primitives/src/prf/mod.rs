@@ -1,8 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use core::{fmt::Debug, hash::Hash};
-
 use crate::Error;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::{fmt::Debug, hash::Hash};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
