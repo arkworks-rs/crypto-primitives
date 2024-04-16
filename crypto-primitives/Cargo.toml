@@ -44,6 +44,7 @@ parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/para
 r1cs = [ "ark-r1cs-std", "tracing" ]
 crh = [ "sponge" ]
 sponge = [ "merlin" ]
+commitment = [ "crh" ]
 merkle_tree = ["crh", "hashbrown"]
 encryption = []
 prf = []
