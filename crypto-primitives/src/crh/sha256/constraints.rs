@@ -19,6 +19,8 @@ use ark_r1cs_std::{
     R1CSVar,
 };
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 const STATE_LEN: usize = 8;
 

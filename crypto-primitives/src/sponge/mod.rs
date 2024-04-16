@@ -1,5 +1,6 @@
 use ark_ff::PrimeField;
-use ark_std::vec;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 /// Infrastructure for the constraints counterparts.
 #[cfg(feature = "r1cs")]

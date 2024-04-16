@@ -2,6 +2,8 @@ use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use crate::Error;
 
 use ark_std::rand::Rng;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 // Re-export the RustCrypto Sha256 type and its associated traits
 pub use sha2::{digest, Sha256};

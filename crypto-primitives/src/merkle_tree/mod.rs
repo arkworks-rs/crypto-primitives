@@ -6,8 +6,11 @@ use crate::sponge::Absorb;
 use crate::{crh::CRHScheme, Error};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::borrow::Borrow;
-use ark_std::collections::{BTreeSet, HashMap};
+use ark_std::collections::BTreeSet;
 use ark_std::hash::Hash;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
+use hashbrown::HashMap;
 
 #[cfg(test)]
 mod tests;
@@ -65,7 +68,9 @@ pub trait Config {
         + Default
         + CanonicalSerialize
         + CanonicalDeserialize
-        + Send;
+        + Send
+        + Sync;
+
     // transition between leaf layer to inner layer
     type LeafInnerDigestConverter: DigestConverter<
         Self::LeafDigest,
@@ -80,6 +85,7 @@ pub trait Config {
         + CanonicalSerialize
         + CanonicalDeserialize
         + Send
+        + Sync
         + Absorb;
 
     // Tom's Note: in the future, if we want different hash function, we can simply add more

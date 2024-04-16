@@ -5,6 +5,8 @@ use crate::prf::PRF;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use ark_r1cs_std::prelude::*;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 
 pub trait PRFGadget<P: PRF, F: Field> {
     type OutputVar: EqGadget<F>

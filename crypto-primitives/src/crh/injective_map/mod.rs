@@ -1,5 +1,7 @@
 use crate::Error;
 use ark_std::rand::Rng;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
 use super::{pedersen, CRHScheme, TwoToOneCRHScheme};

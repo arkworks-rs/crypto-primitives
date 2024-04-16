@@ -15,6 +15,8 @@ use ark_relations::{
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, fmt, marker::PhantomData, vec::IntoIter};
 
 /// This implements constraints for SNARK verifiers.
