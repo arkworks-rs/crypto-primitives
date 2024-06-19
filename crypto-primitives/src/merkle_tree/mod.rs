@@ -1,5 +1,7 @@
 #![allow(clippy::needless_range_loop)]
 
+use core::hash::BuildHasherDefault;
+
 /// Defines a trait to chain two types of CRHs.
 use crate::crh::TwoToOneCRHScheme;
 use crate::sponge::Absorb;
@@ -20,6 +22,24 @@ pub mod constraints;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
+#[cfg(all(
+    target_has_atomic = "8",
+    target_has_atomic = "16",
+    target_has_atomic = "32",
+    target_has_atomic = "64",
+    target_has_atomic = "ptr"
+))]
+type DefaultHasher = ahash::AHasher;
+
+#[cfg(not(all(
+    target_has_atomic = "8",
+    target_has_atomic = "16",
+    target_has_atomic = "32",
+    target_has_atomic = "64",
+    target_has_atomic = "ptr"
+)))]
+type DefaultHasher = fnv::FnvHasher;
 
 /// Convert the hash digest in different layers by converting previous layer's output to
 /// `TargetType`, which is a `Borrow` to next layer's input.
@@ -248,7 +268,8 @@ impl<P: Config> MultiPath<P> {
         let mut leaves = leaves.into_iter();
 
         // LookUp table to speedup computation avoid redundant hash computations
-        let mut hash_lut: HashMap<usize, P::InnerDigest> = HashMap::new();
+        let mut hash_lut: HashMap<usize, P::InnerDigest, _> =
+            HashMap::with_hasher(BuildHasherDefault::<DefaultHasher>::default());
 
         // init prev path for decoding
         let mut prev_path: Vec<_> = self.auth_paths_suffixes[0].clone();
