@@ -1,7 +1,11 @@
-use crate::sponge::poseidon::{PoseidonConfig, PoseidonSponge};
-use crate::sponge::test::Fr;
-use crate::sponge::{Absorb, AbsorbWithLength, CryptographicSponge, FieldBasedCryptographicSponge};
-use crate::{absorb, collect_sponge_bytes, collect_sponge_field_elements};
+use crate::{
+    absorb, collect_sponge_bytes, collect_sponge_field_elements,
+    sponge::{
+        poseidon::{PoseidonConfig, PoseidonSponge},
+        test::Fr,
+        Absorb, AbsorbWithLength, CryptographicSponge, FieldBasedCryptographicSponge,
+    },
+};
 use ark_ff::{One, PrimeField, UniformRand};
 use ark_std::test_rng;
 

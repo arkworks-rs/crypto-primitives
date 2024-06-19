@@ -1,16 +1,15 @@
-use crate::Error;
-use ark_std::rand::Rng;
-#[cfg(not(feature = "std"))]
-use ark_std::vec::Vec;
-use ark_std::{fmt::Debug, hash::Hash, marker::PhantomData};
-
-use super::{pedersen, CRHScheme, TwoToOneCRHScheme};
+use crate::{
+    crh::{pedersen, CRHScheme, TwoToOneCRHScheme},
+    Error,
+};
 use ark_ec::{
     twisted_edwards::{Affine as TEAffine, Projective as TEProjective, TECurveConfig},
     CurveConfig, CurveGroup,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::borrow::Borrow;
+#[cfg(not(feature = "std"))]
+use ark_std::vec::Vec;
+use ark_std::{borrow::Borrow, fmt::Debug, hash::Hash, marker::PhantomData, rand::Rng};
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 

@@ -1,5 +1,4 @@
-use super::CommitmentScheme;
-use crate::Error;
+use crate::{commitment::CommitmentScheme, Error};
 use ark_std::rand::Rng;
 use blake2::Blake2s256 as b2s;
 use digest::Digest;

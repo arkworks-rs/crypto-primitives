@@ -1,6 +1,6 @@
 use crate::crh::{
-    pedersen::{Parameters, Window},
-    CRHSchemeGadget as CRHGadgetTrait,
+    pedersen::{Parameters, TwoToOneCRH, Window, CRH},
+    CRHSchemeGadget as CRHGadgetTrait, CRHSchemeGadget, TwoToOneCRHSchemeGadget,
 };
 use ark_ec::CurveGroup;
 use ark_ff::Field;
@@ -8,10 +8,7 @@ use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-
-use crate::crh::pedersen::{TwoToOneCRH, CRH};
-use crate::crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget};
-use core::{borrow::Borrow, iter, marker::PhantomData};
+use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]

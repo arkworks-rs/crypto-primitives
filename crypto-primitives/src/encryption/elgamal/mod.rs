@@ -1,13 +1,10 @@
-#[cfg(feature = "r1cs")]
-pub mod constraints;
-
-use crate::encryption::AsymmetricEncryptionScheme;
-use crate::Error;
+use crate::{encryption::AsymmetricEncryptionScheme, Error};
 use ark_ec::{AdditiveGroup, CurveGroup};
 use ark_ff::{fields::PrimeField, UniformRand};
-use ark_std::marker::PhantomData;
-use ark_std::ops::Mul;
-use ark_std::rand::Rng;
+use ark_std::{marker::PhantomData, ops::Mul, rand::Rng};
+
+#[cfg(feature = "r1cs")]
+pub mod constraints;
 
 pub struct ElGamal<C: CurveGroup> {
     _group: PhantomData<C>,

@@ -2,28 +2,28 @@
 //! specific Twisted Edwards (TE) curves. See [Section 5.4.17 of the Zcash protocol specification](https://raw.githubusercontent.com/zcash/zips/master/protocol/protocol.pdf#concretepedersenhash) for a formal description of this hash function, specialized for the Jubjub curve.
 //! The implementation in this repository is generic across choice of TE curves.
 
-use crate::Error;
-use ark_std::rand::Rng;
-use ark_std::{
-    fmt::{Debug, Formatter, Result as FmtResult},
-    marker::PhantomData,
+use crate::{
+    crh::{pedersen, CRHScheme, TwoToOneCRHScheme},
+    Error,
 };
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-
-use super::pedersen;
-use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::{
     twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig, AdditiveGroup,
     CurveGroup,
 };
 use ark_ff::fields::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::borrow::Borrow;
-use ark_std::cfg_chunks;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-use ark_std::UniformRand;
+use ark_std::{
+    borrow::Borrow,
+    cfg_chunks,
+    fmt::{Debug, Formatter, Result as FmtResult},
+    marker::PhantomData,
+    rand::Rng,
+    UniformRand,
+};
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

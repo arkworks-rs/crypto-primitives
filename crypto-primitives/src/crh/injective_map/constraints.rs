@@ -1,13 +1,11 @@
 use crate::crh::{
     constraints,
-    injective_map::{InjectiveMap, PedersenCRHCompressor, TECompressor},
+    injective_map::{
+        InjectiveMap, PedersenCRHCompressor, PedersenTwoToOneCRHCompressor, TECompressor,
+    },
     pedersen::{constraints as ped_constraints, Window},
-    TwoToOneCRHSchemeGadget,
+    CRHSchemeGadget, TwoToOneCRHSchemeGadget,
 };
-use ark_std::{fmt::Debug, marker::PhantomData};
-
-use crate::crh::injective_map::PedersenTwoToOneCRHCompressor;
-use crate::crh::CRHSchemeGadget;
 use ark_ec::{
     twisted_edwards::{Projective as TEProjective, TECurveConfig},
     CurveConfig, CurveGroup,
@@ -17,6 +15,7 @@ use ark_r1cs_std::{
     fields::fp::FpVar, groups::curves::twisted_edwards::AffineVar as TEVar, prelude::*,
 };
 use ark_relations::r1cs::SynthesisError;
+use ark_std::{fmt::Debug, marker::PhantomData};
 
 type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 

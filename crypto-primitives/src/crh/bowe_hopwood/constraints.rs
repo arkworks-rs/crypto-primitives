@@ -1,19 +1,18 @@
-use ark_ec::twisted_edwards::{Projective as TEProjective, TECurveConfig};
-use ark_ec::CurveConfig;
-use core::{borrow::Borrow, iter, marker::PhantomData};
-
 use crate::crh::{
-    bowe_hopwood::{Parameters, CHUNK_SIZE},
+    bowe_hopwood::{Parameters, TwoToOneCRH, CHUNK_SIZE, CRH},
     pedersen::{self, Window},
     CRHSchemeGadget, TwoToOneCRHSchemeGadget,
+};
+use ark_ec::{
+    twisted_edwards::{Projective as TEProjective, TECurveConfig},
+    CurveConfig,
 };
 use ark_ff::Field;
 use ark_r1cs_std::{groups::curves::twisted_edwards::AffineVar, prelude::*};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-
-use crate::crh::bowe_hopwood::{TwoToOneCRH, CRH};
+use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
 type ConstraintF<P> = <<P as CurveConfig>::BaseField as Field>::BasePrimeField;
 

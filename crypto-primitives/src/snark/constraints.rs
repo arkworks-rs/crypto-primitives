@@ -1,17 +1,19 @@
 use ark_ff::{BigInteger, PrimeField};
-use ark_r1cs_std::fields::{
-    emulated_fp::{
-        params::{get_params, OptimizationType},
-        AllocatedEmulatedFpVar, EmulatedFpVar,
+use ark_r1cs_std::{
+    fields::{
+        emulated_fp::{
+            params::{get_params, OptimizationType},
+            AllocatedEmulatedFpVar, EmulatedFpVar,
+        },
+        fp::{AllocatedFp, FpVar},
     },
-    fp::{AllocatedFp, FpVar},
+    prelude::*,
 };
-use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::OptimizationGoal;
 use ark_relations::{
     lc, ns,
     r1cs::{
-        ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
+        ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, OptimizationGoal,
+        SynthesisError,
     },
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};

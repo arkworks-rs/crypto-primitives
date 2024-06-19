@@ -1,17 +1,15 @@
-use crate::{crh::CRHScheme, Error};
+use super::CommitmentScheme;
+pub use crate::crh::pedersen::Window;
+use crate::{
+    crh::{pedersen, CRHScheme},
+    Error,
+};
 use ark_ec::CurveGroup;
 use ark_ff::{BitIteratorLE, Field, PrimeField, ToConstraintField};
 use ark_serialize::CanonicalSerialize;
-use ark_std::marker::PhantomData;
-use ark_std::rand::Rng;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-use ark_std::UniformRand;
-
-use super::CommitmentScheme;
-
-use crate::crh::pedersen;
-pub use crate::crh::pedersen::Window;
+use ark_std::{marker::PhantomData, rand::Rng, UniformRand};
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

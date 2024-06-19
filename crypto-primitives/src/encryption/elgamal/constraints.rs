@@ -1,15 +1,14 @@
-use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
-
-use crate::encryption::elgamal::{
-    Ciphertext, ElGamal, Parameters, Plaintext, PublicKey, Randomness,
+use crate::encryption::{
+    elgamal::{Ciphertext, ElGamal, Parameters, Plaintext, PublicKey, Randomness},
+    AsymmetricEncryptionGadget,
 };
-use crate::encryption::AsymmetricEncryptionGadget;
 use ark_ec::CurveGroup;
 use ark_ff::{
     fields::{Field, PrimeField},
     Zero,
 };
+use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_serialize::CanonicalSerialize;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
