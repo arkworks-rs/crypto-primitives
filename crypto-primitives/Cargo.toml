@@ -17,18 +17,18 @@ edition.workspace = true
 [dependencies]
 ark-crypto-primitives-macros = { version = "^0.4.0", path = "../macros" }
 
-ark-ff = { version = "^0.4.0", default-features = false }
-ark-ec = { version = "^0.4.0", default-features = false }
-ark-std = { version = "^0.4.0", default-features = false }
-ark-relations = { version = "^0.4.0", default-features = false }
-ark-serialize = { version = "^0.4.0", default-features = false, features = [ "derive" ] }
+ark-ff = { version = "0.5.0-alpha", default-features = false }
+ark-ec = { version = "0.5.0-alpha", default-features = false }
+ark-std = { version = "0.5.0-alpha", default-features = false }
+ark-relations = { version = "0.5.0-alpha", default-features = false }
+ark-serialize = { version = "0.5.0-alpha", default-features = false, features = [ "derive" ] }
 
 blake2 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 digest = { version = "0.10", default-features = false }
 
-ark-r1cs-std = { version = "^0.4.0", optional = true, default-features = false }
-ark-snark = { version = "^0.4.0", default-features = false }
+ark-r1cs-std = { version = "0.5.0-alpha", optional = true, default-features = false }
+ark-snark = { version = "0.5.0-alpha", default-features = false }
 
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
@@ -57,11 +57,11 @@ ahash = { version = "0.8", default-features = false}
 fnv = { version = "1.0", default-features = false }
 
 [dev-dependencies]
-ark-ed-on-bls12-377 = { version = "^0.4.0", default-features = false }
-ark-ed-on-bls12-381 = { version = "^0.4.0", default-features = false, features = [ "r1cs" ] }
-ark-bls12-377 = { version = "^0.4.0", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt4-298 = { version = "^0.4.0", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt6-298 = { version = "^0.4.0", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-377 = { version = "0.5.0-alpha", default-features = false }
+ark-ed-on-bls12-381 = { version = "0.5.0-alpha", default-features = false, features = [ "r1cs" ] }
+ark-bls12-377 = { version = "0.5.0-alpha", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt4-298 = { version = "0.5.0-alpha", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt6-298 = { version = "0.5.0-alpha", default-features = false, features = [ "r1cs" ] }
 criterion = { version = "0.4" }
 
 ################################# Benchmarks ##################################
