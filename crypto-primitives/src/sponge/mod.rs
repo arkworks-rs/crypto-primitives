@@ -17,6 +17,11 @@ pub use absorb::*;
 /// [cos]: https://eprint.iacr.org/2019/1076
 pub mod poseidon;
 
+/// The sponge for [Merlin][merlin]
+///
+/// [merlin]: https://merlin.cool/
+pub mod merlin;
+
 #[cfg(test)]
 mod test;
 
