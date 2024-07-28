@@ -12,6 +12,9 @@
 
 ### Improvements
 
+- [\#146](https://github.com/arkworks-rs/crypto-primitives/pull/146) Make dependency on
+`ark-relations` optional, do not depend on it for the `std` feature.
+
 ### Bugfixes
 
 ## v0.4.0
