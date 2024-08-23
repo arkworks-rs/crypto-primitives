@@ -7,7 +7,7 @@
     <a href="https://deps.rs/repo/github/arkworks-rs/crypto-primitives"><img src="https://deps.rs/repo/github/arkworks-rs/crypto-primitives/status.svg"></a>
 </p>
 
-The arkworks ecosystem consist of Rust libraries for designing and working with __zero knowledge succinct non-interactive arguments (zkSNARKs)__. This repository contains efficient implementations of cryptographic primitives such as collision-resistant hash functions, hiding commitments, pseudo-random functions, signatures, and, optionally, R1CS constraints for these.
+The arkworks ecosystem consists of Rust libraries for designing and working with __zero knowledge succinct non-interactive arguments (zkSNARKs)__. This repository contains efficient implementations of cryptographic primitives such as collision-resistant hash functions, hiding commitments, pseudo-random functions, signatures, and, optionally, R1CS constraints for these.
 
 This library is released under the MIT License and the Apache v2 License (see [License](#license)).
 
