@@ -1,9 +1,61 @@
-use crate::sponge::poseidon::{PoseidonConfig, PoseidonSponge};
+use crate::sponge::poseidon::{PoseidonConfig, PoseidonDefaultConfigField, PoseidonSponge};
 use crate::sponge::test::Fr;
 use crate::sponge::{Absorb, AbsorbWithLength, CryptographicSponge, FieldBasedCryptographicSponge};
 use crate::{absorb, collect_sponge_bytes, collect_sponge_field_elements};
 use ark_ff::{One, PrimeField, UniformRand};
 use ark_std::test_rng;
+
+#[test]
+fn demo_bug() {
+    let sponge_params = Fr::get_default_poseidon_parameters(2, false).unwrap();
+
+    let rng = &mut test_rng();
+    let input = (0..3).map(|_| Fr::rand(rng)).collect::<Vec<_>>();
+
+    // works good
+    let e0 = {
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_params);
+        sponge.absorb(&input);
+        sponge.squeeze_native_field_elements(3)
+    };
+
+    // works good
+    let e1 = {
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_params);
+        sponge.absorb(&input);
+        let e0 = sponge.squeeze_native_field_elements(1);
+        let e1 = sponge.squeeze_native_field_elements(1);
+        let e2 = sponge.squeeze_native_field_elements(1);
+        e0.iter()
+            .chain(e1.iter())
+            .chain(e2.iter())
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    // also works good
+    let e2 = {
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_params);
+        sponge.absorb(&input);
+
+        let e0 = sponge.squeeze_native_field_elements(2);
+        let e1 = sponge.squeeze_native_field_elements(1);
+        e0.iter().chain(e1.iter()).cloned().collect::<Vec<_>>()
+    };
+
+    // skips a permutation
+    let e3 = {
+        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_params);
+        sponge.absorb(&input);
+        let e0 = sponge.squeeze_native_field_elements(1);
+        let e1 = sponge.squeeze_native_field_elements(2);
+        e0.iter().chain(e1.iter()).cloned().collect::<Vec<_>>()
+    };
+
+    assert_eq!(e0, e1);
+    assert_eq!(e0, e2);
+    assert_eq!(e0, e3); // this will fail
+}
 
 fn assert_different_encodings<F: PrimeField, A: Absorb>(a: &A, b: &A) {
     let bytes1 = a.to_sponge_bytes_as_vec();
