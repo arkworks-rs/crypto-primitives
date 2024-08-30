@@ -174,12 +174,13 @@ impl<F: PrimeField> PoseidonSponge<F> {
                     ..(self.parameters.capacity + num_elements_squeezed + rate_start_index)],
             );
 
-            // Unless we are done with squeezing in this call, permute.
-            if output_remaining.len() != self.parameters.rate {
-                self.permute();
-            }
             // Repeat with updated output slices
             output_remaining = &mut output_remaining[num_elements_squeezed..];
+            // Unless we are done with squeezing in this call, permute.
+            if !output_remaining.is_empty() {
+                self.permute();
+            }
+
             rate_start_index = 0;
         }
     }
