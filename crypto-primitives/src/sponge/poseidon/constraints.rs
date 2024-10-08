@@ -223,7 +223,6 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             DuplexSpongeMode::Squeezing {
                 next_squeeze_index: _,
             } => {
-                self.permute()?;
                 self.absorb_internal(0, input.as_slice())?;
             }
         };
@@ -279,8 +278,8 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             }
             DuplexSpongeMode::Squeezing { next_squeeze_index } => {
                 let mut squeeze_index = next_squeeze_index;
+                self.permute()?;
                 if squeeze_index == self.parameters.rate {
-                    self.permute()?;
                     squeeze_index = 0;
                 }
                 self.squeeze_internal(squeeze_index, &mut squeezed_elems)?;
