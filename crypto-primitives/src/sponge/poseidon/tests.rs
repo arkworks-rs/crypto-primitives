@@ -111,9 +111,6 @@ fn run_cross_test<F: PrimeField + Absorb>(cfg: &PoseidonConfig<F>) {
                 match self.mode() {
                     SpongeMode::Absorbing => self.absorbing.extend_from_slice(input),
                     SpongeMode::Squeezing => {
-                        // Wash the state as mode changes
-                        // This is not appied in SAFE sponge
-                        permute(&self.cfg, &mut self.state);
                         // Append inputs to the absorbing line
                         self.absorbing.extend_from_slice(input);
                         // Change mode to absorbing

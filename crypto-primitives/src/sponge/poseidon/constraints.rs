@@ -270,6 +270,7 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
     ) -> Result<Vec<FpVar<F>>, SynthesisError> {
         let zero = FpVar::zero();
         let mut squeezed_elems = vec![zero; num_elements];
+        // self.permute()?;
         match self.mode {
             DuplexSpongeMode::Absorbing {
                 next_absorb_index: _,
@@ -279,8 +280,8 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             }
             DuplexSpongeMode::Squeezing { next_squeeze_index } => {
                 let mut squeeze_index = next_squeeze_index;
-                self.permute()?;
                 if squeeze_index == self.parameters.rate {
+                    self.permute()?;
                     squeeze_index = 0;
                 }
                 self.squeeze_internal(squeeze_index, &mut squeezed_elems)?;
