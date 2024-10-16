@@ -270,7 +270,6 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
     ) -> Result<Vec<FpVar<F>>, SynthesisError> {
         let zero = FpVar::zero();
         let mut squeezed_elems = vec![zero; num_elements];
-        // self.permute()?;
         match self.mode {
             DuplexSpongeMode::Absorbing {
                 next_absorb_index: _,
