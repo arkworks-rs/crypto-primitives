@@ -238,7 +238,7 @@ impl<F: PrimeField> CryptographicSponge for PoseidonSponge<F> {
         if elems.is_empty() {
             return;
         }
-        
+
         match self.mode {
             DuplexSpongeMode::Absorbing { next_absorb_index } => {
                 let mut absorb_index = next_absorb_index;
