@@ -224,7 +224,6 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
             DuplexSpongeMode::Squeezing {
                 next_squeeze_index: _,
             } => {
-                self.permute()?;
                 self.absorb_internal(0, input.as_slice())?;
             }
         };
