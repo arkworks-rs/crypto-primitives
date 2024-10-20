@@ -30,9 +30,9 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
 
     /// Information about the R1CS constraints required to check proofs relative
     /// a given verification key. In the context of a LPCP-based pairing-based SNARK
-    /// like that of [[Groth16]](https://eprint.iacr.org/2016/260),
+    /// like that of [Groth16](https://eprint.iacr.org/2016/260),
     /// this is independent of the R1CS matrices,
-    /// whereas for more "complex" SNARKs like [[Marlin]](https://eprint.iacr.org/2019/1047),
+    /// whereas for more "complex" SNARKs like [Marlin](https://eprint.iacr.org/2019/1047),
     /// this can encode information about the highest degree of polynomials
     /// required to verify proofs.
     type VerifierSize: PartialOrd + Clone + fmt::Debug;

@@ -224,13 +224,13 @@ impl<P: Config> Path<P> {
 ///  [I]J L  M
 /// ```
 ///  Suppose we want to prove I and J, then:
-///     `leaf_indexes` is: [2,3] (indexes in Merkle Tree leaves vector)
-///     `leaf_siblings_hashes`: [J,I]
-///     `auth_paths_prefix_lenghts`: [0,2]
-///     `auth_paths_suffixes`: [ [C,D], []]
+///     `leaf_indexes` is: `[2,3]` (indexes in Merkle Tree leaves vector)
+///     `leaf_siblings_hashes`: `[J,I]`
+///     `auth_paths_prefix_lenghts`: `[0,2]`
+///     `auth_paths_suffixes`: `[ [C,D], []]`
 ///  We can reconstruct the paths incrementally:
 ///  First, we reconstruct the first path. The prefix length is 0, hence we do not have any prefix encoding.
-///  The path is thus [C,D].
+///  The path is thus `[C,D]`.
 ///  Once the first path is verified, we can reconstruct the second path.
 ///  The prefix length of 2 means that the path prefix will be `previous_path[:2] -> [C,D]`.
 ///  Since the Merkle Tree branch is the same, the authentication path is the same (which means in this case that there is no suffix).
@@ -586,7 +586,9 @@ impl<P: Config> MerkleTree<P> {
     /// instead of
     /// `num_leaves*(num_leaves.log2()-1)`
     /// When verifying the proof, leaves hashes should be supplied in order, that is:
+    /// ```no_run
     /// let ordered_leaves: Vec<_> = self.leaf_indexes.into_iter().map(|i| leaves[i]).collect();
+    /// ```
     pub fn generate_multi_proof(
         &self,
         indexes: impl IntoIterator<Item = usize>,
