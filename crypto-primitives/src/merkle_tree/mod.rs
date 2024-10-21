@@ -586,7 +586,7 @@ impl<P: Config> MerkleTree<P> {
     /// instead of
     /// `num_leaves*(num_leaves.log2()-1)`
     /// When verifying the proof, leaves hashes should be supplied in order, that is:
-    /// ```no_run
+    /// ```ignore
     /// let ordered_leaves: Vec<_> = self.leaf_indexes.into_iter().map(|i| leaves[i]).collect();
     /// ```
     pub fn generate_multi_proof(
