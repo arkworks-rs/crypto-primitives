@@ -1,6 +1,5 @@
 use crate::sponge::poseidon::PoseidonConfig;
-use ark_std::str::FromStr;
-use ark_std::{One, Zero};
+use ark_std::{str::FromStr, One, Zero};
 
 type F = ark_ed_on_bls12_381::Fr;
 

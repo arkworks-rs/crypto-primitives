@@ -1,10 +1,8 @@
+use crate::{prf::PRF, Error};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use blake2::{Blake2s256 as B2s, Blake2sMac};
 use digest::Digest;
-
-use super::PRF;
-use crate::Error;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

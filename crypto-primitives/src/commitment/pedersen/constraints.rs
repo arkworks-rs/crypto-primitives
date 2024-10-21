@@ -7,11 +7,10 @@ use ark_ff::{
     fields::{Field, PrimeField},
     Zero,
 };
+use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_serialize::CanonicalSerialize;
-
-use ark_r1cs_std::prelude::*;
-use core::{borrow::Borrow, iter, marker::PhantomData};
+use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
 type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 

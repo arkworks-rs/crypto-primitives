@@ -1,20 +1,21 @@
-use crate::Error;
-use ark_std::rand::Rng;
-use ark_std::{
-    fmt::{Debug, Formatter, Result as FmtResult},
-    marker::PhantomData,
+use crate::{
+    crh::{CRHScheme, TwoToOneCRHScheme},
+    Error,
 };
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-
-use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ec::CurveGroup;
 use ark_ff::{Field, ToConstraintField};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::borrow::Borrow;
-use ark_std::cfg_chunks;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
+use ark_std::{
+    borrow::Borrow,
+    cfg_chunks,
+    fmt::{Debug, Formatter, Result as FmtResult},
+    marker::PhantomData,
+    rand::Rng,
+};
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;

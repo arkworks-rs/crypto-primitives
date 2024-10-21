@@ -1,10 +1,8 @@
-use ark_ff::Field;
-use core::fmt::Debug;
-
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
-use ark_relations::r1cs::SynthesisError;
-
+use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::SynthesisError;
+use ark_std::fmt::Debug;
 
 pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
     type InputVar: ?Sized;

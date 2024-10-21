@@ -7,8 +7,7 @@ mod bytes_mt_tests {
     use crate::{crh::*, merkle_tree::*};
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
-    use ark_std::{test_rng, UniformRand};
-    use std::iter::zip;
+    use ark_std::{iter::zip, test_rng, UniformRand};
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -184,9 +183,12 @@ mod bytes_mt_tests {
 }
 
 mod field_mt_tests {
-    use crate::crh::poseidon;
-    use crate::merkle_tree::tests::test_utils::poseidon_parameters;
-    use crate::merkle_tree::{Config, IdentityDigestConverter, MerkleTree};
+    use crate::{
+        crh::poseidon,
+        merkle_tree::{
+            tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter, MerkleTree,
+        },
+    };
     use ark_std::{test_rng, One, UniformRand};
 
     type F = ark_ed_on_bls12_381::Fr;

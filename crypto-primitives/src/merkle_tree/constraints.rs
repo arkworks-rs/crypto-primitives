@@ -1,13 +1,13 @@
-use crate::crh::TwoToOneCRHSchemeGadget;
-use crate::merkle_tree::Config;
-use crate::{crh::CRHSchemeGadget, merkle_tree::Path};
+use crate::{
+    crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget},
+    merkle_tree::{Config, Path},
+};
 use ark_ff::PrimeField;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
-use ark_std::borrow::Borrow;
-use ark_std::fmt::Debug;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
+use ark_std::{borrow::Borrow, fmt::Debug};
 
 #[cfg(test)]
 use crate::merkle_tree::IdentityDigestConverter;

@@ -3,25 +3,24 @@
 use core::hash::BuildHasherDefault;
 
 /// Defines a trait to chain two types of CRHs.
-use crate::crh::TwoToOneCRHScheme;
-use crate::sponge::Absorb;
-use crate::{crh::CRHScheme, Error};
+use crate::{
+    crh::{CRHScheme, TwoToOneCRHScheme},
+    sponge::Absorb,
+    Error,
+};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::borrow::Borrow;
-use ark_std::collections::BTreeSet;
-use ark_std::hash::Hash;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
+use ark_std::{borrow::Borrow, collections::BTreeSet, fmt::Debug, hash::Hash};
 use hashbrown::HashMap;
-
-#[cfg(test)]
-mod tests;
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
+#[cfg(test)]
+mod tests;
 
 #[cfg(all(
     target_has_atomic = "8",
@@ -85,7 +84,7 @@ pub trait Config {
                               // leaf layer
     type LeafDigest: Clone
         + Eq
-        + core::fmt::Debug
+        + Debug
         + Hash
         + Default
         + CanonicalSerialize
@@ -101,7 +100,7 @@ pub trait Config {
     // inner layer
     type InnerDigest: Clone
         + Eq
-        + core::fmt::Debug
+        + Debug
         + Hash
         + Default
         + CanonicalSerialize

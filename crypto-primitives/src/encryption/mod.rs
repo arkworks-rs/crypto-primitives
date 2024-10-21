@@ -1,12 +1,11 @@
-#[cfg(feature = "r1cs")]
-pub mod constraints;
-#[cfg(feature = "r1cs")]
-pub use constraints::*;
-
-pub mod elgamal;
-
 use crate::Error;
 use ark_std::rand::Rng;
+
+#[cfg(feature = "r1cs")]
+pub mod constraints;
+pub mod elgamal;
+#[cfg(feature = "r1cs")]
+pub use constraints::*;
 
 pub trait AsymmetricEncryptionScheme {
     type Parameters;

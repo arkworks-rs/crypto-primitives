@@ -4,9 +4,6 @@
 // Thank you!
 
 use crate::crh::{sha256::Sha256, CRHSchemeGadget, TwoToOneCRHSchemeGadget};
-
-use core::{borrow::Borrow, iter, marker::PhantomData};
-
 use ark_ff::PrimeField;
 use ark_r1cs_std::{
     alloc::{AllocVar, AllocationMode},
@@ -21,6 +18,7 @@ use ark_r1cs_std::{
 use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
+use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
 const STATE_LEN: usize = 8;
 

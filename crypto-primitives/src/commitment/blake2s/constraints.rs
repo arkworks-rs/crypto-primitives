@@ -1,13 +1,11 @@
-use ark_relations::r1cs::{Namespace, SynthesisError};
-
 use crate::{
     commitment::{blake2s, CommitmentGadget},
     prf::blake2s::constraints::{evaluate_blake2s, OutputVar},
 };
 use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::prelude::*;
-
-use core::borrow::Borrow;
+use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_std::borrow::Borrow;
 
 #[derive(Clone)]
 pub struct ParametersVar;
