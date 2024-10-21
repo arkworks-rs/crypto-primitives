@@ -213,9 +213,9 @@ impl<F: PrimeField, A: AbsorbGadget<F>> AbsorbGadget<F> for &A {
     }
 }
 
-/// Individually absorbs each element in a comma-separated list of [`Absorbable`]s into a sponge.
+/// Individually absorbs each element in a comma-separated list of [`AbsorbGadget`]s into a sponge.
 /// Format is `absorb!(s, a_0, a_1, ..., a_n)`, where `s` is a mutable reference to a sponge
-/// and each `a_i` implements `AbsorbableVar`.
+/// and each `a_i` implements [`AbsorbGadget`].
 #[macro_export]
 macro_rules! absorb_gadget {
     ($sponge:expr, $($absorbable:expr),+ ) => {
@@ -225,7 +225,7 @@ macro_rules! absorb_gadget {
     };
 }
 
-/// Quickly convert a list of different [`Absorbable`]s into sponge field elements.
+/// Quickly convert a list of different [`AbsorbGadget`]s into sponge field elements.
 #[macro_export]
 macro_rules! collect_sponge_field_elements_gadget {
     ($head:expr $(, $tail:expr)* ) => {
