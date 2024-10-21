@@ -1,6 +1,6 @@
 use crate::{
     crh::{CRHSchemeGadget, TwoToOneCRHSchemeGadget},
-    merkle_tree::{Config, IdentityDigestConverter, Path},
+    merkle_tree::{Config, Path},
 };
 use ark_ff::PrimeField;
 use ark_r1cs_std::prelude::*;
@@ -9,11 +9,15 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, fmt::Debug};
 
+#[cfg(test)]
+use crate::merkle_tree::IdentityDigestConverter;
+
 pub trait DigestVarConverter<From, To: ?Sized> {
     type TargetType: Borrow<To>;
     fn convert(from: From) -> Result<Self::TargetType, SynthesisError>;
 }
 
+#[cfg(test)]
 impl<T> DigestVarConverter<T, T> for IdentityDigestConverter<T> {
     type TargetType = T;
 

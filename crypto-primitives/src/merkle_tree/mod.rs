@@ -1,5 +1,7 @@
 #![allow(clippy::needless_range_loop)]
 
+use core::hash::BuildHasherDefault;
+
 /// Defines a trait to chain two types of CRHs.
 use crate::{
     crh::{CRHScheme, TwoToOneCRHScheme},
@@ -20,6 +22,24 @@ pub mod constraints;
 #[cfg(test)]
 mod tests;
 
+#[cfg(all(
+    target_has_atomic = "8",
+    target_has_atomic = "16",
+    target_has_atomic = "32",
+    target_has_atomic = "64",
+    target_has_atomic = "ptr"
+))]
+type DefaultHasher = ahash::AHasher;
+
+#[cfg(not(all(
+    target_has_atomic = "8",
+    target_has_atomic = "16",
+    target_has_atomic = "32",
+    target_has_atomic = "64",
+    target_has_atomic = "ptr"
+)))]
+type DefaultHasher = fnv::FnvHasher;
+
 /// Convert the hash digest in different layers by converting previous layer's output to
 /// `TargetType`, which is a `Borrow` to next layer's input.
 pub trait DigestConverter<From, To: ?Sized> {
@@ -28,10 +48,12 @@ pub trait DigestConverter<From, To: ?Sized> {
 }
 
 /// A trivial converter where digest of previous layer's hash is the same as next layer's input.
+#[cfg(test)]
 pub struct IdentityDigestConverter<T> {
     _prev_layer_digest: T,
 }
 
+#[cfg(test)]
 impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
     type TargetType = T;
     fn convert(item: T) -> Result<T, Error> {
@@ -247,7 +269,8 @@ impl<P: Config> MultiPath<P> {
         let mut leaves = leaves.into_iter();
 
         // LookUp table to speedup computation avoid redundant hash computations
-        let mut hash_lut: HashMap<usize, P::InnerDigest> = HashMap::new();
+        let mut hash_lut: HashMap<usize, P::InnerDigest, _> =
+            HashMap::with_hasher(BuildHasherDefault::<DefaultHasher>::default());
 
         // init prev path for decoding
         let mut prev_path: Vec<_> = self.auth_paths_suffixes[0].clone();

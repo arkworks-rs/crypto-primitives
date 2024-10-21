@@ -26,6 +26,7 @@ ark-serialize = { version = "^0.4.0", default-features = false, features = [ "de
 blake2 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 digest = { version = "0.10", default-features = false }
+merlin = { version = "3.0.0", default-features = false, optional = true }
 
 ark-r1cs-std = { version = "^0.4.0", optional = true, default-features = false }
 ark-snark = { version = "^0.4.0", default-features = false }
@@ -33,7 +34,7 @@ ark-snark = { version = "^0.4.0", default-features = false }
 rayon = { version = "1.0", optional = true }
 derivative = { version = "2.0", features = ["use_core"] }
 tracing = { version = "0.1", default-features = false, features = [ "attributes" ], optional = true }
-hashbrown = { version = "^0.14", default-features = false, optional = true }
+hashbrown = { version = "0.14", default-features = false, features = ["inline-more", "allocator-api2"], optional = true  }
 
 [features]
 default = ["std"]
@@ -42,13 +43,19 @@ print-trace = [ "ark-std/print-trace" ]
 parallel = [ "std", "rayon", "ark-ec/parallel", "ark-std/parallel", "ark-ff/parallel" ]
 r1cs = [ "ark-r1cs-std", "tracing" ]
 crh = [ "sponge" ]
-sponge = []
-commitment = ["crh"]
+sponge = [ "merlin" ]
+commitment = [ "crh" ]
 merkle_tree = ["crh", "hashbrown"]
 encryption = []
 prf = []
 snark = []
 signature = []
+
+[target.'cfg(all(target_has_atomic = "8", target_has_atomic = "16", target_has_atomic = "32", target_has_atomic = "64", target_has_atomic = "ptr"))'.dependencies]
+ahash = { version = "0.8", default-features = false}
+
+[target.'cfg(not(all(target_has_atomic = "8", target_has_atomic = "16", target_has_atomic = "32", target_has_atomic = "64", target_has_atomic = "ptr")))'.dependencies]
+fnv = { version = "1.0", default-features = false }
 
 [dev-dependencies]
 ark-ed-on-bls12-377 = { version = "^0.4.0", default-features = false }
