@@ -1,7 +1,5 @@
 #![allow(clippy::needless_range_loop)]
 
-use core::hash::BuildHasherDefault;
-
 /// Defines a trait to chain two types of CRHs.
 use crate::{
     crh::{CRHScheme, TwoToOneCRHScheme},
@@ -11,7 +9,12 @@ use crate::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-use ark_std::{borrow::Borrow, collections::BTreeSet, fmt::Debug, hash::Hash};
+use ark_std::{
+    borrow::Borrow,
+    collections::BTreeSet,
+    fmt::Debug,
+    hash::{BuildHasherDefault, Hash},
+};
 use hashbrown::HashMap;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
