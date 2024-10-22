@@ -48,12 +48,10 @@ pub trait DigestConverter<From, To: ?Sized> {
 }
 
 /// A trivial converter where digest of previous layer's hash is the same as next layer's input.
-#[cfg(test)]
 pub struct IdentityDigestConverter<T> {
     _prev_layer_digest: T,
 }
 
-#[cfg(test)]
 impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
     type TargetType = T;
     fn convert(item: T) -> Result<T, Error> {
