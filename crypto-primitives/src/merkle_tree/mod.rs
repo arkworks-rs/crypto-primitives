@@ -1,7 +1,5 @@
 #![allow(clippy::needless_range_loop)]
 
-use core::hash::BuildHasherDefault;
-
 /// Defines a trait to chain two types of CRHs.
 use crate::{
     crh::{CRHScheme, TwoToOneCRHScheme},
@@ -11,7 +9,12 @@ use crate::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
-use ark_std::{borrow::Borrow, collections::BTreeSet, fmt::Debug, hash::Hash};
+use ark_std::{
+    borrow::Borrow,
+    collections::BTreeSet,
+    fmt::Debug,
+    hash::{BuildHasherDefault, Hash},
+};
 use hashbrown::HashMap;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -48,12 +51,10 @@ pub trait DigestConverter<From, To: ?Sized> {
 }
 
 /// A trivial converter where digest of previous layer's hash is the same as next layer's input.
-#[cfg(test)]
 pub struct IdentityDigestConverter<T> {
     _prev_layer_digest: T,
 }
 
-#[cfg(test)]
 impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
     type TargetType = T;
     fn convert(item: T) -> Result<T, Error> {
