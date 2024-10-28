@@ -2,6 +2,16 @@
 
 ## Pending
 
+### Breaking changes
+
+### Features
+
+### Improvements
+
+### Bugfixes
+
+## v0.5.0
+
 - [\#120](https://github.com/arkworks-rs/crypto-primitives/pull/120) Add input size check to `bowe_hopwood::CRHGadget::evaluate`.
 
 ### Breaking changes
