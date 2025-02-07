@@ -218,10 +218,10 @@ impl<P: Config> Path<P> {
 ///         [A]
 ///        /   \
 ///      [B]    C
-///     / \   /  \
-///    D [E] F    H
-///   / \ / \ ....
-///  [I]J L  M
+///     / \    /  \
+///    D [E]  F    H
+///  ... / \ / \ ....
+///    [I] J L  M
 /// ```
 ///  Suppose we want to prove I and J, then:
 ///     `leaf_indexes` is: `[2,3]` (indexes in Merkle Tree leaves vector)
