@@ -135,7 +135,7 @@ fn run_cross_test<F: PrimeField + Absorb>(cfg: &PoseidonConfig<F>) {
                 permute(&self.cfg, &mut self.state);
             });
 
-            // This case can only happen in the begining when the absorbing line is empty
+            // This case can only happen in the beginning when the absorbing line is empty
             // and user wants to squeeze elements. Notice that after moving to squueze mode
             // if user calls absorb again with empty input it will be ignored
             self.absorbing
