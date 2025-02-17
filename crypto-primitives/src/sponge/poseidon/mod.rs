@@ -120,7 +120,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
         self.state = state;
     }
 
-    // Absorbs everything in elements, this does not end in an absorbtion.
+    // Absorbs everything in elements, this does not end in an absorption.
     fn absorb_internal(&mut self, mut rate_start_index: usize, elements: &[F]) {
         let mut remaining_elements = elements;
 
