@@ -7,10 +7,10 @@ import sys
 # It assumes the changelog file is in the root of the repo.
 repo_name = ""
 
-# This script goes through the provided file, and replaces any " \#<number>",
-# with the valid mark down formatted link to it. e.g.
+# This script goes through the provided file and replaces any "\#<number>",
+# with a valid markdown formatted link to it. e.g.
 # " [\#number](https://github.com/arkworks-rs/template/pull/<number>)
-# Note that if the number is for a an issue, github will auto-redirect you when you click the link.
+# Note that if the number is for an issue, GitHub will auto-redirect you when you click the link.
 # It is safe to run the script multiple times in succession.
 #
 # Example usage $ python3 linkify_changelog.py ../CHANGELOG.md
@@ -24,7 +24,6 @@ for line in fileinput.input(inplace=True):
     line = re.sub(
         r"\- #([0-9]*)",
         r"- [\#\1](https://github.com/arkworks-rs/" + repo_name + r"/pull/\1)",
-        line.rstrip(),
-        )
-    # edits the current file
+        line.rstrip()  # Removing trailing spaces and newlines
+    )
     print(line)
