@@ -307,4 +307,21 @@ mod field_mt_tests {
             ],
         )
     }
+
+    #[test]
+    fn test_leaves_access() {
+        let tree = MerkleTree::blank().unwrap();
+
+        // Get leaf digests
+        let leaf_digests = tree.leaves();
+
+        // Verify the number of leaves matches
+        assert_eq!(leaf_digests.len(), 0);
+
+        // Verify each leaf digest matches what we expect
+        for (i, leaf) in leaves.iter().enumerate() {
+            let expected_digest = P::LeafHash::evaluate(&leaf_hash_param, leaf).unwrap();
+            assert_eq!(leaf_digests[i], expected_digest);
+        }
+    }
 }

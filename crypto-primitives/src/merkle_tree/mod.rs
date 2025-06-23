@@ -723,6 +723,12 @@ impl<P: Config> MerkleTree<P> {
         }
         Ok(true)
     }
+
+    /// Returns a reference to the leaf nodes of the Merkle tree.
+    /// The leaves are returned in their original order from left to right.
+    pub fn leaves(&self) -> &[P::LeafDigest] {
+        &self.leaf_nodes
+    }
 }
 
 /// Returns the height of the tree, given the number of leaves.
