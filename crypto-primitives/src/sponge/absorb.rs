@@ -1,7 +1,8 @@
 pub use ark_crypto_primitives_macros::*;
 use ark_ec::{
     short_weierstrass::{Affine as SWAffine, SWCurveConfig as SWModelParameters},
-    twisted_edwards::{Affine as TEAffine, TECurveConfig as TEModelParameters}, AffineRepr,
+    twisted_edwards::{Affine as TEAffine, TECurveConfig as TEModelParameters},
+    AffineRepr,
 };
 use ark_ff::{
     models::{Fp, FpConfig},
