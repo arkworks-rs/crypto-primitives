@@ -5,7 +5,7 @@ use crate::crh::{
 use ark_ec::CurveGroup;
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, iter, marker::PhantomData};
@@ -45,7 +45,7 @@ where
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters, input))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters, input))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
@@ -100,7 +100,7 @@ where
     type OutputVar = GG;
     type ParametersVar = CRHParametersVar<C, GG>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &Self::InputVar,
@@ -116,7 +116,7 @@ where
         CRHGadget::<C, GG, W>::evaluate(parameters, &chained_input)
     }
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters))]
     fn compress(
         parameters: &Self::ParametersVar,
         left_input: &Self::OutputVar,
@@ -135,7 +135,7 @@ where
     GG: CurveVar<C, ConstraintF<C>>,
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
 {
-    #[tracing::instrument(target = "r1cs", skip(_cs, f))]
+    #[tracing::instrument(target = "gr1cs", skip(_cs, f))]
     fn new_variable<T: Borrow<Parameters<C>>>(
         _cs: impl Into<Namespace<ConstraintF<C>>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -157,7 +157,7 @@ mod test {
     use ark_ec::CurveGroup;
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq as Fr};
     use ark_r1cs_std::prelude::*;
-    use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
+    use ark_relations::gr1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::rand::Rng;
     use ark_std::{test_rng, UniformRand};
 
@@ -218,7 +218,6 @@ mod test {
 
         let result_var = TestCRHGadget::evaluate(&parameters_var, &input_var).unwrap();
 
-        let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
         assert!(cs.is_satisfied().unwrap());
     }
@@ -244,7 +243,6 @@ mod test {
             TestTwoToOneCRHGadget::compress(&parameters_var, &left_input_var, &right_input_var)
                 .unwrap();
 
-        let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap().into_affine());
         assert!(cs.is_satisfied().unwrap());
     }

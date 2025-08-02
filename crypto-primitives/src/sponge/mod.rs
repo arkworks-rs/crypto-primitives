@@ -3,11 +3,16 @@ use ark_ff::PrimeField;
 use ark_std::vec::Vec;
 
 /// Infrastructure for the constraints counterparts.
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
 
 mod absorb;
 pub use absorb::*;
+
+/// The sponge for [Rescue][sad]
+///
+/// [sad]: https://eprint.iacr.org/2020/1143.pdf
+pub mod rescue;
 
 /// The sponge for Poseidon
 ///

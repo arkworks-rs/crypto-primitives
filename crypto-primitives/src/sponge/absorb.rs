@@ -2,6 +2,7 @@ pub use ark_crypto_primitives_macros::*;
 use ark_ec::{
     short_weierstrass::{Affine as SWAffine, SWCurveConfig as SWModelParameters},
     twisted_edwards::{Affine as TEAffine, TECurveConfig as TEModelParameters},
+    AffineRepr,
 };
 use ark_ff::{
     models::{Fp, FpConfig},
@@ -273,7 +274,7 @@ where
             .for_each(|elem| {
                 dest.append(&mut elem.into_bigint().to_bytes_le());
             });
-        dest.push(self.infinity.into());
+        dest.push(self.is_zero().into());
     }
 
     fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {

@@ -13,7 +13,7 @@ use ark_r1cs_std::{
     },
     uint8::UInt8,
 };
-use ark_relations::r1cs::SynthesisError;
+use ark_relations::gr1cs::SynthesisError;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 
@@ -255,7 +255,7 @@ mod tests {
     use ark_ff::PrimeField;
     use ark_r1cs_std::fields::fp::FpVar;
     use ark_r1cs_std::uint8::UInt8;
-    use ark_r1cs_std::R1CSVar;
+    use ark_r1cs_std::GR1CSVar;
     use ark_r1cs_std::{
         alloc::AllocVar,
         groups::curves::{
@@ -263,14 +263,14 @@ mod tests {
             twisted_edwards::AffineVar as TEAffineVar,
         },
     };
-    use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
+    use ark_relations::gr1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_relations::*;
     use ark_std::{test_rng, UniformRand, Zero};
 
     fn sw_curve_consistency_check<C>(
         cs: ConstraintSystemRef<C::BaseField>,
         g: SWProjective<C>,
-    ) -> r1cs::Result<()>
+    ) -> gr1cs::Result<()>
     where
         C: SWCurveConfig,
         C::BaseField: PrimeField,
@@ -299,7 +299,7 @@ mod tests {
         Ok(())
     }
 
-    fn te_curve_consistency_check<C>(g: TEProjective<C>) -> r1cs::Result<()>
+    fn te_curve_consistency_check<C>(g: TEProjective<C>) -> gr1cs::Result<()>
     where
         C: TECurveConfig,
         C::BaseField: PrimeField,

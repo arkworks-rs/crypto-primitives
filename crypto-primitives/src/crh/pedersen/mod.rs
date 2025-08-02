@@ -17,7 +17,7 @@ use ark_std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
 
 pub trait Window: Clone {

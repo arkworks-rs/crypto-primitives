@@ -3,9 +3,9 @@ use crate::Error;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{fmt::Debug, hash::Hash};
 
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub use constraints::*;
 
 pub mod blake2s;

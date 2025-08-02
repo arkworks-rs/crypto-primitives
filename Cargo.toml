@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "crypto-primitives",
-    "macros",
-]
+members = ["crypto-primitives", "macros"]
 resolver = "2"
 
 [workspace.package]
@@ -12,7 +9,7 @@ description = "A library of useful cryptographic primitives"
 homepage = "https://arkworks.rs"
 repository = "https://github.com/arkworks-rs/crypto-primitives"
 documentation = "https://docs.rs/ark-crypto-primitives/"
-keywords = [ "r1cs", "pedersen", "blake2s", "snark", "schnorr" ]
+keywords = ["gr1cs", "pedersen", "blake2s", "snark", "schnorr"]
 categories = ["cryptography"]
 include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 license = "MIT/Apache-2.0"
@@ -43,16 +40,21 @@ incremental = true
 debug-assertions = true
 debug = true
 
-# [patch.crates-io]
-# ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
-# ark-ff = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-ec = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-poly = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-serialize = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-std = { git = "https://github.com/arkworks-rs/std/" }
+[patch.crates-io]
+ark-relations = { git = "https://github.com/arkworks-rs/snark" }
+ark-snark = { git = "https://github.com/arkworks-rs/snark" }
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std" }
+# ark-relations = { path = "../snark/relations", default-features = true }
+# ark-r1cs-std = { path = "../r1cs-std", default-features = true }
 
-# ark-ed-on-bls12-377 = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-bls12-377 = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-mnt4-298 = { git = "https://github.com/arkworks-rs/algebra/" }
-# ark-mnt6-298 = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra.git" }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra.git" }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra.git" }
+ark-poly = { git = "https://github.com/arkworks-rs/algebra.git" }
+
+# [patch."https://github.com/arkworks-rs/snark"]
+# ark-snark = { path = "../snark/snark", default-features = true }
+# ark-relations = { path = "../snark/relations", default-features = true }
+
+# [patch."https://github.com/arkworks-rs/r1cs-std"]
+# ark-r1cs-std = { path = "../r1cs-std", default-features = true }

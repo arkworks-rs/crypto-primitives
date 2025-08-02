@@ -11,7 +11,7 @@ use ark_serialize::CanonicalSerialize;
 use ark_std::vec::Vec;
 use ark_std::{marker::PhantomData, rand::Rng, UniformRand};
 
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
 
 #[derive(Clone)]

@@ -8,7 +8,7 @@ use ark_ff::{
     Zero,
 };
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 use ark_serialize::CanonicalSerialize;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
@@ -246,7 +246,7 @@ mod test {
     use crate::encryption::elgamal::{constraints::ElGamalEncGadget, ElGamal, Randomness};
     use crate::encryption::AsymmetricEncryptionScheme;
     use ark_r1cs_std::prelude::*;
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_relations::gr1cs::ConstraintSystem;
 
     #[test]
     fn test_elgamal_gadget() {

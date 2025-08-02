@@ -9,9 +9,8 @@ use crate::{
 use ark_ff::PrimeField;
 use ark_std::{borrow::Borrow, marker::PhantomData, rand::Rng};
 
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
-
 pub struct CRH<F: PrimeField + Absorb> {
     field_phantom: PhantomData<F>,
 }

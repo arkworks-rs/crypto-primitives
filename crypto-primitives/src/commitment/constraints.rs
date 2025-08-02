@@ -1,14 +1,14 @@
 use crate::commitment::CommitmentScheme;
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::SynthesisError;
+use ark_relations::gr1cs::SynthesisError;
 use ark_std::fmt::Debug;
 
 pub trait CommitmentGadget<C: CommitmentScheme, ConstraintF: Field> {
     type OutputVar: EqGadget<ConstraintF>
         + ToBytesGadget<ConstraintF>
         + AllocVar<C::Output, ConstraintF>
-        + R1CSVar<ConstraintF>
+        + GR1CSVar<ConstraintF>
         + Clone
         + Sized
         + Debug;

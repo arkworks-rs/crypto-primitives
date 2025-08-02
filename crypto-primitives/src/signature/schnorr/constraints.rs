@@ -5,7 +5,7 @@ use crate::signature::{
 use ark_ec::CurveGroup;
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, marker::PhantomData};
@@ -57,7 +57,7 @@ where
     type ParametersVar = ParametersVar<C, GC>;
     type PublicKeyVar = PublicKeyVar<C, GC>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters, public_key, randomness))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters, public_key, randomness))]
     fn randomize(
         parameters: &Self::ParametersVar,
         public_key: &Self::PublicKeyVar,

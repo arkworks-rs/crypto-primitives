@@ -12,7 +12,7 @@ use ark_r1cs_std::{
     groups::{CurveVar, GroupOpsBounds},
     uint8::UInt8,
 };
-use ark_relations::r1cs::SynthesisError;
+use ark_relations::gr1cs::SynthesisError;
 use ark_std::marker::PhantomData;
 
 type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;

@@ -8,7 +8,7 @@ use ark_ff::{
     Zero,
 };
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 use ark_serialize::CanonicalSerialize;
 use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
@@ -151,7 +151,7 @@ mod test {
         crh::pedersen,
     };
     use ark_r1cs_std::prelude::*;
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_relations::gr1cs::ConstraintSystem;
 
     /// Checks that the primitive Pedersen commitment matches the gadget version
     #[test]
@@ -199,7 +199,6 @@ mod test {
         let result_var =
             TestCOMMGadget::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
-        let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
         assert!(cs.is_satisfied().unwrap());
     }

@@ -15,7 +15,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -42,7 +42,7 @@ jobs:
           - nightly
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Rust (${{ matrix.rust }})
         uses: actions-rs/toolchain@v1
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -118,5 +118,5 @@ jobs:
 
       - name: crypto-primitives
         run: |
-          cargo build --no-default-features --features=r1cs,merkle_tree,prf,encryption,signature,snark --target aarch64-unknown-none
-          cargo check --all --no-default-features --features=r1cs,merkle_tree,prf,encryption,signature,snark --target aarch64-unknown-none
+          cargo build --no-default-features --features=constraints,merkle_tree,prf,encryption,signature,snark --target aarch64-unknown-none
+          cargo check --all --no-default-features --features=constraints,merkle_tree,prf,encryption,signature,snark --target aarch64-unknown-none

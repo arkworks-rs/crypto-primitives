@@ -1,6 +1,6 @@
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub use constraints::*;
 
 pub use ark_snark::*;

@@ -14,7 +14,7 @@ use ark_ff::fields::{Field, PrimeField};
 use ark_r1cs_std::{
     fields::fp::FpVar, groups::curves::twisted_edwards::AffineVar as TEVar, prelude::*,
 };
-use ark_relations::r1cs::SynthesisError;
+use ark_relations::gr1cs::SynthesisError;
 use ark_std::{fmt::Debug, marker::PhantomData};
 
 type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
@@ -27,7 +27,7 @@ where
         + ToBytesGadget<ConstraintF<C>>
         + CondSelectGadget<ConstraintF<C>>
         + AllocVar<I::Output, ConstraintF<C>>
-        + R1CSVar<ConstraintF<C>, Value = I::Output>
+        + GR1CSVar<ConstraintF<C>, Value = I::Output>
         + Debug
         + Clone
         + Sized;
@@ -82,7 +82,7 @@ where
     type OutputVar = IG::OutputVar;
     type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters, input))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters, input))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
@@ -127,7 +127,7 @@ where
     type OutputVar = IG::OutputVar;
     type ParametersVar = ped_constraints::CRHParametersVar<C, GG>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &Self::InputVar,

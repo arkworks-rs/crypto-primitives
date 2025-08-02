@@ -13,9 +13,9 @@ use ark_r1cs_std::{
     select::CondSelectGadget,
     uint32::UInt32,
     uint8::UInt8,
-    R1CSVar,
+    GR1CSVar,
 };
-use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
+use ark_relations::gr1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, iter, marker::PhantomData};
@@ -303,7 +303,7 @@ impl<ConstraintF: PrimeField> AllocVar<Vec<u8>, ConstraintF> for DigestVar<Const
     }
 }
 
-impl<ConstraintF: PrimeField> R1CSVar<ConstraintF> for DigestVar<ConstraintF> {
+impl<ConstraintF: PrimeField> GR1CSVar<ConstraintF> for DigestVar<ConstraintF> {
     type Value = [u8; 32];
 
     fn cs(&self) -> ConstraintSystemRef<ConstraintF> {
@@ -332,7 +332,7 @@ where
     type OutputVar = DigestVar<ConstraintF>;
     type ParametersVar = UnitVar<ConstraintF>;
 
-    #[tracing::instrument(target = "r1cs", skip(_parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(_parameters))]
     fn evaluate(
         _parameters: &Self::ParametersVar,
         input: &Self::InputVar,
@@ -349,7 +349,7 @@ where
     type OutputVar = DigestVar<ConstraintF>;
     type ParametersVar = UnitVar<ConstraintF>;
 
-    #[tracing::instrument(target = "r1cs", skip(_parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(_parameters))]
     fn evaluate(
         _parameters: &Self::ParametersVar,
         left_input: &Self::InputVar,
@@ -361,7 +361,7 @@ where
         h.finalize()
     }
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters))]
     fn compress(
         parameters: &Self::ParametersVar,
         left_input: &Self::OutputVar,
@@ -385,7 +385,7 @@ mod test {
     use crate::crh::{sha256::digest::Digest, CRHScheme, TwoToOneCRHScheme};
 
     use ark_bls12_377::Fr;
-    use ark_relations::{ns, r1cs::ConstraintSystem};
+    use ark_relations::{gr1cs::ConstraintSystem, ns};
     use ark_std::rand::RngCore;
 
     const TEST_LENGTHS: &[usize] = &[

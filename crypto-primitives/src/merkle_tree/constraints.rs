@@ -4,7 +4,7 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, fmt::Debug};
@@ -43,7 +43,7 @@ pub trait ConfigGadget<P: Config, F: PrimeField> {
         + EqGadget<F>
         + ToBytesGadget<F>
         + CondSelectGadget<F>
-        + R1CSVar<F>
+        + GR1CSVar<F>
         + Debug
         + Clone
         + Sized;
@@ -55,7 +55,7 @@ pub trait ConfigGadget<P: Config, F: PrimeField> {
         + EqGadget<F>
         + ToBytesGadget<F>
         + CondSelectGadget<F>
-        + R1CSVar<F>
+        + GR1CSVar<F>
         + Debug
         + Clone
         + Sized;
@@ -98,7 +98,7 @@ where
     P: Config,
     F: PrimeField,
 {
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    #[tracing::instrument(target = "gr1cs", skip(cs, f))]
     fn new_variable<T: Borrow<Path<P>>>(
         cs: impl Into<Namespace<F>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -143,7 +143,7 @@ impl<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> PathVar<P, F, PG> {
     /// Set the leaf index of the path to a given value. Verifier can use function before calling `verify`
     /// to check the correctness leaf position.
     /// * `leaf_index`: leaf index encoded in little-endian format
-    #[tracing::instrument(target = "r1cs", skip(self))]
+    #[tracing::instrument(target = "gr1cs", skip(self))]
     pub fn set_leaf_position(&mut self, leaf_index: Vec<Boolean<F>>) {
         // The path to a leaf is described by the branching
         // decisions taken at each node. This corresponds to the position
@@ -178,7 +178,7 @@ impl<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> PathVar<P, F, PG> {
     }
 
     /// Calculate the root of the Merkle tree assuming that `leaf` is the leaf on the path defined by `self`.
-    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
+    #[tracing::instrument(target = "gr1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn calculate_root(
         &self,
         leaf_params: &LeafParam<PG, P, F>,
@@ -224,7 +224,7 @@ impl<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> PathVar<P, F, PG> {
 
     /// Check that hashing a Merkle tree path according to `self`, and
     /// with `leaf` as the leaf, leads to a Merkle tree root equalling `root`.
-    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
+    #[tracing::instrument(target = "gr1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn verify_membership(
         &self,
         leaf_params: &LeafParam<PG, P, F>,
@@ -238,7 +238,7 @@ impl<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> PathVar<P, F, PG> {
 
     /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
     /// `self`, and then compute the new root when replacing `old_leaf` by `new_leaf`.
-    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
+    #[tracing::instrument(target = "gr1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn update_leaf(
         &self,
         leaf_params: &LeafParam<PG, P, F>,
@@ -255,7 +255,7 @@ impl<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> PathVar<P, F, PG> {
     /// Check that `old_leaf` is the leaf of the Merkle tree on the path defined by
     /// `self`, and then compute the expected new root when replacing `old_leaf` by `new_leaf`.
     /// Return a boolean indicating whether expected new root equals `new_root`.
-    #[tracing::instrument(target = "r1cs", skip(self, leaf_params, two_to_one_params))]
+    #[tracing::instrument(target = "gr1cs", skip(self, leaf_params, two_to_one_params))]
     pub fn update_and_check(
         &self,
         leaf_params: &LeafParam<PG, P, F>,

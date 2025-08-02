@@ -14,9 +14,9 @@ use ark_ff::PrimeField;
 use ark_r1cs_std::{
     alloc::{AllocVar, AllocationMode},
     fields::fp::FpVar,
-    R1CSVar,
+    GR1CSVar,
 };
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, marker::PhantomData};
@@ -106,10 +106,9 @@ impl<F: PrimeField + Absorb> AllocVar<PoseidonConfig<F>, F> for CRHParametersVar
         f: impl FnOnce() -> Result<T, SynthesisError>,
         _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        f().and_then(|param| {
+        f().map(|param| {
             let parameters = param.borrow().clone();
-
-            Ok(Self { parameters })
+            Self { parameters }
         })
     }
 }
@@ -125,9 +124,9 @@ mod test {
     use ark_r1cs_std::alloc::AllocVar;
     use ark_r1cs_std::{
         fields::fp::{AllocatedFp, FpVar},
-        R1CSVar,
+        GR1CSVar,
     };
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_relations::gr1cs::ConstraintSystem;
     use ark_std::UniformRand;
 
     #[test]

@@ -653,5 +653,5 @@ pub(crate) fn poseidon_parameters() -> PoseidonConfig<ark_ed_on_bls12_381::Fr> {
     PoseidonConfig::<F>::new(full_rounds, partial_rounds, alpha, mds, ark, 2, 1)
 }
 
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 mod constraints {}

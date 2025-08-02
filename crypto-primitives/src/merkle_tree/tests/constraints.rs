@@ -8,7 +8,7 @@ mod byte_mt_tests {
     };
     use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective as JubJub, Fq};
     use ark_r1cs_std::prelude::*;
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_relations::gr1cs::ConstraintSystem;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -242,9 +242,9 @@ mod field_mt_tests {
         Config, IdentityDigestConverter, MerkleTree,
     };
     use ark_r1cs_std::{
-        alloc::AllocVar, convert::ToBitsGadget, fields::fp::FpVar, uint32::UInt32, R1CSVar,
+        alloc::AllocVar, convert::ToBitsGadget, fields::fp::FpVar, uint32::UInt32, GR1CSVar,
     };
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_relations::gr1cs::ConstraintSystem;
     use ark_std::{test_rng, One, UniformRand};
 
     type F = ark_ed_on_bls12_381::Fr;

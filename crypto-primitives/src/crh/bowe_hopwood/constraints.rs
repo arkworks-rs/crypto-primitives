@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use ark_ff::Field;
 use ark_r1cs_std::{groups::curves::twisted_edwards::AffineVar, prelude::*};
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::gr1cs::{Namespace, SynthesisError};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, iter, marker::PhantomData};
@@ -48,7 +48,7 @@ where
     type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters, input))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters, input))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         input: &Self::InputVar,
@@ -117,7 +117,7 @@ where
     type OutputVar = F;
     type ParametersVar = ParametersVar<P, W>;
 
-    #[tracing::instrument(target = "r1cs", skip(parameters))]
+    #[tracing::instrument(target = "gr1cs", skip(parameters))]
     fn evaluate(
         parameters: &Self::ParametersVar,
         left_input: &Self::InputVar,
@@ -156,7 +156,7 @@ where
     P: TECurveConfig,
     W: Window,
 {
-    #[tracing::instrument(target = "r1cs", skip(_cs, f))]
+    #[tracing::instrument(target = "gr1cs", skip(_cs, f))]
     fn new_variable<T: Borrow<Parameters<P>>>(
         _cs: impl Into<Namespace<ConstraintF<P>>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -178,8 +178,8 @@ mod test {
     use crate::crh::{pedersen, TwoToOneCRHScheme, TwoToOneCRHSchemeGadget};
     use crate::crh::{CRHScheme, CRHSchemeGadget};
     use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsConfig, Fq as Fr};
-    use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, R1CSVar};
-    use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
+    use ark_r1cs_std::{alloc::AllocVar, uint8::UInt8, GR1CSVar};
+    use ark_relations::gr1cs::{ConstraintSystem, ConstraintSystemRef};
     use ark_std::test_rng;
 
     type TestCRH = bowe_hopwood::CRH<EdwardsConfig, Window>;
@@ -268,7 +268,6 @@ mod test {
             TestTwoToOneCRHGadget::evaluate(&parameters_var, &left_input_var, &right_input_var)
                 .unwrap();
 
-        let primitive_result = primitive_result;
         assert_eq!(primitive_result, result_var.value().unwrap());
         assert!(cs.is_satisfied().unwrap());
     }

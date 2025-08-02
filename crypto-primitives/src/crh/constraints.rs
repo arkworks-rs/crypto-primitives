@@ -1,7 +1,7 @@
 use crate::crh::{CRHScheme, TwoToOneCRHScheme};
 use ark_ff::Field;
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::SynthesisError;
+use ark_relations::gr1cs::SynthesisError;
 use ark_std::fmt::Debug;
 
 pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
@@ -10,7 +10,7 @@ pub trait CRHSchemeGadget<H: CRHScheme, ConstraintF: Field>: Sized {
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
         + AllocVar<H::Output, ConstraintF>
-        + R1CSVar<ConstraintF>
+        + GR1CSVar<ConstraintF>
         + Debug
         + Clone
         + Sized;
@@ -28,7 +28,7 @@ pub trait TwoToOneCRHSchemeGadget<H: TwoToOneCRHScheme, ConstraintF: Field>: Siz
         + ToBytesGadget<ConstraintF>
         + CondSelectGadget<ConstraintF>
         + AllocVar<H::Output, ConstraintF>
-        + R1CSVar<ConstraintF>
+        + GR1CSVar<ConstraintF>
         + Debug
         + Clone
         + Sized;

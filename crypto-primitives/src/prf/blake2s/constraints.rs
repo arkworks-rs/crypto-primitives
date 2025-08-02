@@ -1,7 +1,7 @@
 use crate::prf::PRFGadget;
 use ark_ff::PrimeField;
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{ConstraintSystemRef, Namespace, SynthesisError};
+use ark_relations::gr1cs::{ConstraintSystemRef, Namespace, SynthesisError};
 use ark_std::borrow::Borrow;
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
@@ -295,14 +295,14 @@ pub struct Blake2sGadget;
 pub struct OutputVar<ConstraintF: PrimeField>(pub Vec<UInt8<ConstraintF>>);
 
 impl<ConstraintF: PrimeField> EqGadget<ConstraintF> for OutputVar<ConstraintF> {
-    #[tracing::instrument(target = "r1cs")]
+    #[tracing::instrument(target = "gr1cs")]
     fn is_eq(&self, other: &Self) -> Result<Boolean<ConstraintF>, SynthesisError> {
         self.0.is_eq(&other.0)
     }
 
     /// If `should_enforce == true`, enforce that `self` and `other` are equal;
     /// else, enforce a vacuously true statement.
-    #[tracing::instrument(target = "r1cs")]
+    #[tracing::instrument(target = "gr1cs")]
     fn conditional_enforce_equal(
         &self,
         other: &Self,
@@ -313,7 +313,7 @@ impl<ConstraintF: PrimeField> EqGadget<ConstraintF> for OutputVar<ConstraintF> {
 
     /// If `should_enforce == true`, enforce that `self` and `other` are not
     /// equal; else, enforce a vacuously true statement.
-    #[tracing::instrument(target = "r1cs")]
+    #[tracing::instrument(target = "gr1cs")]
     fn conditional_enforce_not_equal(
         &self,
         other: &Self,
@@ -333,7 +333,7 @@ impl<ConstraintF: PrimeField> ToBytesGadget<ConstraintF> for OutputVar<Constrain
 }
 
 impl<ConstraintF: PrimeField> AllocVar<[u8; 32], ConstraintF> for OutputVar<ConstraintF> {
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    #[tracing::instrument(target = "gr1cs", skip(cs, f))]
     fn new_variable<T: Borrow<[u8; 32]>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -348,7 +348,7 @@ impl<ConstraintF: PrimeField> AllocVar<[u8; 32], ConstraintF> for OutputVar<Cons
     }
 }
 
-impl<F: PrimeField> R1CSVar<F> for OutputVar<F> {
+impl<F: PrimeField> GR1CSVar<F> for OutputVar<F> {
     type Value = [u8; 32];
 
     fn cs(&self) -> ConstraintSystemRef<F> {
@@ -367,14 +367,14 @@ impl<F: PrimeField> R1CSVar<F> for OutputVar<F> {
 impl<F: PrimeField> PRFGadget<Blake2s, F> for Blake2sGadget {
     type OutputVar = OutputVar<F>;
 
-    #[tracing::instrument(target = "r1cs", skip(cs))]
+    #[tracing::instrument(target = "gr1cs", skip(cs))]
     fn new_seed(cs: impl Into<Namespace<F>>, seed: &[u8; 32]) -> Vec<UInt8<F>> {
         let ns = cs.into();
         let cs = ns.cs();
         UInt8::new_witness_vec(ark_relations::ns!(cs, "New Blake2s seed"), seed).unwrap()
     }
 
-    #[tracing::instrument(target = "r1cs", skip(seed, input))]
+    #[tracing::instrument(target = "gr1cs", skip(seed, input))]
     fn evaluate(seed: &[UInt8<F>], input: &[UInt8<F>]) -> Result<Self::OutputVar, SynthesisError> {
         assert_eq!(seed.len(), 32);
         let input: Vec<_> = seed
@@ -396,7 +396,7 @@ mod test {
     use ark_std::rand::Rng;
 
     use crate::prf::blake2s::{constraints::evaluate_blake2s, Blake2s as B2SPRF};
-    use ark_relations::r1cs::ConstraintSystem;
+    use ark_relations::gr1cs::ConstraintSystem;
     use blake2::Blake2s256;
     use digest::{Digest, FixedOutput};
 
@@ -444,7 +444,7 @@ mod test {
 
         if !cs.is_satisfied().unwrap() {
             println!(
-                "which is unsatisfied: {:?}",
+                "which constraint is unsatisfied: {:?}",
                 cs.which_is_unsatisfied().unwrap()
             );
         }

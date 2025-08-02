@@ -2,9 +2,9 @@ use crate::Error;
 use ark_serialize::CanonicalSerialize;
 use ark_std::{hash::Hash, rand::Rng};
 
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub mod constraints;
-#[cfg(feature = "r1cs")]
+#[cfg(feature = "constraints")]
 pub use constraints::*;
 
 pub mod schnorr;

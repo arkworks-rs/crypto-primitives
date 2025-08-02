@@ -10,11 +10,10 @@ use ark_r1cs_std::{
     prelude::*,
 };
 use ark_relations::{
-    lc, ns,
-    r1cs::{
-        ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, OptimizationGoal,
-        SynthesisError,
+    gr1cs::{
+        ConstraintSynthesizer, ConstraintSystemRef, LinearCombination, Namespace, SynthesisError,
     },
+    lc, ns,
 };
 use ark_snark::{CircuitSpecificSetupSNARK, UniversalSetupSNARK, SNARK};
 #[cfg(not(feature = "std"))]
@@ -52,7 +51,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     ///
     /// The default implementation does not omit such checks, and just invokes
     /// `Self::ProofVar::new_variable`.
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    #[tracing::instrument(target = "gr1cs", skip(cs, f))]
     fn new_proof_unchecked<T: Borrow<S::Proof>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -70,7 +69,7 @@ pub trait SNARKGadget<F: PrimeField, ConstraintF: PrimeField, S: SNARK<F>> {
     ///
     /// The default implementation does not omit such checks, and just invokes
     /// `Self::VerifyingKeyVar::new_variable`.
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
+    #[tracing::instrument(target = "gr1cs", skip(cs, f))]
     fn new_verification_key_unchecked<T: Borrow<S::VerifyingKey>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -461,11 +460,7 @@ where
         let ns = cs.into();
         let cs = ns.cs();
 
-        let optimization_type = match cs.optimization_goal() {
-            OptimizationGoal::None => OptimizationType::Constraints,
-            OptimizationGoal::Constraints => OptimizationType::Constraints,
-            OptimizationGoal::Weight => OptimizationType::Weight,
-        };
+        let optimization_type = OptimizationType::Constraints;
 
         let params = get_params(
             F::MODULUS_BIT_SIZE as usize,
@@ -578,11 +573,7 @@ where
                 val: field_allocation,
             })
         } else {
-            let optimization_type = match cs.optimization_goal() {
-                OptimizationGoal::None => OptimizationType::Constraints,
-                OptimizationGoal::Constraints => OptimizationType::Constraints,
-                OptimizationGoal::Weight => OptimizationType::Weight,
-            };
+            let optimization_type = OptimizationType::Constraints;
 
             let params = get_params(
                 F::MODULUS_BIT_SIZE as usize,
@@ -632,7 +623,8 @@ where
 
                     let limb = AllocatedFp::<CF>::new_witness(ns!(cs, "limb"), || Ok(limb_value))?;
                     lc = lc - limb.variable;
-                    cs.enforce_constraint(lc!(), lc!(), lc).unwrap();
+                    cs.enforce_r1cs_constraint(|| lc!(), || lc!(), || lc)
+                        .unwrap();
 
                     limbs.push(FpVar::from(limb));
                 }
