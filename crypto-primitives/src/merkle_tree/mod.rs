@@ -278,7 +278,10 @@ impl<P: Config> MultiPath<P> {
 
         for i in 0..self.leaf_indexes.len() {
             let leaf_index = self.leaf_indexes[i];
-            let leaf = leaves.next().unwrap();
+            let leaf = match leaves.next() {
+                Some(l) => l,
+                None => return Err(crate::Error::IncorrectInputLength(self.leaf_indexes.len())),
+            };
             let leaf_sibling_hash = &self.leaf_siblings_hashes[i];
 
             // decode i-th auth path
