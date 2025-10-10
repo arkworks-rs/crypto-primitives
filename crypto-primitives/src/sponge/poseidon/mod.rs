@@ -292,7 +292,9 @@ impl<F: PrimeField> CryptographicSponge for PoseidonSponge<F> {
         &mut self,
         sizes: &[FieldElementSize],
     ) -> Vec<F2> {
-        if F::characteristic() == F2::characteristic() {
+        // Use exact type match for native case to avoid incorrect casts across distinct fields
+        // that share the same field characteristic.
+        if TypeId::of::<F>() == TypeId::of::<F2>() {
             // native case
             let mut buf = Vec::with_capacity(sizes.len());
             field_cast(
