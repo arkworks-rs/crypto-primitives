@@ -46,7 +46,7 @@ mod bytes_mt_tests {
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
 
         let mut tree =
-            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &leaves).unwrap();
+            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &leaves, LeafOrderingMode::NATURAL).unwrap();
 
         let mut root = tree.root();
         // test merkle tree functionality without update
@@ -148,7 +148,7 @@ mod bytes_mt_tests {
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
 
-        let tree = JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &serialized_leaves)
+        let tree = JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &serialized_leaves, LeafOrderingMode::NATURAL)
             .unwrap();
 
         let mut proofs = Vec::with_capacity(leaves.len());
@@ -212,7 +212,7 @@ mod field_mt_tests {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
 
-        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, &leaves).unwrap();
+        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, &leaves, LeafOrderingMode::NATURAL).unwrap();
 
         let mut root = tree.root();
 

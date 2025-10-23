@@ -6,6 +6,7 @@ static NUM_LEAVES: i32 = 1 << 20;
 mod bytes_mt_benches {
     use ark_crypto_primitives::crh::*;
     use ark_crypto_primitives::merkle_tree::*;
+    use ark_crypto_primitives::merkle_tree::LeafOrderingMode;
     use ark_crypto_primitives::to_uncompressed_bytes;
     use ark_ff::BigInteger256;
     use ark_serialize::CanonicalSerialize;
@@ -51,6 +52,7 @@ mod bytes_mt_benches {
                     &leaf_crh_params.clone(),
                     &two_to_one_params.clone(),
                     &leaves,
+                    LeafOrderingMode::NATURAL,
                 )
                 .unwrap();
             })
@@ -74,6 +76,7 @@ mod bytes_mt_benches {
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),
             &leaves,
+            LeafOrderingMode::NATURAL,
         )
         .unwrap();
         c.bench_function("Merkle Tree Generate Proof (Leaves as [u8])", move |b| {
@@ -102,6 +105,7 @@ mod bytes_mt_benches {
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),
             &leaves,
+            LeafOrderingMode::NATURAL,
         )
         .unwrap();
 
@@ -141,6 +145,7 @@ mod bytes_mt_benches {
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),
             &leaves,
+            LeafOrderingMode::NATURAL,
         )
         .unwrap();
         c.bench_function(
@@ -171,6 +176,7 @@ mod bytes_mt_benches {
             &leaf_crh_params.clone(),
             &two_to_one_params.clone(),
             &leaves,
+            LeafOrderingMode::NATURAL,
         )
         .unwrap();
 

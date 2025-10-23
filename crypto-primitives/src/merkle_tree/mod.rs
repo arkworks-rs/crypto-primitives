@@ -62,6 +62,21 @@ impl<T> DigestConverter<T, T> for IdentityDigestConverter<T> {
     }
 }
 
+#[derive(PartialEq, Clone, Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
+pub struct LeafOrderingMode(u8);
+impl LeafOrderingMode {
+    pub const NATURAL: Self = Self(0);
+    pub const BIT_REVERSED: Self = Self(1);
+    
+    pub fn is_bit_reversed(&self) -> bool {
+        self.0 == 1
+    }
+    
+    pub fn is_natural(&self) -> bool {
+        self.0 == 0
+    }
+}
+
 /// Convert previous layer's digest to bytes and use bytes as input for next layer's digest.
 /// TODO: `ToBytes` trait will be deprecated in future versions.
 pub struct ByteDigestConverter<T: CanonicalSerialize> {
@@ -251,6 +266,8 @@ pub struct MultiPath<P: Config> {
     pub auth_paths_suffixes: Vec<Vec<P::InnerDigest>>,
     /// stores the leaf indexes of the nodes to prove
     pub leaf_indexes: Vec<usize>,
+    /// stores the ordering mode of the leaves
+    pub leaf_ordering_mode: LeafOrderingMode,
 }
 
 impl<P: Config> MultiPath<P> {
@@ -392,6 +409,8 @@ pub struct MerkleTree<P: Config> {
     leaf_hash_param: LeafParam<P>,
     /// Stores the height of the MerkleTree
     height: usize,
+    /// Stores the ordering mode of the leaves
+    leaf_ordering_mode: LeafOrderingMode,
 }
 
 impl<P: Config> MerkleTree<P> {
@@ -401,10 +420,11 @@ impl<P: Config> MerkleTree<P> {
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         height: usize,
+        leaf_ordering_mode: LeafOrderingMode,
     ) -> Result<Self, crate::Error> {
         // use empty leaf digest
         let leaf_digests = vec![P::LeafDigest::default(); 1 << (height - 1)];
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests, leaf_ordering_mode)
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
@@ -413,18 +433,20 @@ impl<P: Config> MerkleTree<P> {
         two_to_one_hash_param: &TwoToOneParam<P>,
         #[cfg(not(feature = "parallel"))] leaves: impl IntoIterator<Item = L>,
         #[cfg(feature = "parallel")] leaves: impl IntoParallelIterator<Item = L>,
+        leaf_ordering_mode: LeafOrderingMode,
     ) -> Result<Self, crate::Error> {
         let leaf_digests: Vec<_> = cfg_into_iter!(leaves)
             .map(|input| P::LeafHash::evaluate(leaf_hash_param, input.as_ref()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests)
+        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests, leaf_ordering_mode)
     }
 
     pub fn new_with_leaf_digest(
         leaf_hash_param: &LeafParam<P>,
         two_to_one_hash_param: &TwoToOneParam<P>,
         leaf_digests: Vec<P::LeafDigest>,
+        leaf_ordering_mode: LeafOrderingMode,
     ) -> Result<Self, crate::Error> {
         let leaf_nodes_size = leaf_digests.len();
         assert!(
@@ -469,13 +491,22 @@ impl<P: Config> MerkleTree<P> {
                     let left_leaf_index = left_child(current_index) - upper_bound;
                     let right_leaf_index = right_child(current_index) - upper_bound;
 
+                    let mut left_leaf_physical = left_leaf_index;
+                    let mut right_leaf_physical = right_leaf_index;
+                    
+                    // If needed - apply bit-reversal to access the correct leaf positions
+                    if leaf_ordering_mode.is_bit_reversed() {
+                        left_leaf_physical = bit_reverse_index(left_leaf_index, (tree_height - 1) as u32);
+                        right_leaf_physical = bit_reverse_index(right_leaf_index, (tree_height - 1) as u32);
+                    }
+
                     *n = P::TwoToOneHash::evaluate(
                         two_to_one_hash_param,
                         P::LeafInnerDigestConverter::convert(
-                            leaf_digests[left_leaf_index].clone(),
+                            leaf_digests[left_leaf_physical].clone(),
                         )?,
                         P::LeafInnerDigestConverter::convert(
-                            leaf_digests[right_leaf_index].clone(),
+                            leaf_digests[right_leaf_physical].clone(),
                         )?,
                     )?;
                     Ok::<(), crate::Error>(())
@@ -519,6 +550,7 @@ impl<P: Config> MerkleTree<P> {
             height: tree_height,
             leaf_hash_param: leaf_hash_param.clone(),
             two_to_one_hash_param: two_to_one_hash_param.clone(),
+            leaf_ordering_mode: leaf_ordering_mode,
         })
     }
 
@@ -534,13 +566,18 @@ impl<P: Config> MerkleTree<P> {
 
     /// Given the `index` of a leaf, returns the digest of its leaf sibling
     pub fn get_leaf_sibling_hash(&self, index: usize) -> P::LeafDigest {
-        if index & 1 == 0 {
-            // leaf is left child
-            self.leaf_nodes[index + 1].clone()
+        let sibling_index = if index & 1 == 0 {
+            // leaf is left child, sibling is at index + 1
+            index + 1
         } else {
-            // leaf is right child
-            self.leaf_nodes[index - 1].clone()
+            // leaf is right child, sibling is at index - 1
+            index - 1
+        };
+        let mut physical_index = sibling_index;
+        if self.leaf_ordering_mode.is_bit_reversed() {
+             physical_index = bit_reverse_index(sibling_index, (self.height - 1) as u32);
         }
+        self.leaf_nodes[physical_index].clone()
     }
 
     /// Returns the authentication path from leaf at `index` to root, as a Vec of digests
@@ -578,6 +615,12 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
+    pub fn reverse_bits(&self, val: usize, bits: u32) -> usize {
+        debug_assert!(val < 2_usize.pow(bits));
+        debug_assert!(bits > 0);
+        // shift will overflow if bits = 0
+        val.reverse_bits() >> (usize::BITS - bits)
+    }
     /// Returns a MultiPath (multiple authentication paths in compressed form, with Front Incremental Encoding),
     /// from every leaf to root.
     /// Note that for compression efficiency, the indexes are internally sorted.
@@ -621,6 +664,7 @@ impl<P: Config> MerkleTree<P> {
             auth_paths_prefix_lenghts,
             auth_paths_suffixes,
             leaf_siblings_hashes,
+            leaf_ordering_mode: self.leaf_ordering_mode.clone(),
         })
     }
 
@@ -637,9 +681,17 @@ impl<P: Config> MerkleTree<P> {
         // calculate leaf sibling hash and locate its position (left or right)
         let (leaf_left, leaf_right) = if index & 1 == 0 {
             // leaf on left
-            (&new_leaf_hash, &self.leaf_nodes[index + 1])
+            let mut sibling_physical = index + 1;
+            if self.leaf_ordering_mode.is_bit_reversed() {
+                sibling_physical = bit_reverse_index(index + 1, (self.height - 1) as u32);
+            }
+            (&new_leaf_hash, &self.leaf_nodes[sibling_physical])
         } else {
-            (&self.leaf_nodes[index - 1], &new_leaf_hash)
+            let mut sibling_physical = index - 1;
+            if self.leaf_ordering_mode.is_bit_reversed() {
+                sibling_physical = bit_reverse_index(index - 1, (self.height - 1) as u32);
+            }
+            (&self.leaf_nodes[sibling_physical], &new_leaf_hash)
         };
 
         // calculate the updated hash at bottom non-leaf-level
@@ -692,7 +744,11 @@ impl<P: Config> MerkleTree<P> {
     pub fn update(&mut self, index: usize, new_leaf: &P::Leaf) -> Result<(), crate::Error> {
         assert!(index < self.leaf_nodes.len(), "index out of range");
         let (updated_leaf_hash, mut updated_path) = self.updated_path(index, new_leaf)?;
-        self.leaf_nodes[index] = updated_leaf_hash;
+        let mut physical_index = index;
+        if self.leaf_ordering_mode.is_bit_reversed() {
+            physical_index = bit_reverse_index(index, (self.height - 1) as u32);
+        }
+        self.leaf_nodes[physical_index] = updated_leaf_hash;
         let mut curr_index = convert_index_to_last_level(index, self.height);
         for _ in 0..self.height - 1 {
             curr_index = parent(curr_index).unwrap();
@@ -715,7 +771,11 @@ impl<P: Config> MerkleTree<P> {
         if &updated_path[0] != asserted_new_root {
             return Ok(false);
         }
-        self.leaf_nodes[index] = updated_leaf_hash;
+        let mut physical_index = index;
+        if self.leaf_ordering_mode.is_bit_reversed() {
+            physical_index = bit_reverse_index(index, (self.height - 1) as u32);
+        }
+        self.leaf_nodes[physical_index] = updated_leaf_hash;
         let mut curr_index = convert_index_to_last_level(index, self.height);
         for _ in 0..self.height - 1 {
             curr_index = parent(curr_index).unwrap();
@@ -783,6 +843,16 @@ fn parent(index: usize) -> Option<usize> {
 #[inline]
 fn convert_index_to_last_level(index: usize, tree_height: usize) -> usize {
     index + (1 << (tree_height - 1)) - 1
+}
+
+/// Converts a logical index to a physical index using bit-reversal
+#[inline]
+fn bit_reverse_index(index: usize, height: u32) -> usize {
+    if height == 0 {
+        index
+    } else {
+        index.reverse_bits() >> (usize::BITS - height)
+    }
 }
 
 /// Encodes path with Incremental Encoding by comparing with prev_path
