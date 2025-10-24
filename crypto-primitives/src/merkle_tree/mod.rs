@@ -615,12 +615,6 @@ impl<P: Config> MerkleTree<P> {
         })
     }
 
-    pub fn reverse_bits(&self, val: usize, bits: u32) -> usize {
-        debug_assert!(val < 2_usize.pow(bits));
-        debug_assert!(bits > 0);
-        // shift will overflow if bits = 0
-        val.reverse_bits() >> (usize::BITS - bits)
-    }
     /// Returns a MultiPath (multiple authentication paths in compressed form, with Front Incremental Encoding),
     /// from every leaf to root.
     /// Note that for compression efficiency, the indexes are internally sorted.
