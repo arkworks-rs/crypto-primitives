@@ -8,6 +8,7 @@ mod bytes_mt_tests {
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
     use ark_std::{iter::zip, test_rng, UniformRand};
+    use crate::merkle_tree::LeafOrderingMode;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -180,13 +181,125 @@ mod bytes_mt_tests {
             assert_eq!(prefix_len + suffix.len(), proofs[0].auth_path.len());
         }
     }
+
+    #[test]
+    fn bit_reversed_ordering_test() {
+        use ark_serialize::CanonicalSerialize;
+        let mut rng = test_rng();
+
+        // Create test leaves with distinct values
+        let mut leaves = Vec::new();
+        for i in 0..8u8 {
+            leaves.push(BigInteger256::from(i as u64));
+        }
+
+        let serialized_leaves: Vec<_> = leaves
+            .iter()
+            .map(|leaf| crate::to_uncompressed_bytes!(leaf).unwrap())
+            .collect();
+
+        let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
+        let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
+
+        // Create two trees: one with natural ordering, one with bit-reversed ordering
+        let tree_natural = JubJubMerkleTree::new(
+            &leaf_crh_params,
+            &two_to_one_params,
+            &serialized_leaves,
+            LeafOrderingMode::NATURAL,
+        )
+        .unwrap();
+
+        let tree_bit_reversed = JubJubMerkleTree::new(
+            &leaf_crh_params,
+            &two_to_one_params,
+            &serialized_leaves,
+            LeafOrderingMode::BIT_REVERSED,
+        )
+        .unwrap();
+
+        // NOTE: The roots will be DIFFERENT because the physical leaf arrangement is different
+        // This is expected and correct behavior
+        assert_ne!(tree_natural.root(), tree_bit_reversed.root());
+
+        // Test that proofs work correctly for both ordering modes
+        for (i, leaf) in serialized_leaves.iter().enumerate() {
+            // Natural ordering proof
+            let proof_natural = tree_natural.generate_proof(i).unwrap();
+            assert!(proof_natural
+                .verify(&leaf_crh_params, &two_to_one_params, &tree_natural.root(), leaf.as_slice())
+                .unwrap());
+
+            // Bit-reversed ordering proof
+            let proof_bit_reversed = tree_bit_reversed.generate_proof(i).unwrap();
+            let actual_leaf = serialized_leaves[bit_reverse_index(i, (tree_bit_reversed.height() - 1) as u32)].clone();
+            assert!(proof_bit_reversed
+                .verify(&leaf_crh_params, &two_to_one_params, &tree_bit_reversed.root(), actual_leaf.as_slice())
+                .unwrap());
+        }
+
+        // Test multi-proofs work with bit-reversed ordering
+        let multi_proof_natural = tree_natural
+            .generate_multi_proof((0..serialized_leaves.len()).collect::<Vec<_>>())
+            .unwrap();
+        assert!(multi_proof_natural
+            .verify(&leaf_crh_params, &two_to_one_params, &tree_natural.root(), serialized_leaves.clone())
+            .unwrap());
+
+        let multi_proof_bit_reversed = tree_bit_reversed
+            .generate_multi_proof((0..serialized_leaves.len()).collect::<Vec<_>>())
+            .unwrap();
+        assert!(multi_proof_bit_reversed
+            .verify(&leaf_crh_params, &two_to_one_params, &tree_bit_reversed.root(), serialized_leaves.clone())
+            .unwrap());
+
+        // Verify the ordering mode is stored correctly in multi-proofs
+        assert_eq!(multi_proof_natural.leaf_ordering_mode, LeafOrderingMode::NATURAL);
+        assert_eq!(multi_proof_bit_reversed.leaf_ordering_mode, LeafOrderingMode::BIT_REVERSED);
+    }
+
+    #[test]
+    fn bit_reverse_index_test() {
+        // Test the bit_reverse_index function directly
+        // For height=3 (8 leaves), indices should be:
+        // 0 (000) -> 0 (000)
+        // 1 (001) -> 4 (100)
+        // 2 (010) -> 2 (010)
+        // 3 (011) -> 6 (110)
+        // 4 (100) -> 1 (001)
+        // 5 (101) -> 5 (101)
+        // 6 (110) -> 3 (011)
+        // 7 (111) -> 7 (111)
+        
+        use crate::merkle_tree::bit_reverse_index;
+        
+        let height = 3u32;
+        assert_eq!(bit_reverse_index(0, height), 0);
+        assert_eq!(bit_reverse_index(1, height), 4);
+        assert_eq!(bit_reverse_index(2, height), 2);
+        assert_eq!(bit_reverse_index(3, height), 6);
+        assert_eq!(bit_reverse_index(4, height), 1);
+        assert_eq!(bit_reverse_index(5, height), 5);
+        assert_eq!(bit_reverse_index(6, height), 3);
+        assert_eq!(bit_reverse_index(7, height), 7);
+
+        // Test with height=2 (4 leaves)
+        let height = 2u32;
+        assert_eq!(bit_reverse_index(0, height), 0);
+        assert_eq!(bit_reverse_index(1, height), 2);
+        assert_eq!(bit_reverse_index(2, height), 1);
+        assert_eq!(bit_reverse_index(3, height), 3);
+
+        // Test edge case: height=0 should return the same index
+        assert_eq!(bit_reverse_index(5, 0), 5);
+    }
 }
 
 mod field_mt_tests {
     use crate::{
         crh::poseidon,
         merkle_tree::{
-            tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter, MerkleTree,
+            tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter, MerkleTree, LeafOrderingMode
         },
     };
     use ark_std::{test_rng, One, UniformRand};
