@@ -4,11 +4,11 @@ mod test_utils;
 
 mod bytes_mt_tests {
 
+    use crate::merkle_tree::LeafOrderingMode;
     use crate::{crh::*, merkle_tree::*};
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::BigInteger256;
     use ark_std::{iter::zip, test_rng, UniformRand};
-    use crate::merkle_tree::LeafOrderingMode;
 
     #[derive(Clone)]
     pub(super) struct Window4x256;
@@ -46,8 +46,13 @@ mod bytes_mt_tests {
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
 
-        let mut tree =
-            JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &leaves, LeafOrderingMode::NATURAL).unwrap();
+        let mut tree = JubJubMerkleTree::new(
+            &leaf_crh_params,
+            &two_to_one_params,
+            &leaves,
+            LeafOrderingMode::NATURAL,
+        )
+        .unwrap();
 
         let mut root = tree.root();
         // test merkle tree functionality without update
@@ -149,8 +154,13 @@ mod bytes_mt_tests {
         let leaf_crh_params = <LeafH as CRHScheme>::setup(&mut rng).unwrap();
         let two_to_one_params = <CompressH as TwoToOneCRHScheme>::setup(&mut rng).unwrap();
 
-        let tree = JubJubMerkleTree::new(&leaf_crh_params, &two_to_one_params, &serialized_leaves, LeafOrderingMode::NATURAL)
-            .unwrap();
+        let tree = JubJubMerkleTree::new(
+            &leaf_crh_params,
+            &two_to_one_params,
+            &serialized_leaves,
+            LeafOrderingMode::NATURAL,
+        )
+        .unwrap();
 
         let mut proofs = Vec::with_capacity(leaves.len());
 
@@ -227,14 +237,26 @@ mod bytes_mt_tests {
             // Natural ordering proof
             let proof_natural = tree_natural.generate_proof(i).unwrap();
             assert!(proof_natural
-                .verify(&leaf_crh_params, &two_to_one_params, &tree_natural.root(), leaf.as_slice())
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_params,
+                    &tree_natural.root(),
+                    leaf.as_slice()
+                )
                 .unwrap());
 
             // Bit-reversed ordering proof
             let proof_bit_reversed = tree_bit_reversed.generate_proof(i).unwrap();
-            let actual_leaf = serialized_leaves[bit_reverse_index(i, (tree_bit_reversed.height() - 1) as u32)].clone();
+            let actual_leaf = serialized_leaves
+                [bit_reverse_index(i, (tree_bit_reversed.height() - 1) as u32)]
+            .clone();
             assert!(proof_bit_reversed
-                .verify(&leaf_crh_params, &two_to_one_params, &tree_bit_reversed.root(), actual_leaf.as_slice())
+                .verify(
+                    &leaf_crh_params,
+                    &two_to_one_params,
+                    &tree_bit_reversed.root(),
+                    actual_leaf.as_slice()
+                )
                 .unwrap());
         }
 
@@ -243,19 +265,35 @@ mod bytes_mt_tests {
             .generate_multi_proof((0..serialized_leaves.len()).collect::<Vec<_>>())
             .unwrap();
         assert!(multi_proof_natural
-            .verify(&leaf_crh_params, &two_to_one_params, &tree_natural.root(), serialized_leaves.clone())
+            .verify(
+                &leaf_crh_params,
+                &two_to_one_params,
+                &tree_natural.root(),
+                serialized_leaves.clone()
+            )
             .unwrap());
 
         let multi_proof_bit_reversed = tree_bit_reversed
             .generate_multi_proof((0..serialized_leaves.len()).collect::<Vec<_>>())
             .unwrap();
         assert!(multi_proof_bit_reversed
-            .verify(&leaf_crh_params, &two_to_one_params, &tree_bit_reversed.root(), serialized_leaves.clone())
+            .verify(
+                &leaf_crh_params,
+                &two_to_one_params,
+                &tree_bit_reversed.root(),
+                serialized_leaves.clone()
+            )
             .unwrap());
 
         // Verify the ordering mode is stored correctly in multi-proofs
-        assert_eq!(multi_proof_natural.leaf_ordering_mode, LeafOrderingMode::NATURAL);
-        assert_eq!(multi_proof_bit_reversed.leaf_ordering_mode, LeafOrderingMode::BIT_REVERSED);
+        assert_eq!(
+            multi_proof_natural.leaf_ordering_mode,
+            LeafOrderingMode::NATURAL
+        );
+        assert_eq!(
+            multi_proof_bit_reversed.leaf_ordering_mode,
+            LeafOrderingMode::BIT_REVERSED
+        );
     }
 
     #[test]
@@ -270,9 +308,9 @@ mod bytes_mt_tests {
         // 5 (101) -> 5 (101)
         // 6 (110) -> 3 (011)
         // 7 (111) -> 7 (111)
-        
+
         use crate::merkle_tree::bit_reverse_index;
-        
+
         let height = 3u32;
         assert_eq!(bit_reverse_index(0, height), 0);
         assert_eq!(bit_reverse_index(1, height), 4);
@@ -299,7 +337,8 @@ mod field_mt_tests {
     use crate::{
         crh::poseidon,
         merkle_tree::{
-            tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter, MerkleTree, LeafOrderingMode
+            tests::test_utils::poseidon_parameters, Config, IdentityDigestConverter,
+            LeafOrderingMode, MerkleTree,
         },
     };
     use ark_std::{test_rng, One, UniformRand};
@@ -325,7 +364,13 @@ mod field_mt_tests {
         let leaf_crh_params = poseidon_parameters();
         let two_to_one_params = leaf_crh_params.clone();
 
-        let mut tree = FieldMT::new(&leaf_crh_params, &two_to_one_params, &leaves, LeafOrderingMode::NATURAL).unwrap();
+        let mut tree = FieldMT::new(
+            &leaf_crh_params,
+            &two_to_one_params,
+            &leaves,
+            LeafOrderingMode::NATURAL,
+        )
+        .unwrap();
 
         let mut root = tree.root();
 

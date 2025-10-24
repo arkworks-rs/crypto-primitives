@@ -7,10 +7,10 @@ use crate::{
     Error,
 };
 use ark_ec::{
-    twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig,
-    CurveGroup, Group
+    twisted_edwards::Projective as TEProjective, twisted_edwards::TECurveConfig, AdditiveGroup,
+    CurveGroup,
 };
-use ark_ff::{fields::PrimeField, BigInteger};
+use ark_ff::fields::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(not(feature = "std"))]
 use ark_std::vec::Vec;
@@ -84,7 +84,7 @@ impl<P: TECurveConfig, W: pedersen::Window> CRHScheme for CRH<P, W> {
             let mut c = 0;
             let mut range = F::BigInt::from(2_u64);
             while range < upper_limit {
-                range.muln(4);
+                range <<= 4;
                 c += 1;
             }
 

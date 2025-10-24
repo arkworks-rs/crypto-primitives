@@ -5,8 +5,8 @@ static NUM_LEAVES: i32 = 1 << 20;
 
 mod bytes_mt_benches {
     use ark_crypto_primitives::crh::*;
-    use ark_crypto_primitives::merkle_tree::*;
     use ark_crypto_primitives::merkle_tree::LeafOrderingMode;
+    use ark_crypto_primitives::merkle_tree::*;
     use ark_crypto_primitives::to_uncompressed_bytes;
     use ark_ff::BigInteger256;
     use ark_serialize::CanonicalSerialize;

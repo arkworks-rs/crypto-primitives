@@ -67,11 +67,11 @@ pub struct LeafOrderingMode(u8);
 impl LeafOrderingMode {
     pub const NATURAL: Self = Self(0);
     pub const BIT_REVERSED: Self = Self(1);
-    
+
     pub fn is_bit_reversed(&self) -> bool {
         self.0 == 1
     }
-    
+
     pub fn is_natural(&self) -> bool {
         self.0 == 0
     }
@@ -424,7 +424,12 @@ impl<P: Config> MerkleTree<P> {
     ) -> Result<Self, crate::Error> {
         // use empty leaf digest
         let leaf_digests = vec![P::LeafDigest::default(); 1 << (height - 1)];
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests, leaf_ordering_mode)
+        Self::new_with_leaf_digest(
+            leaf_hash_param,
+            two_to_one_hash_param,
+            leaf_digests,
+            leaf_ordering_mode,
+        )
     }
 
     /// Returns a new merkle tree. `leaves.len()` should be power of two.
@@ -439,7 +444,12 @@ impl<P: Config> MerkleTree<P> {
             .map(|input| P::LeafHash::evaluate(leaf_hash_param, input.as_ref()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Self::new_with_leaf_digest(leaf_hash_param, two_to_one_hash_param, leaf_digests, leaf_ordering_mode)
+        Self::new_with_leaf_digest(
+            leaf_hash_param,
+            two_to_one_hash_param,
+            leaf_digests,
+            leaf_ordering_mode,
+        )
     }
 
     pub fn new_with_leaf_digest(
@@ -493,11 +503,13 @@ impl<P: Config> MerkleTree<P> {
 
                     let mut left_leaf_physical = left_leaf_index;
                     let mut right_leaf_physical = right_leaf_index;
-                    
+
                     // If needed - apply bit-reversal to access the correct leaf positions
                     if leaf_ordering_mode.is_bit_reversed() {
-                        left_leaf_physical = bit_reverse_index(left_leaf_index, (tree_height - 1) as u32);
-                        right_leaf_physical = bit_reverse_index(right_leaf_index, (tree_height - 1) as u32);
+                        left_leaf_physical =
+                            bit_reverse_index(left_leaf_index, (tree_height - 1) as u32);
+                        right_leaf_physical =
+                            bit_reverse_index(right_leaf_index, (tree_height - 1) as u32);
                     }
 
                     *n = P::TwoToOneHash::evaluate(
@@ -575,7 +587,7 @@ impl<P: Config> MerkleTree<P> {
         };
         let mut physical_index = sibling_index;
         if self.leaf_ordering_mode.is_bit_reversed() {
-             physical_index = bit_reverse_index(sibling_index, (self.height - 1) as u32);
+            physical_index = bit_reverse_index(sibling_index, (self.height - 1) as u32);
         }
         self.leaf_nodes[physical_index].clone()
     }
