@@ -252,7 +252,8 @@ where
             .into_iter()
             .chain(self.y.to_field_elements().unwrap())
             .for_each(|elem| {
-                dest.append(&mut elem.into_bigint().to_bytes_le());
+                let bytes = elem.into_bigint().to_bytes_le();
+                dest.extend_from_slice(&bytes);
             });
     }
 
@@ -272,7 +273,8 @@ where
             .into_iter()
             .chain(self.y.to_field_elements().unwrap())
             .for_each(|elem| {
-                dest.append(&mut elem.into_bigint().to_bytes_le());
+                let bytes = elem.into_bigint().to_bytes_le();
+                dest.extend_from_slice(&bytes);
             });
         dest.push(self.is_zero().into());
     }
