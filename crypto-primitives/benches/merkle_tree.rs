@@ -116,9 +116,7 @@ mod bytes_mt_benches {
         c.bench_function("Merkle Tree Verify Proof (Leaves as [u8])", move |b| {
             b.iter(|| {
                 for (proof, leaf) in zip(proofs.clone(), leaves.clone()) {
-                    proof
-                        .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                        .unwrap();
+                    proof.verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice());
                 }
             })
         });
@@ -175,6 +173,7 @@ mod bytes_mt_benches {
         .unwrap();
 
         let root = tree.root();
+        let tree_height = tree.height();
 
         let multi_proof = tree
             .generate_multi_proof((0..leaves.len()).collect::<Vec<_>>())
@@ -184,7 +183,13 @@ mod bytes_mt_benches {
             "Merkle Tree Verify Multi Proof (Leaves as [u8])",
             move |b| {
                 b.iter(|| {
-                    multi_proof.verify(&leaf_crh_params, &two_to_one_params, &root, leaves.clone())
+                    multi_proof.verify(
+                        &leaf_crh_params,
+                        &two_to_one_params,
+                        &root,
+                        tree_height,
+                        leaves.clone(),
+                    )
                 })
             },
         );

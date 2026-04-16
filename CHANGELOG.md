@@ -4,9 +4,13 @@
 
 ### Breaking changes
 
+- [\#](https://github.com/arkworks-rs/crypto-primitives/pull/X) Replace the prefix-encoded `MultiPath` Merkle multiproof with a CoSet-based `CoPath` representation and update `MerkleTree::generate_multi_proof` to return `CoPath`. This changes the proof encoding for batch openings and removes the old `MultiPath` type from the public API.
+
 ### Features
 
 ### Improvements
+
+- [\#](https://github.com/arkworks-rs/crypto-primitives/pull/X) Implement CoSet (minimal copath) pruning for Merkle multiproofs, reducing proof size and redundant hashing in batched openings.
 
 ### Bugfixes
 

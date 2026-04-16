@@ -73,8 +73,7 @@ mod byte_mt_tests {
                     &two_to_one_crh_params,
                     &root,
                     leaf.as_slice()
-                )
-                .unwrap());
+                ));
 
             // Allocate Merkle Tree Root
             let root = <LeafHG as CRHSchemeGadget<LeafH, _>>::OutputVar::new_witness(
@@ -291,8 +290,7 @@ mod field_mt_tests {
             let cs = ConstraintSystem::<F>::new_ref();
             let proof = tree.generate_proof(i).unwrap();
             assert!(proof
-                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice())
-                .unwrap());
+                .verify(&leaf_crh_params, &two_to_one_params, &root, leaf.as_slice()));
             // Allocate MT root
             let root = FpVar::new_witness(cs.clone(), || {
                 if use_bad_root {
