@@ -6,7 +6,7 @@
 
 ### Features
 
-- [\#XXX](https://github.com/arkworks-rs/crypto-primitives/pull/XXX) Implement `Absorb` for `SmallFp<P>`.
+- [\#172](https://github.com/arkworks-rs/crypto-primitives/pull/172) Implement `Absorb` for `SmallFp<P>`.
 
 ### Improvements
 
