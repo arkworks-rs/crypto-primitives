@@ -308,3 +308,57 @@ mod field_mt_tests {
         )
     }
 }
+
+mod poseidon_config_tests {
+    use crate::merkle_tree::{
+        configs::PoseidonMerkleConfig, tests::test_utils::poseidon_parameters, MerkleTree,
+    };
+    use ark_std::{test_rng, UniformRand};
+
+    type F = ark_ed_on_bls12_381::Fr;
+    type MT = MerkleTree<PoseidonMerkleConfig<F>>;
+
+    #[test]
+    fn poseidon_merkle_config_prove_verify() {
+        let mut rng = test_rng();
+        let leaves: Vec<Vec<F>> = (0..8)
+            .map(|_| (0..3).map(|_| F::rand(&mut rng)).collect())
+            .collect();
+
+        let params = poseidon_parameters();
+        let tree = MT::new(&params, &params, &leaves).unwrap();
+        let root = tree.root();
+
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof
+                .verify(&params, &params, &root, leaf.as_slice())
+                .unwrap());
+        }
+    }
+}
+
+#[cfg(feature = "blake3")]
+mod blake3_config_tests {
+    use crate::merkle_tree::{configs::Blake3MerkleConfig, MerkleTree};
+    use ark_std::{test_rng, UniformRand};
+
+    type F = ark_ed_on_bls12_381::Fr;
+    type MT = MerkleTree<Blake3MerkleConfig<F>>;
+
+    #[test]
+    fn blake3_merkle_config_prove_verify() {
+        let mut rng = test_rng();
+        let leaves: Vec<Vec<F>> = (0..8)
+            .map(|_| (0..3).map(|_| F::rand(&mut rng)).collect())
+            .collect();
+
+        let tree = MT::new(&(), &(), &leaves).unwrap();
+        let root = tree.root();
+
+        for (i, leaf) in leaves.iter().enumerate() {
+            let proof = tree.generate_proof(i).unwrap();
+            assert!(proof.verify(&(), &(), &root, leaf.as_slice()).unwrap());
+        }
+    }
+}
