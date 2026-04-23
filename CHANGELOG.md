@@ -6,6 +6,8 @@
 
 ### Features
 
+- [\#XXX](https://github.com/arkworks-rs/crypto-primitives/pull/XXX) Add boilerplate for BLAKE3 (feature gated) and Poseidon Merkle tree configs.
+
 ### Improvements
 
 ### Bugfixes
