@@ -6,7 +6,7 @@ use ark_ec::{
 };
 use ark_ff::{
     models::{Fp, FpConfig},
-    BigInteger, Field, PrimeField, ToConstraintField,
+    BigInteger, Field, PrimeField, SmallFp, ToConstraintField,
 };
 use ark_serialize::CanonicalSerialize;
 #[cfg(not(feature = "std"))]
@@ -159,6 +159,23 @@ impl<P: FpConfig<N>, const N: usize> Absorb for Fp<P, N> {
     fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {
         let _ = field_cast(&[*self], dest).unwrap();
     }
+    fn batch_to_sponge_field_elements<F: PrimeField>(batch: &[Self], dest: &mut Vec<F>)
+    where
+        Self: Sized,
+    {
+        field_cast(batch, dest).unwrap();
+    }
+}
+
+impl<P: ark_ff::SmallFpConfig> Absorb for SmallFp<P> {
+    fn to_sponge_bytes(&self, dest: &mut Vec<u8>) {
+        self.serialize_compressed(dest).unwrap()
+    }
+
+    fn to_sponge_field_elements<F: PrimeField>(&self, dest: &mut Vec<F>) {
+        let _ = field_cast(&[*self], dest).unwrap();
+    }
+
     fn batch_to_sponge_field_elements<F: PrimeField>(batch: &[Self], dest: &mut Vec<F>)
     where
         Self: Sized,
