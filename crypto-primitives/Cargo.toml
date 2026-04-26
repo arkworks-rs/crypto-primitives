@@ -21,9 +21,9 @@ ark-ff = { version = "0.6.0", default-features = false }
 ark-ec = { version = "0.6.0", default-features = false }
 ark-std = { version = "0.6.0", default-features = false }
 ark-serialize = { version = "0.6.0", default-features = false, features = [ "derive" ] }
-ark-relations = { version = "0.6", git = "https://github.com/arkworks-rs/snark.git", default-features = false }
-ark-r1cs-std = { version = "0.6", git = "https://github.com/arkworks-rs/r1cs-std", default-features = false, optional = true }
-ark-snark = { version = "0.6", git = "https://github.com/arkworks-rs/snark.git", default-features = false }
+ark-relations = { version = "0.6", default-features = false }
+ark-r1cs-std = { version = "0.6", default-features = false, optional = true }
+ark-snark = { version = "0.6", default-features = false }
 
 blake2 = { version = "0.10", default-features = false }
 blake3 = { version = "1", default-features = false, optional = true }
@@ -68,12 +68,12 @@ ahash = { version = "0.8", default-features = false }
 fnv = { version = "1.0", default-features = false }
 
 [dev-dependencies]
-ark-ed-on-bls12-377 = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "r1cs" ] }
-ark-ed-on-bls12-381 = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "r1cs" ] }
-ark-bls12-377 = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "curve", "r1cs" ] }
-ark-bls12-381 = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "curve" ] }
-ark-mnt4-298 = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "curve", "r1cs" ] }
-ark-mnt6-298 = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-377 = { version = "0.6.0", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-381 = { version = "0.6.0", default-features = false, features = [ "r1cs" ] }
+ark-bls12-377 = { version = "0.6.0", default-features = false, features = [ "curve", "r1cs" ] }
+ark-bls12-381 = { version = "0.6.0", default-features = false, features = [ "curve" ] }
+ark-mnt4-298 = { version = "0.6.0", default-features = false, features = [ "curve", "r1cs" ] }
+ark-mnt6-298 = { version = "0.6.0", default-features = false, features = [ "r1cs" ] }
 criterion = { version = "0.6" }
 
 ################################# Benchmarks ##################################
