@@ -4,6 +4,8 @@
 
 ### Breaking changes
 
+- Update `num-bigint` to 0.5 to remain compatible with the `ark-serialize` 0.6 Git patch.
+
 ### Features
 
 - [\#171](https://github.com/arkworks-rs/crypto-primitives/pull/XXX) Add boilerplate for BLAKE3 (feature gated) and Poseidon Merkle tree configs.
