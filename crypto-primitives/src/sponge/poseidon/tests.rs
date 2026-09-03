@@ -135,8 +135,8 @@ fn run_cross_test<F: PrimeField + Absorb>(cfg: &PoseidonConfig<F>) {
                 permute(&self.cfg, &mut self.state);
             });
 
-            // This case can only happen in the begining when the absorbing line is empty
-            // and user wants to squeeze elements. Notice that after moving to squueze mode
+            // This case can only happen in the beginning when the absorbing line is empty
+            // and the user wants to squeeze elements. Notice that after moving to squeeze mode,
             // if user calls absorb again with empty input it will be ignored
             self.absorbing
                 .is_empty()
@@ -162,9 +162,9 @@ fn run_cross_test<F: PrimeField + Absorb>(cfg: &PoseidonConfig<F>) {
                     // If,
                     //    * number of squeeze is zero AND
                     //    * in squeezing mode AND
-                    //    * output index is is at `rate`
+                    //    * output index is at `rate`
                     // it applies a useless permutation.
-                    // This is also not appied in SAFE sponge
+                    // This is also not applied in SAFE sponge
 
                     if n == 0 {
                         let squeeze_count = self.squeeze_count.unwrap();
