@@ -10,8 +10,8 @@ use ark_relations::gr1cs::{Namespace, SynthesisError};
 use ark_std::vec::Vec;
 use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+#[derive(Educe)]
+#[educe(Clone(bound(C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>)))]
 pub struct CRHParametersVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,

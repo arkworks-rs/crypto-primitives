@@ -25,8 +25,8 @@ pub struct Commitment<C: CurveGroup, W: Window> {
     window: PhantomData<W>,
 }
 
-#[derive(Derivative, CanonicalSerialize)]
-#[derivative(Clone, PartialEq, Debug, Eq, Default)]
+#[derive(Educe, CanonicalSerialize)]
+#[educe(Clone, PartialEq, Debug, Eq, Default)]
 pub struct Randomness<C: CurveGroup>(pub C::ScalarField);
 
 impl<C: CurveGroup> UniformRand for Randomness<C> {

@@ -43,8 +43,8 @@ where
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+#[derive(Educe)]
+#[educe(Clone(bound(C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>)))]
 pub struct ParametersVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -73,8 +73,8 @@ where
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+#[derive(Educe)]
+#[educe(Clone(bound(C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>)))]
 pub struct PlaintextVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -103,8 +103,8 @@ where
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+#[derive(Educe)]
+#[educe(Clone(bound(C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>)))]
 pub struct PublicKeyVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,
@@ -133,8 +133,8 @@ where
     }
 }
 
-#[derive(Derivative, Debug)]
-#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+#[derive(Educe, Debug)]
+#[educe(Clone(bound(C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>)))]
 pub struct OutputVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,

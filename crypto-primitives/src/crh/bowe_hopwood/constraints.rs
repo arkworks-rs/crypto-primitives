@@ -16,8 +16,8 @@ use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
 type ConstraintF<P> = <<P as CurveConfig>::BaseField as Field>::BasePrimeField;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "P: TECurveConfig, W: Window"))]
+#[derive(Educe)]
+#[educe(Clone(bound(P: TECurveConfig, W: Window)))]
 pub struct ParametersVar<P: TECurveConfig, W: Window> {
     params: Parameters<P>,
     #[doc(hidden)]
