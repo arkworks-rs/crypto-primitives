@@ -18,8 +18,8 @@ pub struct Schnorr<C: CurveGroup, D: Digest> {
     _hash: PhantomData<D>,
 }
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: CurveGroup, H: Digest"), Debug)]
+#[derive(Educe)]
+#[educe(Clone(bound(C: CurveGroup, H: Digest)), Debug)]
 pub struct Parameters<C: CurveGroup, H: Digest> {
     _hash: PhantomData<H>,
     pub generator: C::Affine,

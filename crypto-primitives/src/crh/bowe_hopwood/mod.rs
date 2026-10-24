@@ -30,8 +30,8 @@ pub mod constraints;
 
 pub const CHUNK_SIZE: usize = 3;
 
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Clone(bound = ""), Default(bound = ""))]
+#[derive(Educe, CanonicalSerialize, CanonicalDeserialize)]
+#[educe(Clone(bound(false)), Default(bound(false)))]
 pub struct Parameters<P: TECurveConfig> {
     pub generators: Vec<Vec<TEProjective<P>>>,
 }

@@ -14,8 +14,8 @@ use ark_std::{borrow::Borrow, iter, marker::PhantomData};
 
 type ConstraintF<C> = <<C as CurveGroup>::BaseField as Field>::BasePrimeField;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>"))]
+#[derive(Educe)]
+#[educe(Clone(bound(C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>)))]
 pub struct ParametersVar<C: CurveGroup, GG: CurveVar<C, ConstraintF<C>>>
 where
     for<'a> &'a GG: GroupOpsBounds<'a, C, GG>,

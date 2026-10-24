@@ -138,12 +138,12 @@ pub type LeafParam<P> = <<P as Config>::LeafHash as CRHScheme>::Parameters;
 ///    [I] J
 /// ```
 ///  Suppose we want to prove I, then `leaf_sibling_hash` is J, `auth_path` is `[C,D]`
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    PartialEq(bound = "P: Config"),
-    Clone(bound = "P: Config"),
-    Debug(bound = "P: Config"),
-    Default(bound = "P: Config")
+#[derive(Educe, CanonicalSerialize, CanonicalDeserialize)]
+#[educe(
+    PartialEq(bound(P: Config)),
+    Clone(bound(P: Config)),
+    Debug(bound(P: Config)),
+    Default(bound(P: Config))
 )]
 pub struct Path<P: Config> {
     pub leaf_sibling_hash: P::LeafDigest,
@@ -238,11 +238,11 @@ impl<P: Config> Path<P> {
 ///  Since the Merkle Tree branch is the same, the authentication path is the same (which means in this case that there is no suffix).
 ///  The second path is hence `[C,D] + []` (i.e., plus the empty suffix). We can verify the second path as the first one.
 
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Clone(bound = "P: Config"),
-    Debug(bound = "P: Config"),
-    Default(bound = "P: Config")
+#[derive(Educe, CanonicalSerialize, CanonicalDeserialize)]
+#[educe(
+    Clone(bound(P: Config)),
+    Debug(bound(P: Config)),
+    Default(bound(P: Config))
 )]
 pub struct MultiPath<P: Config> {
     /// For node i, stores the hash of node i's sibling
@@ -380,8 +380,8 @@ fn select_left_right_child<L: Clone>(
 /// For this release, padding will not be supported because of security concerns: if the leaf hash and two to one hash uses same underlying
 /// CRH, a malicious prover can prove a leaf while the actual node is an inner node. In the future, we can prefix leaf hashes in different layers to
 /// solve the problem.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "P: Config"))]
+#[derive(Educe)]
+#[educe(Clone(bound(P: Config)))]
 pub struct MerkleTree<P: Config> {
     /// stores the non-leaf nodes in level order. The first element is the root node.
     /// The ith nodes (starting at 1st) children are at indices `2*i`, `2*i+1`

@@ -80,8 +80,8 @@ type TwoToOneParam<PG, P, F> =
     >>::ParametersVar;
 
 /// Represents a merkle tree path gadget.
-#[derive(Debug, Derivative)]
-#[derivative(Clone(bound = "P: Config, F: PrimeField, PG: ConfigGadget<P, F>"))]
+#[derive(Debug, Educe)]
+#[educe(Clone(bound(P: Config, F: PrimeField, PG: ConfigGadget<P, F>)))]
 pub struct PathVar<P: Config, F: PrimeField, PG: ConfigGadget<P, F>> {
     /// `path[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
     path: Vec<Boolean<F>>,

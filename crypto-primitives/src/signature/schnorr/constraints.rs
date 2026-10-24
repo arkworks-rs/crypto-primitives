@@ -22,10 +22,10 @@ where
     _curve: PhantomData<C>,
 }
 
-#[derive(Derivative)]
-#[derivative(
-    Debug(bound = "C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>"),
-    Clone(bound = "C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>")
+#[derive(Educe)]
+#[educe(
+    Debug(bound(C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>)),
+    Clone(bound(C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>))
 )]
 pub struct PublicKeyVar<C: CurveGroup, GC: CurveVar<C, ConstraintF<C>>>
 where
